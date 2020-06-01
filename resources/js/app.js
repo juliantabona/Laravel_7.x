@@ -8,10 +8,17 @@ require('./bootstrap');
 
 window.Vue = require('vue');
 
+//  Import Vue Router
+import VueRouter from 'vue-router'
+
+Vue.use(VueRouter)
+
+//  Import View UI
 import ViewUI from 'view-design';
 import 'view-design/dist/styles/iview.css';
+import locale from 'view-design/dist/locale/en-US';
 
-Vue.use(ViewUI);
+Vue.use(ViewUI, { locale });
 
 /**
  * The following block of code may be used to automatically register your
@@ -24,7 +31,9 @@ Vue.use(ViewUI);
 // const files = require.context('./', true, /\.vue$/i)
 // files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
 
-Vue.component('example-component', require('./components/ExampleComponent.vue').default);
+//  Project Componets
+Vue.component('show-projects', require('./components/projects/list/main.vue').default);
+Vue.component('show-project', require('./components/projects/show/main.vue').default);
 
 /**
  * Next, we will create a fresh Vue application instance and attach it to

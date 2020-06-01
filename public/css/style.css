@@ -1,0 +1,31 @@
+body {
+    background-color: #f8fafc !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.border-bottom-dashed {
+    border-bottom: 1px dashed #c5c5c5;
+}
+
+/*  Layout Sider */
+.ivu-layout-sider {
+    background: #ffffff !important;
+}
+
+/*  Builder */
+
+.builder-main-tabs .ivu-tabs-bar {
+    background: #ffffff;
+    padding: 10px 10px 0 40px;
+}
+
+.builder-main-tabs .ivu-tabs-tab {
+    font-weight: 600;
+}
+
+.builder-main-tabs .ivu-tabs-tab i {
+    font-size: 24px;
+}

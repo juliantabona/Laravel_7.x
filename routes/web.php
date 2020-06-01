@@ -19,10 +19,4 @@ Route::get('/', function () {
 
 Auth::routes();
 
-Route::get('/dashboard', 'DashboardController@index')->name('home');
-
-Route::get('/dashboard/projects', function(){
-    
-    return view('projects.list.main');
-
-});
+Route::get('/dashboard', 'DashboardController@index')->name('dashboard');
