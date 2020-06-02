@@ -8,12 +8,13 @@ require('./bootstrap');
 
 window.Vue = require('vue');
 
-//  Import Vue Router
-import VueRouter from 'vue-router'
+//  Import Vue Router for custom routes and navigation
+import VueRouter from 'vue-router';
+import router from './routes.js';
 
 Vue.use(VueRouter)
 
-//  Import View UI
+//  Import View UI for frontend UI design
 import ViewUI from 'view-design';
 import 'view-design/dist/styles/iview.css';
 import locale from 'view-design/dist/locale/en-US';
@@ -31,10 +32,18 @@ Vue.use(ViewUI, { locale });
 // const files = require.context('./', true, /\.vue$/i)
 // files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
 
-//  Project Componets
-Vue.component('show-projects', require('./components/projects/list/main.vue').default);
-Vue.component('show-project', require('./components/projects/show/main.vue').default);
+//  Basic App Scaffolding
+import App from './App.vue';
 
+//  Import Api For Api handling [A custom js file we created]
+import Api from './api.js';
+
+window.api = new Api();
+
+//  Import Auth For Authentication handling [A custom js file we created]
+import Auth from './auth.js';
+
+window.auth = new Auth();
 /**
  * Next, we will create a fresh Vue application instance and attach it to
  * the page. Then, you may begin adding components to this application
@@ -42,5 +51,21 @@ Vue.component('show-project', require('./components/projects/show/main.vue').def
  */
 
 const app = new Vue({
+    //  Place the app scaffolding in this element
     el: '#app',
+    //  Render the app scaffolding
+    render(h){
+        return h(App);
+    },
+    //  Add our custom routes
+    router
 });
+
+/** Save the current Vue Instance. We can use this instance inside other js files
+ *  e.g api.js to call on iView methods e.g We can notify a warning message to
+ *  the user in the following manner:  
+ * 
+ *  VueInstance.$Notice.warning({ title: 'Session expired!' });
+ * 
+ */
+window.VueInstance = app;

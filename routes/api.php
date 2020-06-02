@@ -14,6 +14,26 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
+
+//  API Home
+Route::get('/', 'Api\HomeController@home')->name('api-home');
+
+//  Auth Routes
+Route::middleware('auth:api')->namespace('Api')->group(function () {
+
+    //  Me Resource Routes
+    Route::prefix('me')->group(function () {
+
+        Route::get('/', 'UserController@getUser')->name('profile');
+
+    });
+
+});
+
+Route::namespace('Api')->prefix('auth')->group(function () {
+    
+    Route::post('login', 'AuthController@login')->name('login');
+    Route::post('register', 'AuthController@register')->name('register');
+    Route::post('logout', 'AuthController@logout')->middleware('auth:api')->name('logout');
+
 });

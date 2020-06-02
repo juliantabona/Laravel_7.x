@@ -29,3 +29,24 @@ body {
 .builder-main-tabs .ivu-tabs-tab i {
     font-size: 24px;
 }
+
+/*  Login (Sign In) Form Style */
+#login-form .ivu-input-group-prepend {
+    font-size:22px !important;
+}
+
+/*  Registration (Sign Up) Form Style */
+#registration-form .ivu-input-group-prepend {
+    font-size:22px !important;
+}
+
+/*  iView UI Style Fixes / Overides */
+
+/*  Avoid the form item error message using position:absolute, because the causes the  
+ *  error contents to be cut off if the error is too long. Increase the space between
+ *  the text
+ */
+.ivu-form-item-error-tip {
+    position: inherit !important;
+    line-height: 1.4em !important;
+}

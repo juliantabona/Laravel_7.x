@@ -2,8 +2,14 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\RelationNotFoundException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Symfony\Component\HttpKernel\Exception\ThrottleRequestsException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 class Handler extends ExceptionHandler
 {
@@ -48,8 +54,58 @@ class Handler extends ExceptionHandler
      *
      * @throws \Throwable
      */
-    public function render($request, Throwable $exception)
+    public function render($request, Throwable $e)
     {
-        return parent::render($request, $exception);
+
+        /** API Error handling and reporting
+         *  
+         *  Here we define the returned JSON response for each exception
+         *  encountered during an API Call
+         * 
+         */
+        if ($request->expectsJson()) {
+
+            switch (true) {
+
+                /*  Error handle if the model data does not exist. Helpful for error handling especially for
+                 *  Route-Model binding scenerios e.g create(Company $company){} but the resource is not found
+                 */
+                case $e instanceof ModelNotFoundException:
+                    //  Found inside helper.php function
+                    return help_model_not_fonud();
+                    break;
+
+                /*  Error handle if the route does not exist
+                 */
+                case $e instanceof NotFoundHttpException:
+                    //  Found inside helper.php function
+                    return help_route_not_fonud();
+                    break;
+
+                /*  Error handle if the request method is not supported
+                 */
+                case $e instanceof MethodNotAllowedHttpException:
+                    //  Found inside helper.php function
+                    return help_method_not_allowed();
+                    break;
+
+                /*  Error handle if the resource relationship is not found
+                 *  e.g) when we use Model::with($relationship) and its not found
+                 */
+                case $e instanceof RelationNotFoundException:
+                    //  Found inside helper.php function
+                    return help_model_relationship_not_fonud();
+                    break;
+
+                /*  Error handle too many requests have been made by a client on the api
+                 */
+                case $e instanceof ThrottleRequestsException:
+                    //  Found inside helper.php function
+                    return help_to_many_login_attempts();
+                    break;
+            }
+        }
+
+        return parent::render($request, $e);
     }
 }
