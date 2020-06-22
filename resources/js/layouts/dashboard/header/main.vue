@@ -5,7 +5,7 @@
         <Col :span="20" :offset="2" class="clearfix">
 
             <slot>
-                <h3 class="float-left">Dashboard</h3>
+                <h3 class="float-left">{{ heading }}</h3>
             </slot>
 
             <Dropdown trigger="click" @on-click="handleSelection" class="float-right">
@@ -29,6 +29,12 @@
 <script>
 
     export default {
+        props: {
+            heading: {
+                type: String,
+                default: 'Dashboard'
+            }
+        },
         data(){
             return {
                 //  Access the user from auth.js
@@ -43,7 +49,7 @@
                 if(selected == 'projects'){
 
                     //  Redirect to the projects page
-                    this.navigate();
+                    this.$router.push({ name: 'show-projects' });
 
                 //  If we want to logout
                 }else if(selected == 'logout'){

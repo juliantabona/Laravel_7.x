@@ -2,11 +2,11 @@
 
 namespace App;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Passport\HasApiTokens;
 use App\Traits\UserTraits;
+use Laravel\Passport\HasApiTokens;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable
 {
@@ -18,7 +18,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name', 'email', 'password',
+        'name', 'email', 'password', 'account_type'
     ];
 
     /**
@@ -38,4 +38,38 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    /*
+     *  Checks if a given user is a Super Admin
+     */
+    public function isSuperAdmin()
+    {
+        return $this->account_type == 'superadmin';
+    }
+
+
+    /**
+     * The projects that this user created
+     */
+    public function createdProjects()
+    {
+        return $this->hasMany('App\Project', 'user_id');
+    }
+
+    /**
+     * The projects that were shared with this user
+     */
+    public function sharedProjects()
+    {
+        return $this->projects()->where('user_id', '!=', auth()->user()->id);
+    }
+
+    /**
+     * The projects that this user either created or were shared
+     * with this user
+     */
+    public function projects()
+    {
+        return $this->belongsToMany('App\Project')->withPivot('type');
+    }
 }

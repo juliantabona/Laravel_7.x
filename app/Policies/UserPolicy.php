@@ -15,8 +15,13 @@ class UserPolicy
      */
     public function before($user, $ability)
     {
-        return true;
-        //  return $user->isSuperAdmin();
+        /** Note that this will run before any other checks. This means is we return true we will be authorized
+         *  for every action. However be aware that if we return false here, then we are also not authorizing 
+         *  all other methods. We must be careful here, we only return true if the user is a "Super Admin" 
+         *  but nothing is they are not, since we want other methods to run their own local checks. 
+         * 
+        */
+        if($user->isSuperAdmin()) return true;
     }
     
     /**

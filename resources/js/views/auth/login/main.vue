@@ -2,7 +2,7 @@
 
     <Row>
         <Col span="8" :offset="8">
-            <Card id="login-form" class="mt-5 pt-2">
+            <Card class="auth-form mt-5 pt-2">
                 
                 <!-- Heading -->
                 <Divider orientation="left" class="font-weight-bold">Sign In</Divider>
@@ -14,20 +14,25 @@
                     
                     <!-- Enter Email -->
                     <FormItem prop="email" :error="serverEmailError">
-                        <Input type="email" v-model="loginForm.email" placeholder="Email" :disabled="isLoading">
+                        <Input type="email" v-model="loginForm.email" placeholder="Email" :disabled="isLoading"
+                               @keyup.enter.native="handleSubmit()">
                             <Icon type="ios-person-outline" slot="prepend"></Icon>
                         </Input>
                     </FormItem>
                     
                     <!-- Enter Password -->
                     <FormItem prop="password" :error="serverPasswordError">
-                        <Input type="password" v-model="loginForm.password" placeholder="Password" :disabled="isLoading">
+                        <Input type="password" v-model="loginForm.password" placeholder="Password" :disabled="isLoading"
+                               @keyup.enter.native="handleSubmit()">
                             <Icon type="ios-lock-outline" slot="prepend"></Icon>
                         </Input>
                     </FormItem>
 
                     <!-- Register Link -->
-                    <router-link to="register">Create Account?</router-link>
+                    <router-link to="register" class="mr-2">Create Account?</router-link>
+
+                    <!-- Forgot Password Link -->
+                    <router-link to="forgot-password">Forgot Password?</router-link>
                     
                     <!-- Sign In Button -->
                     <FormItem v-if="!isLoading">
@@ -59,11 +64,11 @@
                 loginFormRules: {
                     email: [
                         { required: true, message: 'Please enter your email', trigger: 'blur' },
-                        { type: 'email', message: 'Please enter a valid email', trigger: 'blur' }
+                        { type: 'email', message: 'Please enter a valid email', trigger: 'change' }
                     ],
                     password: [
                         { required: true, message: 'Please enter your password.', trigger: 'blur' },
-                        { type: 'string', min: 6, message: 'The password length must be more than 6 characters', trigger: 'blur' }
+                        { type: 'string', min: 6, message: 'The password length must be more than 6 characters', trigger: 'change' }
                     ]
                 },
                 serverErrors: [],
@@ -95,7 +100,11 @@
 
                     //  If the validation failed
                     } else {
-                        this.$Message.error('Sorry, you cannot login yet');
+
+                        this.$Message.warning({
+                            content: 'Sorry, you cannot login yet',
+                            duration: 6
+                        });
                     }
                 })
             },
@@ -118,7 +127,10 @@
                         self.resetLoginForm();
 
                         //  Login success message
-                        self.$Message.success('You are signed in!');
+                        self.$Message.success({
+                            content: 'You are signed in!',
+                            duration: 6
+                        });
 
                         //  Redirect the user to the projects page
                         this.$router.push({ name: 'show-projects' });

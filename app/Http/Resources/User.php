@@ -33,20 +33,17 @@ class user extends JsonResource
 
                 //  Link to current resource
                 'self' => [
-                    'href' => route('profile'),
+                    'href' => route('my-profile'),
                     'title' => 'This user',
                 ],
 
                 //  Link to the user's project
-                /*
-                'oq:projects' => [
-                    'href' => ($this->id == auth('api')->user()->id)
-                                ? route('my-projects')
-                                    : route('user-projects', ['user_id' => $this->id]),
-                    'title' => 'Projects that this user has created or been added to as admin, staff, e.t.c',
-                    'total' => $this->projects()->count(),
+                'sce:projects' => [
+                    'href' => route('my-projects'),
+                    'title' => 'The projects that this user either created or were shared with this user',
+                    'total' => $this->projects()->count()
                 ]
-                */
+
             ],
 
             /*  Embedded Resources */

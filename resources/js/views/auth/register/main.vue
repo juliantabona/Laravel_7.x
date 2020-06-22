@@ -2,7 +2,7 @@
 
     <Row>
         <Col span="8" :offset="8">
-            <Card id="registration-form" class="mt-5 pt-2">
+            <Card class="auth-form mt-5 pt-2">
                 
                 <!-- Heading -->
                 <Divider orientation="left" class="font-weight-bold">Sign Up</Divider>
@@ -14,28 +14,32 @@
                     
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">
-                        <Input type="text" v-model="registerForm.name" placeholder="Name" :disabled="isLoading">
+                        <Input type="text" v-model="registerForm.name" placeholder="Name" :disabled="isLoading"
+                                @keyup.enter.native="handleSubmit()">
                             <Icon type="ios-person-outline" slot="prepend"></Icon>
                         </Input>
                     </FormItem>
                     
                     <!-- Enter Email -->
                     <FormItem prop="email" :error="serverEmailError">
-                        <Input type="email" v-model="registerForm.email" placeholder="Email" :disabled="isLoading">
+                        <Input type="email" v-model="registerForm.email" placeholder="Email" :disabled="isLoading"
+                                @keyup.enter.native="handleSubmit()">
                             <Icon type="ios-mail-outline" slot="prepend"></Icon>
                         </Input>
                     </FormItem>
                     
                     <!-- Enter Password -->
                     <FormItem prop="password" :error="serverPasswordError">
-                        <Input type="password" v-model="registerForm.password" placeholder="Password" :disabled="isLoading">
+                        <Input type="password" v-model="registerForm.password" placeholder="Password" :disabled="isLoading"
+                                @keyup.enter.native="handleSubmit()">
                             <Icon type="ios-lock-outline" slot="prepend"></Icon>
                         </Input>
                     </FormItem>
                     
                     <!-- Confirm Password -->
                     <FormItem prop="password_confirmation">
-                        <Input type="password" v-model="registerForm.password_confirmation" placeholder="Confirm Password" :disabled="isLoading">
+                        <Input type="password" v-model="registerForm.password_confirmation" placeholder="Confirm Password" :disabled="isLoading"
+                                @keyup.enter.native="handleSubmit()">
                             <Icon type="ios-lock-outline" slot="prepend"></Icon>
                         </Input>
                     </FormItem>
@@ -134,7 +138,10 @@
 
                     //  If the validation failed
                     } else {
-                        this.$Message.error('Sorry, you cannot sign up yet');
+                        this.$Message.warning({
+                            content: 'Sorry, you cannot sign up yet',
+                            duration: 6
+                        });
                     }
                 })
             },
@@ -160,7 +167,10 @@
                         self.resetRegisterForm();
 
                         //  Registration success message
-                        self.$Message.success('Account created!');
+                        this.$Message.success({
+                            content: 'Account created!',
+                            duration: 6
+                        });
 
                         //  Redirect the user to the projects page
                         this.$router.push({ name: 'show-projects' });

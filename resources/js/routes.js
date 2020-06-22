@@ -19,7 +19,21 @@ let routes = [
         meta: { layout: 'Basic', middlewareGuest: true },
         component: require('./views/auth/register/main.vue').default
     },
-    
+
+    //  Register
+    {
+        path: '/forgot-password', name: 'forgot-password',
+        meta: { layout: 'Basic', middlewareGuest: true },
+        component: require('./views/auth/forgot-password/main.vue').default
+    },
+
+    //  Register
+    {
+        path: '/reset-password', name: 'reset-password',
+        meta: { layout: 'Basic', middlewareGuest: true },
+        component: require('./views/auth/reset-password/main.vue').default
+    },
+
     //  Projects
     {
         path: '/projects', name: 'show-projects',
@@ -27,13 +41,50 @@ let routes = [
         component: require('./views/projects/list/main.vue').default
     },
 
-    //  Single Project
-    {
-        path: '/projects/:url', name: 'show-project',
+   //  Create Project
+   {
+        path: '/projects/create', name: 'create-project',
         meta: { layout: 'Dashboard', middlewareAuth: true },
-        component: require('./views/projects/show/main.vue').default
-    }
+        component: require('./views/projects/create/main.vue').default
+    },
 
+    //  Single Project Overview
+    {
+        path: '/projects/:project_url/overview',
+        meta: { layout: 'Dashboard', middlewareAuth: true },
+        component: require('./views/projects/show/main.vue').default,
+        children: [
+            {
+                path: '/', name: 'show-project-overview',
+                meta: { layout: 'Dashboard', middlewareAuth: true },
+                component: require('./views/projects/show/builder/versions/list/main.vue').default
+            }
+        ]
+    },
+
+    //  Single Project Builder
+    {
+        path: '/projects/:project_url/builder',
+        meta: { layout: 'Dashboard', middlewareAuth: true },
+        component: require('./views/projects/show/main.vue').default,
+        children: [
+            {
+                path: '/', name: 'show-project-builder',
+                meta: { layout: 'Dashboard', middlewareAuth: true },
+                component: require('./views/projects/show/builder/overview/editProject.vue').default
+            },
+            {
+                path: 'versions', name: 'show-project-versions',
+                meta: { layout: 'Dashboard', middlewareAuth: true },
+                component: require('./views/projects/show/builder/versions/list/main.vue').default
+            },
+            {
+                path: 'versions/:version_url', name: 'show-project-version',
+                meta: { layout: 'Dashboard', middlewareAuth: true },
+                component: require('./views/projects/show/builder/versions/show/main.vue').default
+            }
+        ]
+    }
 ];
 
 //  Initialise the router

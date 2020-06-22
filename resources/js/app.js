@@ -44,6 +44,17 @@ window.api = new Api();
 import Auth from './auth.js';
 
 window.auth = new Auth();
+
+//  Import Clipboard for copying values to the clipboard
+import Clipboard from 'v-clipboard';
+
+Vue.use(Clipboard);
+
+/** GLOBAL COMPONENTS */
+
+//  This component is called within itself and must be registered globally to solve recursive issues
+Vue.component('singleSubscriptionOption', require('./views/projects/show/builder/versions/show/editor/content/subscription-plans/single-subscription-option/main.vue').default);
+
 /**
  * Next, we will create a fresh Vue application instance and attach it to
  * the page. Then, you may begin adding components to this application

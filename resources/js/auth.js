@@ -18,6 +18,12 @@ class Auth {
         //  Initialize the register url to nothing
         this.registerUrl = null;
 
+        //  Initialize the send password reset link url to nothing
+        this.sendPasswordResetLinkUrl = null;
+
+        //  Initialize the reset password url to nothing
+        this.resetPasswordUrl = null;
+
         //  Initialize the logout url to nothing
         this.logoutUrl = null;
 
@@ -26,63 +32,85 @@ class Auth {
 
     }
 
-    handleAuthourization(vueInstance)
+    async handleAuthourization(vueInstance)
     {
         console.log('Start handling authourization');
+
+        console.log('Make api call to /api to get the home api details');
 
         /** Make an API Call to the API Home endpoint. This endpoint will provide us with the
          *  essential routes to execute Login, Registation and Logout calls. We only need to
          *  check for authorization on routes that only allow authenticated users.
+         * 
+         *  Note the use of "async" and "await". This helps us to perform the api call and wait
+         *  for the response before we continue any futher
          */
-        api.call('get', '/api')
-            .then(({data}) => {
+        await api.call('get', '/api')
+                .then(({data}) => {
 
-                console.log('/api successful');
+                    console.log('/api successful');
 
-                //  Update the login url
-                this.loginUrl = data['_links']['sce:login']['href'];
+                    //  Update the login url
+                    this.loginUrl = data['_links']['sce:login']['href'];
 
-                //  Update the register url
-                this.registerUrl = data['_links']['sce:register']['href'];
+                    //  Update the register url
+                    this.registerUrl = data['_links']['sce:register']['href'];
 
-                //  Update the logout url
-                this.logoutUrl = data['_links']['sce:logout']['href'];
+                    this.sendPasswordResetLinkUrl = data['_links']['sce:send-password-reset-link']['href'];
 
-                //  Update the logout everyone url
-                this.logoutEveryoneUrl = data['_links']['sce:logout-everyone']['href'];
+                    this.resetPasswordUrl = data['_links']['sce:reset-password']['href'];
 
-                //  Check if the current Vue Instance route requires an authenticated user
-                if( this.currentRouteRequiresAuthUser(vueInstance) ){
+                    //  Update the logout url
+                    this.logoutUrl = data['_links']['sce:logout']['href'];
 
-                    console.log('This route requires an authenticated user');
+                    //  Update the logout everyone url
+                    this.logoutEveryoneUrl = data['_links']['sce:logout-everyone']['href'];
 
-                    //  Check if we already have a local stored token
-                    if( this.hasLocalToken() ){
+                });
 
-                        console.log('We have a locally stored token');
+        console.log('Check if the current route requires an authenticated user');
 
-                        //  Get the stored user
-                        this.user = this.getUser();
+        //  Check if the current Vue Instance route requires an authenticated user
+        if( this.currentRouteRequiresAuthUser(vueInstance) ){
 
-                        //  Get the stored access token
-                        this.token = this.getToken();
+            console.log('This route requires an authenticated user');
 
-                        //  Set bearer token
-                        this.setBearerToken();
+            //  Check if we already have a local stored token
+            if( this.hasLocalToken() ){
 
-                        //  Verify the authenticity of the token and update the authenticated user's details
-                        this.getUser();
-        
-                    }else{
-        
-                        //  Logout to return to the login screen
-                        this.logout();
-        
-                    }
-        
-                }
+                console.log('We have a locally stored token');
 
-            });
+                //  Get the stored user
+                this.user = this.getUser();
+
+                //  Get the stored access token
+                this.token = this.getToken();
+
+                //  Set bearer token
+                this.setBearerToken();
+
+                /** Verify the authenticity of the token and get the authenticated user details.
+                 *  We need to use the "async" and "await" to perform the api call and wait for
+                 *  a response.
+                 */
+                await this.getAuth();
+
+            }else{
+
+                console.log('We don\'t have a locally stored token');
+
+                /** Logout to return to the login screen. We need to use the "async" and "await" to 
+                 *  perform the api call and wait for a response.
+                 */
+                await this.logout();
+
+            }
+
+        }else{
+            
+            console.log('This route does not require an authenticated user');
+        }
+
     }
 
     currentRouteRequiresAuthUser(vueInstance)
@@ -95,12 +123,17 @@ class Auth {
     {
         console.log('Attempt /api/me to verify stored token');
 
+        console.log('token to use as bearer token');
+        console.log(this.token);
+
         /** Make an Api call to get the API Home Resource. It is important to note that the api.call() method
          *  defined in the app.js file will automatically invoke the auth.logout() method if the api call
          *  returns a status 401 "Unauthenticated".
          */
         return api.call('get', '/api/me')
             .then(({data}) => {
+
+                console.log('Token verified successfully');
 
                 //  Get the users details from the API Home Resource
                 var user = data;
@@ -133,7 +166,7 @@ class Auth {
                 //  Store the token in the local storage
                 this.storeToken();
 
-                //  Once logged in, get the authenticated user details
+                //  Get the authenticated user details
                 return this.getAuth();
 
             });
@@ -163,7 +196,64 @@ class Auth {
                 //  Store the token in the local storage
                 this.storeToken();
 
-                //  Once Signed up, get the authenticated user details
+                //  Get the authenticated user details
+                return this.getAuth();
+
+            });
+    }
+
+    sendPasswordResetLink (email)
+    {   
+        /**  Make an Api call to send the password reset link. We include the
+         *    user's details required to send the password reset link.
+         */
+        let userData = {
+            email: email,
+
+            /** We need to include the "password_reset_url" which is our endpoint
+             *  where the user will be redirected to after they receive and click
+             *  on the password reset button from their email. The password reset
+             *  token and user email will also be attached to this provided url
+             *  as query parameters e.g:
+             * 
+             *  "https://{password_reset_url}?token=...&email=..."
+             *  
+             * This is the link that we want the endpoint to attach the token 
+             * 
+             */
+
+             // This will generate "https://www.app-domain.com/#/reset-password"
+            password_reset_url: window.location.origin + "/" + VueInstance.$router.resolve({name: 'reset-password'}).href
+        };
+
+        return api.call('post', this.sendPasswordResetLinkUrl, userData);
+    }
+
+    resetPassword (email, token, password, password_confirmation )
+    {   
+        /**  Make an Api call to reset the user's password. We include the
+         *   user's details required to reset the password
+         */
+        let userData = {
+            email: email,
+            token: token,
+            password: password,
+            password_confirmation: password_confirmation
+        };
+
+        return api.call('post', this.resetPasswordUrl, userData)
+            .then(({data}) => {
+
+                //  Get the access token
+                this.token = data['access_token']['accessToken'];
+
+                //  Set bearer token
+                this.setBearerToken();
+
+                //  Store the token in the local storage
+                this.storeToken();
+
+                //  Get the authenticated user details
                 return this.getAuth();
 
             });
@@ -171,6 +261,8 @@ class Auth {
 
     logout(logoutEveryone = false)
     {  
+        console.log('Start logging out process');
+
         //  Determine the type of logout to use
         let url = logoutEveryone ? this.logoutEveryoneUrl : this.logoutUrl;
 
@@ -188,6 +280,8 @@ class Auth {
 
     logoutServerSide(url)
     {
+        console.log('Logout from the server side');
+
         //  Display the signing out loader
         const signoutLoader = VueInstance.$Message.loading({
             content: 'Signing out...',
@@ -214,6 +308,8 @@ class Auth {
 
     logoutClientSide()
     {
+        console.log('Logout from the client side');
+
         this.clearLocalData();
 
         this.navigateToLoginPage();

@@ -30,25 +30,37 @@ class Home extends JsonResource
                     'title' => 'API Home - Your API starting point.'
                 ],
 
-                //  Link to current resource
+                //  Link to login
                 'sce:login' => [ 
                     'href' => route('login'),
                     'title' => 'Authenticate user'
                 ],
 
-                //  Link to current resource
+                //  Link to register
                 'sce:register' => [ 
                     'href' => route('register'),
                     'title' => 'Register new user'
                 ],
 
-                //  Link to current resource
-                'sce:logout' => [ 
-                    'href' => route('logout'),
-                    'title' => 'Logout current device'
+                //  Link to send password reset link
+                'sce:send-password-reset-link' => [ 
+                    'href' => route('send-password-reset-link'),
+                    'title' => 'Send the password reset link'
                 ],
 
-                //  Link to current resource
+                //  Link to send password reset link
+                'sce:reset-password' => [ 
+                    'href' => route('reset-password'),
+                    'title' => 'Reset the user\'s password'
+                ],
+
+                //  Link to logout from current device
+                'sce:logout' => [ 
+                    'href' => route('logout'),
+                    'title' => 'Logout from current device'
+                ],
+
+                //  Link to logout from all devices
                 'sce:logout-everyone' => [ 
                     'href' => route('logout', ['everyone' => 'true']),
                     'title' => 'Logout all devices'

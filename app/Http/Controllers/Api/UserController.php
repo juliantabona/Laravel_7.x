@@ -2,27 +2,59 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
 class UserController extends Controller
 {
-    public function getUser(Request $request)
+    private $user;
+
+    public function __construct(Request $request)
     {
         //  Get the specified user's id or use the authenticated users id
         $user_id = $request->route('user_id') ?? auth('api')->user()->id;
 
         //  Get the user
-        $user = \App\User::where('id', $user_id)->first() ?? null;
+        $this->user = \App\User::where('id', $user_id)->first() ?? null;
 
         //  Check if the user exists
-        if ($user) {
+        if ( !$this->user ) {
 
-            //  Check if the current auth user is authourized to view this user resource
-            if ($user->can('view', $user)) {
+            //  Not Found
+            return help_resource_not_fonud();
 
-                //  Return an API Readable Format of the User Instance
-                return $user->convertToApiFormat();
+        }
+    }
+    
+    public function getUser(Request $request)
+    {
+        //  Check if the current auth user is authourized to view this user resource
+        if ($this->user->can('view', $this->user)) {
+
+            //  Return an API Readable Format of the User Instance
+            return $this->user->convertToApiFormat();
+
+        } else {
+
+            //  Not Authourized
+            return help_not_authorized();
+
+        }
+    }
+
+    public function getUserProjects(Request $request)
+    {
+        //  Get the user projects
+        $projects = $this->user->projects()->paginate() ?? null;
+
+        //  Check if the user projects exist
+        if ($projects) {
+
+            //  Check if the current auth user is authourized to view this user projects resource
+            if ($this->user->can('view', $this->user)) {
+                
+                //  Return an API Readable Format of the Project Instance
+                return ( new \App\Project() )->convertToApiFormat($projects);
 
             } else {
 
@@ -38,7 +70,7 @@ class UserController extends Controller
 
         }
     }
-    
+
     public function updateUser(Request $request, $id)
     {
         //

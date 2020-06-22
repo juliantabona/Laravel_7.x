@@ -6,6 +6,16 @@ body {
     cursor: pointer;
 }
 
+.cut-text {
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+}
+
+.bg-grey-light{
+    background-color:#f2f2f2
+}
+
 .border-bottom-dashed {
     border-bottom: 1px dashed #c5c5c5;
 }
@@ -17,7 +27,7 @@ body {
 
 /*  Builder */
 
-.builder-main-tabs .ivu-tabs-bar {
+.builder-main-tabs > .ivu-tabs-bar {
     background: #ffffff;
     padding: 10px 10px 0 40px;
 }
@@ -30,14 +40,355 @@ body {
     font-size: 24px;
 }
 
-/*  Login (Sign In) Form Style */
-#login-form .ivu-input-group-prepend {
+/*  Auth Form Style (Login, Register, Password Reset Forms) */
+.auth-form .ivu-input-group-prepend {
     font-size:22px !important;
 }
 
 /*  Registration (Sign Up) Form Style */
 #registration-form .ivu-input-group-prepend {
     font-size:22px !important;
+}
+
+/*  Mini Card */
+
+.sce-mini-card {
+    max-height: 130px;
+    transition: all 1s;
+    display: inline-block;
+    transition:max-height 0.3s ease-out;
+}
+
+.sce-mini-card:hover {
+    max-height: 300px;
+    transition:max-height 0.3s ease-out;
+}
+
+.sce-mini-card .sce-mini-card-body {
+    text-align-last: justify;
+    transition: all 0.8s ease;
+    -webkit-transition: all 0.8s ease;
+    border-top: 1px dashed transparent;
+    border-bottom: 1px dashed transparent;
+}
+
+.sce-mini-card .ivu-poptip-title,
+.sce-mini-card .ivu-poptip-body {
+    text-align-last: left;
+}
+
+.sce-mini-card:hover .sce-mini-card-body {
+    transition: all 0.8s ease;
+    -webkit-transition: all 0.8s ease;
+    border-top: 1px dashed #c5c5c5;
+    border-bottom: 1px dashed #c5c5c5;    
+    background-color: #f8f9fa !important;
+}
+
+.sce-mini-card .ivu-btn .ivu-icon {
+    font-size: 18px !important;
+    line-height: 0.5 !important;
+    margin-right: -5px !important;
+}
+
+/* Mini Card Button */
+
+.add-sce-mini-card-button {
+    cursor: pointer;
+    height: 130px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: 1px dashed #dcdee2 !important;
+}
+
+.add-sce-mini-card-button:hover {
+    background: #ffffeb !important;
+    box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.1);
+}
+
+.add-sce-mini-card-button .action-title {
+    display: flex;
+    align-items: center;
+}
+
+.add-sce-mini-card-button .action-title > i {
+    font-size: 40px;
+}
+
+.add-sce-mini-card-button .action-title > span {
+    font-size: 20px;
+}
+
+/* Slide & Fade Right Transition  */
+.slide-right-fade-enter-active {
+    transition: all .3s ease;
+}
+.slide-right-fade-leave-active {
+    transition: all .3s ease;
+}
+.slide-right-fade-enter, .slide-right-fade-leave-to {
+    transform: translateX(10px);
+    opacity: 0;
+}
+
+/*  Editor Screen Menu */
+
+.screen-menu-container {
+    max-height:200px;
+    overflow-y: auto;
+    margin-right: -16px;
+    margin-bottom: -14px;
+}
+
+.screen-menu-item {
+    height: 30px;
+    padding: 5px;
+    position: relative;
+    background: transparent;
+    display: flex !important;
+    border-radius: 5px 0 0 5px;
+    align-items: center !important;
+}
+
+.screen-menu-item:hover {
+    background: #f5f5f5;
+}
+
+.screen-menu-item .screen-menu-item-name {
+    max-width: 250px;
+}
+
+.screen-menu-item.active .screen-menu-item-name {
+    color: #3490dc !important;
+    font-weight: bold !important;
+}
+
+.screen-menu-item .screen-menu-item-toolbox {
+    background: #f5f5f5;
+    position: absolute;
+    opacity:0;
+    right: 5px;
+}
+
+.screen-menu-item:hover .screen-menu-item-toolbox {
+    opacity:1;
+}
+
+.screen-menu-item .screen-menu-item-toolbox .screen-menu-item-icon{
+    padding: 2px;
+    color: black;
+    cursor: pointer;
+    border-radius: 100%;
+}
+
+.screen-menu-item .screen-menu-item-toolbox .screen-menu-item-icon:hover{
+    color: #ffffff;
+    background: #2d8cf0;
+}
+
+
+/*  Editor Display Card */
+.single-draggable-item > .ivu-card-head{
+    padding-bottom: 8px;
+}
+
+.single-draggable-item.active > .ivu-card-head{
+    background: #f5f5f5;
+}
+
+.single-draggable-item > .ivu-card-head .single-draggable-item-title{
+    height: 25px;
+    line-height: 25px;
+    margin-top: -5px;
+}
+
+.single-draggable-item > .ivu-card-body{
+    display: none;
+}
+
+.single-draggable-item.active > .ivu-card-body{
+    display: block;
+}
+
+.single-draggable-item .single-draggable-item-toolbox {
+    border-left: 1px solid #bbbbbb;
+    border-radius: 0 5px 5px 0;
+    background: #f5f5f5;
+    padding: 0 0 0 10px;
+    position: absolute;
+    width: 155px;
+    opacity: 0;
+    z-index: 1;
+    top: -5px;
+    right: 0;
+}
+
+.single-draggable-item:hover > .ivu-card-extra .single-draggable-item-toolbox {
+    opacity:1;
+}
+
+.single-draggable-item .single-draggable-item-toolbox .single-draggable-item-icon{
+    padding: 2px;
+    color: black;
+    cursor: pointer;
+    border-radius: 100%;
+}
+
+.single-draggable-item .single-draggable-item-toolbox .single-draggable-item-icon:hover{
+    color: #ffffff;
+    background: #2d8cf0;
+}
+
+.single-draggable-item .first-display-pointer{
+    position: absolute; 
+    right: 0;
+    top: -3px;
+}
+
+/*  Editable Div Field (WYSIWYG) */
+
+.editable-content-field{
+    width: 100%;
+    display: block;
+    overflow-y:auto;
+    white-space: pre;
+    resize: vertical;
+    line-height: 1.5;
+    color: #606266;
+    padding: 5px 15px;
+    font-size: inherit;
+    border-radius: 4px;
+    background-image: none;
+    box-sizing: border-box;
+    background-color: #fff;
+    border: 1px solid #dcdfe6;
+    -webkit-box-sizing: border-box;
+    -webkit-transition: border-color .2s cubic-bezier(.645,.045,.355,1);
+    transition: border-color .2s cubic-bezier(.645,.045,.355,1);
+}
+
+.editable-content-field[placeholder]:empty:before {
+    content: attr(placeholder);
+    color: #b1b1b1; 
+}
+
+.editable-content-field-small{
+    min-height:33px;
+    resize: none;
+}
+
+.editable-content-field-medium{
+    min-height: 90px;
+}
+
+.editable-content-field-large{
+    min-height: 120px;
+}
+
+.dynamic-content-label{
+    width: auto;
+    height: 20px;
+    margin: 0px 4px;
+    padding: 4px 8px;
+    border-radius: 2px;
+    color: rgb(45, 140, 240);
+    font-weight: 100 !important;
+    background-color: rgb(220, 237, 255);
+}
+
+.blue-highlighter{
+    width: auto;
+    height: 20px;
+    padding: 0px 10px;
+    border-radius: 2px;
+    color: rgb(45, 140, 240);
+    background-color: rgb(220, 237, 255);
+}
+
+/*  Circular Ripples */
+
+.circle-ripple {
+    top: 50%;
+    right: 50%;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    position:absolute;
+    transform: translateX(-50%);
+    transform: translateY(-50%);
+    z-index:1;
+}
+
+/*   GREEN COLOR RIPPLES   */
+.green-circle-ripple {
+    animation: greenRipple 3s linear infinite;
+}
+
+@-webkit-keyframes greenRipple {
+    0% {
+        box-shadow: 0 0 0 0 rgba(101, 255, 120, 0.3),
+                    0 0 0 0 rgba(101, 255, 120, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 7em rgba(101, 255, 120, 0),
+                    0 0 0 3.5em rgba(101, 255, 120, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 7em rgba(101, 255, 120, 0),
+                    0 0 0 5em rgba(101, 255, 120, 0);
+    }
+}
+
+@keyframes greenRipple {
+    0% {
+        box-shadow: 0 0 0 0 rgba(101, 255, 120, 0.3),
+                    0 0 0 0 rgba(101, 255, 120, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 7em rgba(101, 255, 120, 0),
+                    0 0 0 3.5em rgba(101, 255, 120, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 7em rgba(101, 255, 120, 0),
+                    0 0 0 5em rgba(101, 255, 120, 0);
+    }
+}
+
+/*   BLUE COLOR RIPPLES   */
+.blue-circle-ripple {
+    animation: blueRipple 3s linear infinite;
+}
+
+@-webkit-keyframes blueRipple {
+    0% {
+        box-shadow: 0 0 0 0 rgba(101, 155, 255, 0.3),
+                    0 0 0 0 rgba(101, 155, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 7em rgba(101, 155, 255, 0),
+                    0 0 0 3.5em rgba(101, 155, 255, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 7em rgba(101, 155, 255, 0),
+                    0 0 0 5em rgba(101, 155, 255, 0);
+    }
+}
+
+@keyframes blueRipple {
+    0% {
+        box-shadow: 0 0 0 0 rgba(101, 155, 255, 0.3),
+                    0 0 0 0 rgba(101, 155, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 7em rgba(101, 155, 255, 0),
+                    0 0 0 3.5em rgba(101, 155, 255, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 7em rgba(101, 155, 255, 0),
+                    0 0 0 5em rgba(101, 155, 255, 0);
+    }
 }
 
 /*  iView UI Style Fixes / Overides */
@@ -49,4 +400,33 @@ body {
 .ivu-form-item-error-tip {
     position: inherit !important;
     line-height: 1.4em !important;
+}
+
+
+
+/*  Vue Input Tags Fixes / Overides */
+.vue-tags-input .ti-input {
+    border-radius: 4px !important;
+    border: 1px solid #dcdee2 !important;
+}
+
+/*  Change the font size and color of the input field
+ *  and embedded tags
+ */
+.vue-tags-input .ti-input .ti-new-tag-input-wrapper .ti-new-tag-input {
+    color:#515a6e !important;
+}
+
+/*  Change the color of the valid tags to blue.
+ *  Same color as iView primary color
+ */
+.vue-tags-input .ti-input .ti-tag.ti-valid {
+    background-color: #2d8cf0 !important;
+}
+
+/*  Change the color of the invalid tags to red.
+ *  Same color as iView error color
+ */
+.vue-tags-input .ti-input .ti-tag.ti-deletion-mark {
+    background-color: #ed4014 !important;
 }

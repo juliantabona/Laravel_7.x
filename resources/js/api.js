@@ -44,13 +44,6 @@ class Api {
                     
                     if (response.status === 401) {
 
-                    
-                        console.log('Vue');
-                        console.log(Vue);
-                        
-                        console.log('VueInstance');
-                        console.log(VueInstance.$Notice);
-
                         VueInstance.$Notice.warning({
                             title: 'Session expired!',
                             desc: 'We are logging you out',

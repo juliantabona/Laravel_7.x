@@ -3,10 +3,10 @@
     <div>
 
         <!-- Dashboard Header For Authenticated User -->
-        <DashboardHeader></DashboardHeader>
+        <DashboardHeader :heading="heading"></DashboardHeader>
 
         <!-- Place the custom route content here -->
-        <router-view />
+        <router-view @changeHeading="changeHeading($event)" />
 
     </div>
 
@@ -20,9 +20,14 @@
         components: { DashboardHeader },
         data(){
             return {
-                
+                heading: null
             }
-        }
+        },
+        methods: {
+            changeHeading(name){
+                this.heading = name;
+            }
+        },
     };
 
 </script>
