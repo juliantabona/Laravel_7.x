@@ -36,6 +36,7 @@
 
                         <!-- Single display menu  -->
                         <singleDisplay v-for="(display, index) in screen.displays" :key="index"
+                            :globalMarkers="globalMarkers"
                             :builder="builder"
                             :display="display"
                             :screen="screen"
@@ -88,6 +89,10 @@
                 type: Object,
                 default: null
             },
+            globalMarkers: {
+                type: Array,
+                default: () => []
+            }
         },
         data(){
             return {

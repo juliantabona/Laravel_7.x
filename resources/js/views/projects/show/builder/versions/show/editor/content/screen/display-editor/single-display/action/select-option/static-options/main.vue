@@ -53,7 +53,8 @@
                 <!-- Reference Name Input -->
                 <referenceNameInput 
                     v-model="display.content.action.select_option.static_options.reference_name"
-                    :builder="builder" :screen="screen" :display="display">
+                    :builder="builder" :screen="screen" :display="display"
+                    :isRequired="false">
                 </referenceNameInput>
 
             </div>

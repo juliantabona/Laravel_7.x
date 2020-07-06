@@ -15,7 +15,7 @@
 
                 <!-- Screen name input (Changes the screen name) -->  
                 <Input type="text" v-model="screen.name" placeholder="Name" 
-                        maxlength="30" show-word-limit @keyup.enter.native="handleSubmit()">
+                        maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()">
                         <span slot="prepend">Name</span>
                 </Input>
                 
@@ -46,16 +46,19 @@
 
             <!-- Navigation Tabs (Additional Settings) -->
             <Col :span="24" class="mt-4">
-
-                <Tabs v-model="activeNavTab" type="card" style="overflow: visible;" :animated="false">
+                
+                <Tabs v-model="activeNavTab" type="card" style="overflow: visible;" :animated="false" name="screen-tabs">
 
                     <!-- Screen Settings Navigation Tabs -->
-                    <TabPane v-for="(currentTabName, key) in navTabs" :key="key" :label="currentTabName" :name="currentTabName"></TabPane>
+                    <TabPane v-for="(currentTabName, key) in navTabs" :key="key" :label="currentTabName.name" :name="currentTabName.value"></TabPane>
 
                 </Tabs>
             
                 <!-- Screen displays -->
-                <displayEditor v-show="activeNavTab == 'Screen Displays'" :screen="screen" :builder="builder"></displayEditor>
+                <displayEditor v-show="activeNavTab == 1" :globalMarkers="globalMarkers" :screen="screen" :builder="builder"></displayEditor>
+                
+                <!-- Screen displays -->
+                <repeatScreenSettings v-show="activeNavTab == 2" :globalMarkers="globalMarkers" :screen="screen" :builder="builder"></repeatScreenSettings>
                 
             </Col>
 
@@ -67,14 +70,12 @@
 
 <script>
 
-    //  Inport Vue Input Tags
+    import repeatScreenSettings from './repeat-editor/main.vue';
+    import displayEditor from './display-editor/main.vue';
     import VueTagsInput from '@johmun/vue-tags-input';
 
-    //  Get the display editor
-    import displayEditor from './display-editor/main.vue';
-
     export default {
-        components: { VueTagsInput, displayEditor },
+        components: { VueTagsInput, displayEditor, repeatScreenSettings },
         props: {
             screen: {
                 type: Object,
@@ -88,20 +89,42 @@
         data(){
             return {
                 markerText: '',
-                activeNavTab: 'Screen Displays',
+                activeNavTab: '1',
             }
         },
         computed: {
-            navTabs(){
-                var tabs = ['Screen Displays', 'Advanced'];
+            screenDisplaysTabName(){
+                
+                 var tabName = 'Screen Displays';
+                 var totalDisplays = this.screen.displays.length;
 
-                //  If the screen type is "repeat" then add the "Repeat Events" tabs
-                if( this.screen.type.selected_type == 'repeat' ){
-                    tabs.push('Repeat Events');
-                    tabs.push('Repeat Settings');
+                if( totalDisplays ){
+                    tabName += ' ('+totalDisplays+')';
                 }
 
-                return tabs;
+                return tabName;
+            },
+            repeatTabName(){
+                
+                 var tabName = 'Repeat Screen';
+
+                if( this.screen.repeat.active.code_editor_mode ){
+                    tabName += ' (Conditional)';
+                }else{
+                    if( this.screen.repeat.active.text ){
+                        tabName += ' (Yes)';
+                    }else {
+                        tabName += ' (No)';
+                    }
+                }
+
+                return tabName;
+            },
+            navTabs(){
+                return [
+                    { name: this.screenDisplaysTabName, value: '1' },
+                    { name: this.repeatTabName, value: '2' }
+                ];
             },
             globalMarkers(){
                 

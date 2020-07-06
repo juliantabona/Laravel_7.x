@@ -19,6 +19,12 @@
     <!-- Styles -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 
+    <!--  Import HTML5 mockups of popular devices
+        - https://marvelapp.github.io/devices.css
+        - https://github.com/pixelsign/html5-device-mockups
+    -->
+    <link href="{{ asset('css/devices.min.css') }}" rel="stylesheet">
+
     <!-- Custom Styles -->
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     

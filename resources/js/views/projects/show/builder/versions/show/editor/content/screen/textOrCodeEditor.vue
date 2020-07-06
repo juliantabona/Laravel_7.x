@@ -2,10 +2,17 @@
 
     <div>
 
-        <div class="mb-1">
-
-            <span class="font-weight-bold mt-1">{{ title }}</span>
+        <div class="d-flex align-items-center mb-1">
             
+            <!-- Icon -->
+            <Icon v-if="icon" :type="icon" class="border rounded-circle p-1 mr-1" :size="20" />
+
+            <!-- If the title is passed as a prop -->
+            <span v-if="title" class="font-weight-bold">{{ title }}</span>
+
+            <!-- If the title is passed as a named slot -->
+            <slot name="title"></slot>
+
             <Poptip trigger="hover" width="350" placement="right" word-wrap>
 
                 <template slot="content">
@@ -59,7 +66,7 @@
             },
             title: {
                 type: String,
-                default: 'Title:'
+                default: null
             },
             value: {
                 type: Object,
@@ -70,6 +77,10 @@
                 default: null
             },
             sampleCodeTemplate: {
+                type: String,
+                default: null
+            },
+            icon: {
                 type: String,
                 default: null
             }

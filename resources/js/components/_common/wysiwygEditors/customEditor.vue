@@ -6,8 +6,8 @@
         <codemirror 
             v-if="useCodeEditor"
             v-model="localCodeContent" 
-            :options="codeMirrorOptions"
-            @input="$emit('codeChange', $event)">
+            :options="options"
+            @codeChange="$emit('codeChange', $event)">
         </codemirror>
 
         <!-- Editor -->
@@ -27,17 +27,8 @@
 
 <script>
 
-    // require component
-    import { codemirror } from 'vue-codemirror'
-
-    // require styles
-    import 'codemirror/lib/codemirror.css'
-
-    // language
-    import 'codemirror/mode/php/php.js'
-    
-    // theme css
-    import 'codemirror/theme/cobalt.css'
+    // Import our custom codemirror component
+    import codemirror from './codemirror.vue'
 
     export default {
         props: {
@@ -88,22 +79,17 @@
             placeholder: {
                 type: String,
                 default: 'Wite something...'
+            },
+            options: {
+                type: Object,
+                default: null
             }
         },
         components: { codemirror },
         data () {
             return {
                 localContent: '',
-                localCodeContent: '',
-                codeMirrorOptions: {
-                    tabSize: 4,
-                    line: true,
-                    theme: 'cobalt',
-                    lineNumbers: true,
-                    lineWrapping: true,
-                    styleActiveLine: true,
-                    mode: 'application/x-httpd-php'
-                }
+                localCodeContent: ''
             }
         },
         watch: {
@@ -155,8 +141,23 @@
                         //  Get the example code samples
                         var codeSamples = require('./example-code-samples.js');
 
-                        //  Set custom placeholder code
-                        return codeSamples.default[this.sampleCodeTemplate] || 'No sample code found';
+                        var codeSample = codeSamples.default[this.sampleCodeTemplate];
+
+                        if( codeSample ){
+
+                            //  Notify parent of the new code we want to use on the code editor
+                            this.$emit('codeChange', codeSample);
+
+                            return codeSample;
+
+                        }else{
+
+                            //  Notify parent that we don't have code to use on the code editor
+                            this.$emit('codeChange', '');
+
+                            return 'No sample code found';
+
+                        }
                         
                     }
                 }

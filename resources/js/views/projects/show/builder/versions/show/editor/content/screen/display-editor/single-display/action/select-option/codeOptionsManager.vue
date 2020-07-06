@@ -11,7 +11,7 @@
                 <!-- Code Editor -->
                 <customEditor
                     :useCodeEditor="true"
-                    sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"
+                    sampleCodeTemplate="ussd_service_select_options_action_sample_code"
                     :codeContent="display.content.action.select_option.code_editor_options.code_editor_text"
                     @codeChange="display.content.action.select_option.code_editor_options.code_editor_text = $event">
                 </customEditor>

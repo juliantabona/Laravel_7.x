@@ -57,7 +57,7 @@
                 <!-- Enter Name -->
                 <FormItem prop="name" class="mb-2">
                     <Input  type="text" v-model="subscriptionOptionForm.name" :placeholder="'Package ' + getSubscriptionOptionNumber" 
-                            maxlength="30" show-word-limit @keyup.enter.native="handleSubmit()" v-focus="'input'">
+                            maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()" v-focus="'input'">
                             <span slot="prepend">Name</span>
                     </Input>
                 </FormItem>
@@ -200,7 +200,7 @@
                     name: [
                         { required: true, message: 'Please enter your subscription option name', trigger: 'blur' },
                         { min: 3, message: 'Subscription option name is too short', trigger: 'change' },
-                        { max: 30, message: 'Subscription option name is too long', trigger: 'change' },
+                        { max: 50, message: 'Subscription option name is too long', trigger: 'change' },
                         { validator: uniqueNameValidator, trigger: 'change' }
                     ],
                     type: [

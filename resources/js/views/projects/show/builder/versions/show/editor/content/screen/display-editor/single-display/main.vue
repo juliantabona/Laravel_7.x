@@ -9,7 +9,7 @@
 
                 <!-- Display name input (Changes the display name) -->  
                 <Input type="text" v-model="display.name" placeholder="Name" class="w-50 mr-3" 
-                        maxlength="30" show-word-limit @keyup.enter.native="handleSubmit()">
+                        maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()">
                         <span slot="prepend">Name</span>
                 </Input>
 
@@ -121,19 +121,26 @@
             </div>
 
             <!-- Navigation Tabs -->
-            <Tabs v-model="activeNavTab" type="card" :animated="false">
+            <Tabs v-model="activeNavTab" type="card" style="overflow: visible;" :animated="false" name="display-tabs">
 
-                <TabPane v-for="(navTab, key) in navTabs" 
-                        :key="key" :label="navTab" :name="navTab">
-                </TabPane>
+                <TabPane v-for="(currentTabName, key) in navTabs" :key="key" :label="currentTabName.name" :name="currentTabName.value"></TabPane>
 
             </Tabs>
 
             <!-- Display Instruction -->
-            <displayInstruction v-show="activeNavTab == 'Instruction'" :display="display"></displayInstruction>
+            <displayInstruction v-show="activeNavTab == '1'" :display="display"></displayInstruction>
 
             <!-- Display Action -->
-            <displayAction v-show="activeNavTab == 'Action'" :builder="builder" :screen="screen" :display="display"></displayAction>
+            <displayAction v-show="activeNavTab == '2'" :builder="builder" :screen="screen" :display="display"></displayAction>
+
+            <!-- Display Events -->
+            <displayEvents v-show="activeNavTab == '3'" :globalMarkers="globalMarkers" :builder="builder" :screen="screen" :display="display"></displayEvents>
+
+            <!-- Display Navigation -->
+            <displayNavigation v-show="activeNavTab == '4'" :builder="builder" :screen="screen" :display="display"></displayNavigation>
+
+            <!-- Display Pagination -->
+            <displayPagination v-show="activeNavTab == '5'" :builder="builder" :screen="screen" :display="display"></displayPagination>
 
         </div>
 
@@ -169,11 +176,23 @@
     //  Get the display instruction
     import displayInstruction from './instruction/main.vue';
 
+    //  Get the display pagination
+    import displayPagination from './pagination/main.vue';
+
+    //  Get the display navigation
+    import displayNavigation from './navigation/main.vue';
+
     //  Get the display action
     import displayAction from './action/main.vue';
 
+    //  Get the display events
+    import displayEvents from './events/main.vue';
+
     export default {
-        components: { addDisplayModal, displayInstruction, displayAction },
+        components: { 
+            addDisplayModal, displayInstruction, displayPagination, displayNavigation,
+            displayAction, displayEvents
+        },
         props: {
             index: {
                 type: Number,
@@ -191,12 +210,16 @@
                 type: Object,
                 default: null
             },
+            globalMarkers: {
+                type: Array,
+                default: () => []
+            }
         },
         data(){
             return {
                 isEditing: false,
+                activeNavTab: '1',
                 toggleMenuOptionsKey: 1,
-                activeNavTab: 'Instruction',
                 isOpenAddDisplayModal: false,
             }
         },
@@ -219,19 +242,66 @@
                  */
                 return (this.index != null ? this.index + 1 : '');
             },
-            navTabs(){
-                var tabs = ['Instruction', 'Action', 'Events'];
+            eventTabName(){
+                
+                 var tabName = 'Events';
+                 var totalEvents = this.display.content.events.before_reply.length + this.display.content.events.after_reply.length;
 
-                //  If the screen type is "repeat" then add the "Navigation" tab
-                if( this.screen.type.selected_type == 'repeat' ){
-                    tabs.push('Navigation');
+                if( totalEvents ){
+                    tabName += ' ('+totalEvents+')';
+                }
+
+                return tabName;
+            },
+            navigationTabName(){
+                
+                 var tabName = 'Navigation';
+                 var totalNavigations = this.display.content.screen_repeat_navigation.forward_navigation.length + 
+                                        this.display.content.screen_repeat_navigation.backward_navigation.length;
+
+                if( totalNavigations ){
+                    tabName += ' ('+totalNavigations+')';
+                }
+
+                return tabName;
+            },
+            paginationTabName(){
+                
+                 var tabName = 'Pagination';
+
+                if( this.display.content.pagination.active.code_editor_mode ){
+                    tabName += ' (Conditional)';
+                }else{
+                    if( this.display.content.pagination.active.text ){
+                        tabName += ' (On)';
+                    }else {
+                        tabName += ' (Off)';
+                    }
+                }
+
+                return tabName;
+            },
+            navTabs(){
+                var tabs = [
+                    { name: 'Instruction', value: '1' },
+                    { name: 'Action', value: '2' },
+                    { name: this.eventTabName, value: '3' }
+                ];
+
+                //  If this display supports screen repeatnavigation
+                if( this.navigationIsSupported ){
+                    tabs.push({ name: this.navigationTabName, value: '4' });
                 }
                 
-                tabs.push('Pagination');
-
-                tabs.push('Settings');
+                tabs.push({ name: this.paginationTabName, value: '5' });
+                tabs.push({ name: 'Settings', value: '6' });
 
                 return tabs;
+
+            },
+            navigationIsSupported(){
+                return ( this.screen.repeat.active.code_editor_mode ) || 
+                       ( !this.screen.repeat.active.code_editor_mode && this.screen.repeat.active.text)
             },
             toggleMenuOptions(){
                 
@@ -247,7 +317,7 @@
                 ];
 
                 //  If the screen type is "repeat" then add the "Navigation" option
-                if( this.screen.type.selected_type == 'repeat' ){
+                if( this.navigationIsSupported == 'repeat' ){
                     tabs.push(
                         {
                             name: 'Navigation',

@@ -22,18 +22,38 @@
             <!-- Form -->
             <Form ref="staticOptionForm" :model="staticOptionForm" :rules="staticOptionFormRules">
 
-                <!-- Enter Name -->
-                <FormItem prop="name" class="mb-1">
+                <Row :gutter="12">
 
-                    <textOrCodeEditor
-                        size="small"
-                        title="Display Name"
-                        :placeholder="'1. My Messages ({{ messages.count }})'"
-                        sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"
-                        :value="staticOptionForm.name">
-                    </textOrCodeEditor>
+                    <Col :span="staticOptionForm.active.code_editor_mode || staticOptionForm.active.code_editor_mode ? 24 : 16">
 
-                </FormItem>
+                        <!-- Enter Name -->
+                        <FormItem prop="name" class="mb-1">
+
+                            <textOrCodeEditor
+                                size="small"
+                                title="Display Name"
+                                :placeholder="'1. My Messages ({{ messages.count }})'"
+                                sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"
+                                :value="staticOptionForm.name">
+                            </textOrCodeEditor>
+
+                        </FormItem>
+
+                    </Col>
+
+                    <Col :span="staticOptionForm.active.code_editor_mode || staticOptionForm.active.code_editor_mode ? 24 : 8">
+
+                        <!-- Enable / Disable -->
+                        <FormItem prop="active" class="mb-1">
+                                
+                            <!-- Show active state checkbox (Marks if this is active / inactive) -->
+                            <activeStateCheckbox v-model="staticOptionForm.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
+
+                        </FormItem>
+
+                    </Col>
+
+                </Row>
 
                 <!-- Enter Value -->
                 <FormItem prop="value" class="mb-1">
@@ -59,8 +79,6 @@
                         :value="staticOptionForm.input">
                     </textOrCodeEditor>
 
-                    Validate Input: {{ staticOptionForm.input }}
-
                 </FormItem>
 
                 <!-- Enter Top Separator -->
@@ -70,8 +88,8 @@
                         size="small"
                         placeholder="---"
                         title="Top Separator"
-                        sampleCodeTemplate="ussd_service_select_option_top_separator_sample_code"
-                        :value="staticOptionForm.separator.top">
+                        :value="staticOptionForm.separator.top"
+                        sampleCodeTemplate="ussd_service_select_option_top_separator_sample_code">
                     </textOrCodeEditor>
 
                 </FormItem>
@@ -129,12 +147,13 @@
     var customMixin = require('./../../../../../../../../../../../../../../../mixin.js').default;
 
     import screenAndDisplaySelector from './../../../../../../screenAndDisplaySelector.vue';
+    import activeStateCheckbox from './../../../../../../activeStateCheckbox.vue';
     import textOrCodeEditor from './../../../../../../textOrCodeEditor.vue';
     import commentInput from './../../../../../../commentInput.vue';
 
     export default {
         mixins: [modalMixin, customMixin],
-        components: { screenAndDisplaySelector, textOrCodeEditor, commentInput },
+        components: { screenAndDisplaySelector, activeStateCheckbox, textOrCodeEditor, commentInput },
         props: {
 
             index: {
@@ -174,13 +193,9 @@
 
             //  Custom validation to detect matching inputs
             const uniqueInputValidator = (rule, value, callback) => {
-                
-                console.log('uniqueInputValidator');
 
                 //  Check if static options with the same input exist
                 var similarInputsExist = this.options.filter( (option, index) => {
-
-                    console.log('uniqueInputValidator stage 1');
 
                     //  If we are editing
                     if( this.isEditing ){
@@ -192,19 +207,13 @@
 
                     }
 
-                    console.log('uniqueInputValidator stage 2');
-
                     //  If the option is not using code editor mode
                     if( !option.input.code_editor_mode ){
-
-                        console.log('uniqueInputValidator stage 3');
                         
                         //  If the given value matches the static option input
-                        return (value == option.input.text);
+                        return (this.staticOptionForm.input.text == option.input.text);
 
                     }
-
-                    console.log('uniqueInputValidator stage 4');
 
                     return false;
                     
@@ -223,7 +232,7 @@
                 staticOptionForm: null,
                 staticOptionFormRules: { 
                     input: [
-                        { validator: uniqueInputValidator, trigger: 'blur' }
+                        { validator: uniqueInputValidator, trigger: 'change' }
                     ]
                 }
             }
@@ -289,9 +298,7 @@
 
                 var option_number = (this.totalOptions + 1).toString();
                 
-                return _.cloneDeep( 
-                    
-                    Object.assign({},
+                var option = Object.assign({},
                     //  Set the default form details
                     {
                         id: this.generateStaticOptionId(),
@@ -301,10 +308,9 @@
                             code_editor_mode: false
                         },
                         active: {
-                            selected_type: 'yes',      //  yes, no, conditional
-                            conditional: {
-                                code_editor_text: '',
-                            }
+                            text: true,
+                            code_editor_text: '',
+                            code_editor_mode: false
                         },
                         value: {
                             text: '',
@@ -336,8 +342,9 @@
                         hexColor: '#CECECE',
                         comment: ''
                     //  Overide the default form details with the provided project details
-                    }, overides)
-                );
+                    }, overides);
+
+                return _.cloneDeep( option );
 
             },
             handleSubmit(){
@@ -348,21 +355,15 @@
                     //  If the validation passed
                     if (valid) {
 
-                        console.log('Stage 1');
-
-
                         if( this.isEditing ){
-                            console.log('Stage 2.1');
                         
                             this.handleEditStaticOption();
 
                         }else if( this.isCloning ){
-                            console.log('Stage 2.2');
                         
                             this.handleCloneStaticOption();
 
                         }else{
-                            console.log('Stage 2.3');
 
                             //  Add the static option
                             this.handleAddNewStaticOption();
@@ -396,9 +397,6 @@
 
             },
             handleCloneStaticOption(){
-                
-                console.log('Clone');
-                console.log(this.staticOptionForm);
 
                 //  Update the static option id
                 this.staticOptionForm.id = this.generateStaticOptionId();

@@ -2,11 +2,50 @@
 var mixin = {
     data(){
         return {
-            mixin_data: 'Hello from mixin!'
+            
         }
     },
     methods: {
         //  Methods here
+        getValidVariableNameValidator(){
+
+            //  Custom validation to detect if the variable name is valid
+            const validVariableNameValidator = (rule, value, callback) => {
+                
+                //  This pattern to detect white spaces
+                var has_white_spaces = /\s/; 
+
+                //  This pattern will detect if the value starts with a character that is not a letter or underscore
+                var valid_first_character = /^[^a-zA-Z_]/;
+
+                /** This pattern matches any non-word character. Same as [^a-zA-Z_0-9].
+                 *  Note that a word is definned as a to z, A to Z, 0 to 9, and the 
+                 *  underscore "_"
+                 */
+                var valid_remaining_characters = /\W/g;
+
+                //  Check for unauthourized spaces
+                if ( has_white_spaces.test(value) == true ) {
+                    
+                    callback(new Error('This name must not have spaces. Use underscores "_" instead e.g "first_name", "_username", "age_less_than_30"'));
+                
+                //  Check if first character is invalid
+                }else if ( valid_first_character.test(value) == true ) {
+                    
+                    callback(new Error('This name must start with a letter or underscore "_" e.g "first_name", "_username", "age_less_than_30"'));
+                
+                    //  Check if remaining characters are invalid
+                }else if ( valid_remaining_characters.test(value) == true ) {
+            
+                    callback(new Error('This name must only contain letters, numbers and underscores "_" e.g "first_name", "_username", "age_less_than_30"'));
+
+                } else {
+                    callback();
+                }
+            };
+
+            return validVariableNameValidator;
+        }
     },
     computed: {
         //  Computed here
@@ -67,6 +106,6 @@ var mixin = {
             }
         }
     }
-  }
+}
 
 export default mixin;

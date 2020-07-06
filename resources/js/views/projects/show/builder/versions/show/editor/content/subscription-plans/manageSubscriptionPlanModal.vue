@@ -27,7 +27,7 @@
 
                 <!-- Enter Name -->
                 <FormItem prop="name">
-                    <Input  type="text" v-model="subscriptionPlanForm.name" placeholder="Home" maxlength="30" 
+                    <Input  type="text" v-model="subscriptionPlanForm.name" placeholder="Home" maxlength="50" 
                             show-word-limit @keyup.enter.native="handleSubmit()" v-focus="'input'">
                             <span slot="prepend">Name</span>
                     </Input>
@@ -186,7 +186,7 @@
                     name: [
                         { required: true, message: 'Please enter your subscription plan name', trigger: 'blur' },
                         { min: 3, message: 'Subscription plan name is too short', trigger: 'change' },
-                        { max: 30, message: 'Subscription plan name is too long', trigger: 'change' },
+                        { max: 50, message: 'Subscription plan name is too long', trigger: 'change' },
                         { validator: uniqueNameValidator, trigger: 'change' }
                     ]
                 },

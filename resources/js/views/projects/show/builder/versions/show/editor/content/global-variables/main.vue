@@ -25,7 +25,7 @@
             <!-- Property Name -->
             <template slot-scope="{ row, index }" slot="name">
                 
-                <Input v-model="row.name" size="small" placeholder="Variable name..." maxlength="30" class="w-100" 
+                <Input v-model="row.name" size="small" placeholder="Variable name..." maxlength="50" class="w-100" 
                         @on-change="updateVariableData(row, index)" />
 
             </template>

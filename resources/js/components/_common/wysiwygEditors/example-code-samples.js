@@ -62,9 +62,7 @@ function ussd_service_select_options_action_sample_code()
      * 
      *  @name: The option display name
      *  @value: The option value that must be stored as dynamic data
-     *  @link: [
-     *     @text: The id of the screen or display to link to after option selection
-     *   ]
+     *  @link: The id of the screen or display to link to after option selection
      *  @input: A number, letter or symbol the user must input to select the option
      *
      *	---	Optional Parameters ---
@@ -81,9 +79,7 @@ function ussd_service_select_options_action_sample_code()
             'input' => ++$key,
             'value' => $item['id'],
             'name' => $item['name'],
-            'link' => [
-                'text' => 'screen_1592486781723',   //  or "display_1592486852675"
-            ],
+            'link' => 'screen_1592486781723',   //  or "display_1592486852675"
             'separator' => [
                 'top' => '',
                 'bottom' => ''

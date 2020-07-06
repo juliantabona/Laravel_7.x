@@ -24,7 +24,7 @@
 
                 <!-- Enter Name -->
                 <FormItem prop="name">
-                    <Input  type="text" v-model="displayForm.name" placeholder="Welcome" maxlength="30" 
+                    <Input  type="text" v-model="displayForm.name" placeholder="Welcome" maxlength="50" 
                             show-word-limit @keyup.enter.native="handleSubmit()" v-focus="'input'">
                             <span slot="prepend">Name</span>
                     </Input>
@@ -91,7 +91,7 @@
                     name: [
                         { required: true, message: 'Please enter your display name', trigger: 'blur' },
                         { min: 3, message: 'Display name is too short', trigger: 'change' },
-                        { max: 30, message: 'Display name is too long', trigger: 'change' },
+                        { max: 50, message: 'Display name is too long', trigger: 'change' },
                         { validator: uniqueNameValidator, trigger: 'change' }
                     ],
                 }
@@ -171,7 +171,7 @@
                 clonedDisplay.name = this.displayForm.name;
 
                 //  Turn off the first display display attribute
-                clonedDisplay.first_display_display = false;
+                clonedDisplay.first_display = false;
 
                 //  Add the cloned display to the rest of the other displays
                 this.screen.displays.push(clonedDisplay);
@@ -254,6 +254,7 @@
                             selected_type: 'static_options',    //  static_options, dynamic_options, code_editor_options
                             static_options: {
                                 options: [
+                                    /*  Example option
                                     {
                                         name: {
                                             text: '1. My Option',
@@ -261,10 +262,9 @@
                                             code_editor_mode: false
                                         },
                                         active: {
-                                            selected_type: 'yes',      //  yes, no, conditional
-                                            conditional: {
-                                                code_editor_text: '',
-                                            }
+                                            text: true,
+                                            code_editor_text: '',
+                                            code_editor_mode: false
                                         },
                                         value: {
                                             text: '',
@@ -296,6 +296,7 @@
                                         hexColor: '#CECECE',
                                         comment: ''
                                     }
+                                    */
                                 ],
                                 reference_name: '',
                                 no_results_message: {
@@ -374,27 +375,60 @@
                     
                     //  Pagination settings
                     pagination: {
-                        active: false,
+                        active: {
+                            text: true,
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
                         content_target: {
                             selected_type: 'both'         //  instruction, action, both
                         },
                         paginate_by_line_breaks: true,
+
                         slice: {
                             separation_type: 'words',     //  characters, words
-                            start: '0',
-                            end: '160'
+                            start: {
+                                text: '0',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            end: {
+                                text: '160',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            }
                         },
-                        scroll_down_input: '99',
-                        scroll_up_input: '88',
                         scroll_down: {
-                            visible: true,
-                            text: '99. Next'
+                            name: {
+                                text: '99. Next',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            input: {
+                                text: '99',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            visible: true
                         },
                         scroll_up: {
-                            visible: true,
-                            text: '88. Prev'
+                            name: {
+                                text: '88. Prev',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            input: {
+                                text: '88',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            visible: true
                         },
-                        trailing_end: '...',
+                        trailing_end: {
+                            text: '...',
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
                         break_line_before_trail: false,
                         break_line_after_trail: false,
                     }

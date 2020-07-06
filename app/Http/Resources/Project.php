@@ -46,7 +46,13 @@ class Project extends JsonResource
                     'href' => route('project-versions', ['project_id' => $this->id]),
                     'title' => 'The versions that belong to this project',
                     'total' => $this->versions()->count()
-                ]
+                ],
+
+                //  Link to the ussd service builder
+                'oq:ussd_service_builder' => [
+                    'href' => route('ussd-service-builder'),
+                    'title' => 'The ussd service builder',
+                ],
 
             ],
 

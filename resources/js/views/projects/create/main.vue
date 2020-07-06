@@ -21,7 +21,7 @@
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">
                         <Input type="text" v-model="projectForm.name" placeholder="Name" :disabled="isLoading" 
-                                maxlength="30" show-word-limit @keyup.enter.native="handleSubmit()">
+                                maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()">
                         </Input>
                     </FormItem>
                     
@@ -97,7 +97,7 @@
                     name: [
                         { required: true, message: 'Please enter your project name', trigger: 'blur' },
                         { min: 3, message: 'Project name is too short', trigger: 'change' },
-                        { max: 30, message: 'Project name is too long', trigger: 'change' }
+                        { max: 50, message: 'Project name is too long', trigger: 'change' }
                     ],
                     description: [
                         { max: 500, message: 'Project description is too long', trigger: 'change' }

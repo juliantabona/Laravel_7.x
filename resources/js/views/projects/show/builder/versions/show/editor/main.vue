@@ -67,7 +67,6 @@
             return {
                 screen: null,
                 activeView: 'Screens',
-                screenSettingsRenderKey: 1,
                 builder: this.version.builder,
                 availableViews: ['Screens', 'Global Variables', 'Subcription Plans'],
             }

@@ -25,14 +25,18 @@
                     <template v-if="display.content.action.input_value.multi_value_input.reference_names.length">
                     
                         <!-- Foreach Multi Value Input Reference Name -->
-                        <Row :gutter="4" v-for="(reference_name, x) in display.content.action.input_value.multi_value_input.reference_names" :key="x">
+                        <Row :gutter="4" v-for="(reference_name, index) in display.content.action.input_value.multi_value_input.reference_names" :key="index">
 
                             <Col :span="22">
                             
                                 <!-- Multi Value Reference Name Input -->
                                 <referenceNameInput 
-                                    v-model="display.content.action.input_value.multi_value_input.reference_names[x]"
-                                    :builder="builder" :screen="screen" :display="display">
+                                    v-model="display.content.action.input_value.multi_value_input.reference_names[index]"
+                                    :referenceNames="display.content.action.input_value.multi_value_input.reference_names"
+                                    :display="display"
+                                    :builder="builder"
+                                    :screen="screen"
+                                    :index="index">
                                 </referenceNameInput>
 
                             </Col>
@@ -41,7 +45,7 @@
 
                                 <!-- Remove Option Button  -->
                                 <Poptip confirm title="Are you sure you want to remove this option?" 
-                                        ok-text="Yes" cancel-text="No" width="300" @on-ok="removeMultiInputReference(x)"
+                                        ok-text="Yes" cancel-text="No" width="300" @on-ok="removeMultiInputReference(index)"
                                         placement="top-end">
                                     <Icon type="ios-trash-outline" class="screen-icon hidable mr-2" size="20"/>
                                 </Poptip>

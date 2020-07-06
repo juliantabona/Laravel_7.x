@@ -2,14 +2,13 @@
 
     <div>
 
-        <div class="d-flex bg-grey-light border mt-2 p-2">
-
-            <span class="font-weight-bold mr-1 mt-1">Reference:</span>
+        <div class="bg-grey-light border mt-2 p-2">
 
             <!-- Reference Name Input -->
             <referenceNameInput 
                 v-model="display.content.action.input_value.single_value_input.reference_name"
-                :builder="builder" :screen="screen" :display="display">
+                :builder="builder" :screen="screen" :display="display"
+                title="Reference:">
             </referenceNameInput>
             
         </div>

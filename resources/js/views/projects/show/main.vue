@@ -50,11 +50,11 @@
                 </Col>
                 <Col :span="4" class="clearfix">
 
-                    <Button v-if="project" type="success" size="large" class="float-right mt-2" 
-                            :loading="isSavingChanges" :disabled="!hasUnsavedChanges" 
-                            @click.native="handleSaveChanges">
-                        {{ isSavingChanges ? 'Saving...' : 'Save Changes' }}
-                    </Button>
+                    <!-- Save Changes Button -->
+                    <basicButton v-if="project" :disabled="(!hasUnsavedChanges || isSavingChanges)" :loading="isSavingChanges" :ripple="(hasUnsavedChanges && !isSavingChanges)" 
+                                  type="success" size="large" class="float-right" @click.native="handleSaveChanges">
+                        <span>{{ isSavingChanges ? 'Saving...' : 'Save Changes' }}</span>
+                    </basicButton>
                     
                 </Col>
             </Row>
@@ -134,10 +134,11 @@
 
 <script>
 
+    import basicButton from './../../../components/_common/buttons/basicButton.vue';
     import Loader from './../../../components/_common/loaders/default.vue';
 
     export default {
-        components: { Loader },
+        components: { basicButton, Loader },
         data(){
             return {
                 project: null,

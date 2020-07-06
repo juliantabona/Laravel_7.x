@@ -22,7 +22,7 @@ trait VersionTraits
 
         }else{
             
-            //  Transform the company
+            //  Transform the version
             return new VersionResource($this);
 
         }

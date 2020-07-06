@@ -1,24 +1,46 @@
 <template>
 
-    <!-- Form -->
-    <Form ref="referenceForm" :model="referenceForm" :rules="referenceFormRules" class="mb-0">
 
-        <!-- Reference Name Input -->
-        <FormItem prop="name" class="mb-0">
-            <Input  type="text" v-model="referenceForm.name" placeholder="Reference name" class="w-100 mb-2"
-                    maxlength="30" show-word-limit @keyup.native="handleSubmit()">
-                    <div slot="prepend">@</div>
-            </Input>
-        </FormItem>
+
+    <div :class="(inlineLayout ? 'd-flex' : '')">
+
+        <span v-if="title" :class="[(inlineLayout ? '' : 'd-block mb-1'), 'font-weight-bold', 'mr-1', 'mt-1']">
+            {{ title }}
+        </span>
+
+        <!-- Form -->
+        <Form ref="referenceForm" :model="referenceForm" :rules="referenceFormRules" class="w-100 mb-0">
+
+            <!-- Reference Name Input -->
+            <FormItem prop="name" class="mb-0">
+                <Input  type="text" v-model="referenceForm.name" placeholder="Reference name" class="w-100 mb-2"
+                        :size="size" maxlength="50" show-word-limit @keyup.native="handleSubmit()">
+                        <div slot="prepend">@</div>
+                </Input>
+            </FormItem>
+            
+        </Form>
         
-    </Form>
+    </div>
 
 </template>
 
 <script>
 
+    //  Get the custom mixin file
+    var customMixin = require('./../../../../../../../../../mixin.js').default;
+
     export default {
+        mixins: [customMixin],
         props: {
+            referenceNames: {
+                type: Array,
+                default: () => []
+            },
+            index: {
+                type: Number,
+                default: null
+            },
             value: {
                 type: String,
                 default: null
@@ -34,7 +56,23 @@
             builder: {
                 type: Object,
                 default:() => {}
-            }
+            },
+            size: {
+                type: String,
+                default: 'default'
+            },
+            isRequired: {
+                type: Boolean,
+                default: true
+            },
+            title: {
+                type: String,
+                default: null
+            },
+            inlineLayout: {
+                type: Boolean,
+                default: true
+            },
         },
         data(){
 
@@ -42,9 +80,16 @@
             const uniqueNameValidator = (rule, value, callback) => {
 
                 //  Check if reference names with the same name exist
-                var similarNamesExist = this.display.content.action.input_value.multi_value_input.reference_names.filter( (reference_name) => { 
+                var similarNamesExist = this.referenceNames.filter( (reference_name, index) => { 
+                
+                    //  Skip checking the current reference name
+                    if( this.index == index ){
+                        return false;
+                    }
+
                     //  If the given value matches the reference name
                     return (value == reference_name);
+                    
                 }).length;
 
                 //  If reference names with a similar name exist
@@ -55,60 +100,15 @@
                 }
             };
 
-            //  Custom validation to detect if the name has white spaces
-            const namesWithSpacesValidator = (rule, value, callback) => {
-                
-                //  This pattern to detect white spaces
-                var pattern = /\s/; 
-
-                //  Check pattern
-                if ( pattern.test(value) == true ) {
-                    callback(new Error('This reference name must not have spaces. Use underscores "_" instead e.g "first_name", "_username", "age_less_than_30"'));
-                } else {
-                    callback();
-                }
-            };
-
-            //  Custom validation to detect if the name starts with characters that are not letters or underscores
-            const validFirstCharacterValidator = (rule, value, callback) => {
-                
-                //  This pattern will detect if the value starts with a character that is not a letter or underscore
-                var pattern = /^[^a-zA-Z_]/;
-
-                //  Check pattern
-                if ( pattern.test(value) == true ) {
-                    callback(new Error('This reference name must start with a letter or underscore "_" e.g "first_name", "_username", "age_less_than_30"'));
-                } else {
-                    callback();
-                }
-            };
-
-            //  Custom validation to detect if the characters after the first character are letters, numbers or underscores only
-            const validCharactersAfterFirstCharacterValidator = (rule, value, callback) => {
-                
-                /** This pattern matches any non-word character. Same as [^a-zA-Z_0-9].
-                 *  Note that a word is definned as a to z, A to Z, 0 to 9, and the 
-                 *  underscore "_"
-                 */
-                var pattern = /\W/g;
-
-                //  Check pattern
-                if ( pattern.test(value.substring(1)) == true ) {
-                    callback(new Error('This reference name must only contain letters, numbers and underscores "_" e.g "first_name", "_username", "age_less_than_30"'));
-                } else {
-                    callback();
-                }
-            };
-
             return {
                 referenceForm: null,
                 referenceFormRules: {
                     name: [
+                        { required: this.isRequired, message: 'Reference name is required', trigger: 'change' },
                         { min: 3, message: 'Reference name is too short', trigger: 'change' },
-                        { max: 30, message: 'Reference name is too long', trigger: 'change' },
-                        { validator: namesWithSpacesValidator, trigger: 'change' },
-                        { validator: validFirstCharacterValidator, trigger: 'change' },
-                        { validator: validCharactersAfterFirstCharacterValidator, trigger: 'change' },
+                        { max: 50, message: 'Reference name is too long', trigger: 'change' },
+                        { validator: uniqueNameValidator, trigger: 'change' },
+                        { validator: this.getValidVariableNameValidator(), trigger: 'change' }
                     ],
                 }
             }

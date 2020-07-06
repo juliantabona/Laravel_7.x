@@ -19,7 +19,7 @@
 
                 <!-- Enter Name -->
                 <FormItem prop="name">
-                    <Input  type="text" v-model="referenceForm.name" placeholder="first_name" maxlength="30" 
+                    <Input  type="text" v-model="referenceForm.name" placeholder="first_name" maxlength="50" 
                             show-word-limit @keyup.enter.native="handleSubmit()" v-focus="'input'">
                             <span slot="prepend">Name</span>
                     </Input>
@@ -131,7 +131,7 @@
                     name: [
                         { required: true, message: 'Please enter your reference name', trigger: 'blur' },
                         { min: 3, message: 'Reference name is too short', trigger: 'change' },
-                        { max: 30, message: 'Reference name is too long', trigger: 'change' },
+                        { max: 50, message: 'Reference name is too long', trigger: 'change' },
                         { validator: namesWithSpacesValidator, trigger: 'change' },
                         { validator: validFirstCharacterValidator, trigger: 'change' },
                         { validator: validCharactersAfterFirstCharacterValidator, trigger: 'change' },

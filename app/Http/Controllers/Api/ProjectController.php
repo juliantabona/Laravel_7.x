@@ -44,6 +44,42 @@ class ProjectController extends Controller
         }
     }
 
+    public function updateProject( Request $request, $ussd_service_id )
+    {
+        //  Get the project
+        $project = \App\Project::where('id', $project_id)->first() ?? null;
+
+        //  Check if the project exists
+        if ($project) {
+
+            //  Check if the user is authourized to update the project
+            if ($this->user->can('update', $project)) {
+
+                //  Update the project
+                $updated = $project->update( $request->all() );
+
+                //  If the update was successful
+                if( $updated ){
+
+                    //  Return an API Readable Format of the Project Instance
+                    return $project->fresh()->convertToApiFormat();
+
+                }
+
+            } else {
+
+                //  Not Authourized
+                return oq_api_not_authorized();
+            }
+
+        }else{
+            
+            //  Not Found
+            return oq_api_notify_no_resource();
+
+        }
+    }
+
     public function getProjectVersions($project_id)
     {
         //  Get the project

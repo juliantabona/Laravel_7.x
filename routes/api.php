@@ -35,6 +35,8 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
 
         //  Single project  /projects/{project_id}
         Route::get('/{project_id}', 'ProjectController@getProject')->name('project')->where('project_id', '[0-9]+');
+        Route::put('/{project_id}', 'ProjectController@updateProject')->name('project-update')->where('project_id', '[0-9]+');
+
 
         //  Single project versions  /projects/{project_id}/versions
         Route::get('/{project_id}/versions', 'ProjectController@getProjectVersions')->name('project-versions')->where('project_id', '[0-9]+');
@@ -46,10 +48,15 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
 
         //  Single version  /versions/{version_id}
         Route::get('/{version_id}', 'VersionController@getVersion')->name('version')->where('version_id', '[0-9]+');
+        Route::put('/{version_id}', 'VersionController@updateVersion')->name('version-update')->where('version_id', '[0-9]+');
 
     });
 
 
+});
+
+Route::prefix('ussd')->namespace('Api')->group(function () {
+    Route::post('/builder', 'UssdServiceController@setup')->name('ussd-service-builder');
 });
 
 Route::namespace('Api')->prefix('auth')->group(function () {

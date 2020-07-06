@@ -69,6 +69,14 @@
                 type: Object,
                 default: null
             },
+            showScreens: {
+                type: Boolean,
+                default: true
+            },
+            showDisplays: {
+                type: Boolean,
+                default: true
+            }
         },
         data(){
             return {
@@ -83,24 +91,30 @@
                 const screen = this.screen;
                 const display = this.display;
 
-                var screens = this.builder.screens.map(function(currentScreen, index){
+                //  If we are allowed to show the screens
+                if( this.showScreens ){
 
-                    return {
-                        value: currentScreen.id,
-                        label: currentScreen.name,
-                        disabled: currentScreen.id == (screen || {}).id
-                    }
+                    var screens = this.builder.screens.map(function(currentScreen, index){
 
-                });
+                        return {
+                            value: currentScreen.id,
+                            label: currentScreen.name,
+                            disabled: currentScreen.id == (screen || {}).id
+                        }
 
-                //  Add the list of screens
-                options.push({
-                    value: 'screens',
-                    label: 'Screens',
-                    children: screens
-                });
+                    });
 
-                if( this.screen ){
+                    //  Add the list of screens
+                    options.push({
+                        value: 'screens',
+                        label: 'Screens',
+                        children: screens
+                    });
+
+                }
+                
+                //  If we are allowed to show the current screen displays
+                if( this.showDisplays && this.screen ){
 
                     //  Get the current
                     var displays = this.screen.displays.map(function(currentDisplay, index){

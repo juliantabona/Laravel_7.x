@@ -24,7 +24,7 @@
 
                 <!-- Enter Name -->
                 <FormItem prop="name">
-                    <Input  type="text" v-model="screenForm.name" placeholder="Home" maxlength="30" 
+                    <Input  type="text" v-model="screenForm.name" placeholder="Home" maxlength="50" 
                             show-word-limit @keyup.enter.native="handleSubmit()" v-focus="'input'">
                             <span slot="prepend">Name</span>
                     </Input>
@@ -87,7 +87,7 @@
                     name: [
                         { required: true, message: 'Please enter your screen name', trigger: 'blur' },
                         { min: 3, message: 'Screen name is too short', trigger: 'change' },
-                        { max: 30, message: 'Screen name is too long', trigger: 'change' },
+                        { max: 50, message: 'Screen name is too long', trigger: 'change' },
                         { validator: uniqueNameValidator, trigger: 'change' }
                     ],
                 }
@@ -206,58 +206,73 @@
                 var screenTemplate = {
                         id: id,
                         name: screenName, 
-                        type: {
-                            selected_type: 'default',   //  default, repeat
-                            repeat: {
-                                selected_type: 'repeat_on_number',  //  repeat_on_number, repeat_on_items, custom_repeat
-                                repeat_on_number: {
-                                    value: '3',
-                                    loop_index_reference_name: 'loop_index',
-                                    loop_number_reference_name: 'loop_number',
-                                    is_first_loop_reference_name: 'is_first_loop',
-                                    is_last_loop_reference_name: 'is_last_loop',
-                                    on_no_loop: {
-                                        selected_type: 'do_nothing',            //  do_nothing, link
-                                        link:{
-                                            type: 'screen',                     //  screen, display  
-                                            name: ''
-                                        }
-                                    },
-                                    after_last_loop: {
-                                        selected_type: 'do_nothing',            //  do_nothing, link
-                                        link:{
-                                            type: 'screen',                     //  screen, display  
-                                            name: ''
-                                        }
+                        repeat: {
+                            active: {
+                                text: false,
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            selected_type: 'repeat_on_number',  //  repeat_on_number, repeat_on_items, custom_repeat
+                            repeat_on_number: {
+                                value:{
+                                    text: '3',
+                                    code_editor_text: '',
+                                    code_editor_mode: false
+                                },
+                                total_loops_reference_name: 'total_items',
+                                loop_index_reference_name: 'loop_index',
+                                loop_number_reference_name: 'loop_number',
+                                is_first_loop_reference_name: 'is_first_loop',
+                                is_last_loop_reference_name: 'is_last_loop',
+                                on_no_loop: {
+                                    selected_type: 'do_nothing',            //  do_nothing, link
+                                    link: {
+                                        text: '',
+                                        code_editor_text: '',
+                                        code_editor_mode: false
                                     }
                                 },
-                                repeat_on_items: {
-                                    group_reference: '{{ items }}', 
-                                    item_reference_name: 'item',
-                                    total_loops_reference_name: 'total_items',
-                                    loop_index_reference_name: 'item_index',
-                                    loop_number_reference_name: 'item_number',
-                                    is_first_loop_reference_name: 'is_first_item',
-                                    is_last_loop_reference_name: 'is_last_item',
-                                    on_no_loop: {
-                                        selected_type: 'do_nothing',            //  do_nothing, link
-                                        link:{
-                                            type: 'screen',                     //  screen, display  
-                                            name: ''
-                                        }
-                                    },
-                                    after_last_loop: {
-                                        selected_type: 'do_nothing',            //  do_nothing, link
-                                        link:{
-                                            type: 'screen',                     //  screen, display  
-                                            name: ''
-                                        }
+                                after_last_loop: {
+                                    selected_type: 'do_nothing',            //  do_nothing, link
+                                    link: {
+                                        text: '',
+                                        code_editor_text: '',
+                                        code_editor_mode: false
                                     }
-                                },
-                                events: {
-                                    before_repeat: [],
-                                    after_repeat: []
                                 }
+                            },
+                            repeat_on_items: {
+                                group_reference: {
+                                    text: '{{ items }}',
+                                    code_editor_text: '',
+                                    code_editor_mode: false
+                                }, 
+                                item_reference_name: 'item',
+                                total_loops_reference_name: 'total_items',
+                                loop_index_reference_name: 'item_index',
+                                loop_number_reference_name: 'item_number',
+                                is_first_loop_reference_name: 'is_first_item',
+                                is_last_loop_reference_name: 'is_last_item',
+                                on_no_loop: {
+                                    selected_type: 'do_nothing',            //  do_nothing, link
+                                    link: {
+                                        text: '',
+                                        code_editor_text: '',
+                                        code_editor_mode: false
+                                    }
+                                },
+                                after_last_loop: {
+                                    selected_type: 'do_nothing',            //  do_nothing, link
+                                    link: {
+                                        text: '',
+                                        code_editor_text: '',
+                                        code_editor_mode: false
+                                    }
+                                }
+                            },
+                            events: {
+                                before_repeat: [],
+                                after_repeat: []
                             }
                         },
                         first_display_screen: firstDisplayScreen,

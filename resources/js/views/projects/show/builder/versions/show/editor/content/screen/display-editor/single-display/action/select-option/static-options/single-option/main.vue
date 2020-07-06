@@ -14,9 +14,9 @@
                           class="text-primary cursor-pointer mr-2" :size="20" 
                           :style="{ marginTop: '-3px' }" @click.stop="toggleExpansion()" />
 
-                    <div v-if="option.code_editor_mode" class="d-flex">
+                    <div v-if="option.name.code_editor_mode" class="d-flex">
                         <Icon type="ios-code-working" class="mr-1" :size="20" :style="{ marginTop: '-3px' }" />
-                        <span>Name</span>
+                        <span>Code name</span>
                     </div>
 
                     <template v-else>
@@ -35,6 +35,19 @@
                     <Poptip trigger="hover" width="350" placement="top" word-wrap>
 
                         <List slot="content" size="small">
+
+                            <ListItem class="p-0">
+                                <span class="font-weight-bold mr-1">Active: </span>
+                                <span v-if="option.active.code_editor_mode">
+
+                                    <Icon type="ios-code" class="mr-1" size="20" />
+                                    <span>Custom Code</span>
+
+                                </span>
+                                <template v-else>
+                                    <span class="cut-text">{{ option.active.text ? 'Yes' : 'No' }}</span>
+                                </template>
+                            </ListItem>
 
                             <ListItem class="p-0">
                                 <span class="font-weight-bold mr-1">Name: </span>
@@ -98,9 +111,9 @@
                                     <span v-else class="text-info">No Link</span>
                                 </template>
                             </ListItem>
-
-                            <ListItem v-if="option.comment" :style="{ alignItems: 'start', textAlign: 'justify' }" class="p-0">
+                            <ListItem v-if="option.comment" class="list-item-comment">
                                 <span>
+                                    <Icon type="ios-chatbubbles-outline" :size="20" class="mr-1" />
                                     <span class="font-weight-bold">Comment: </span><br>{{ option.comment }}
                                 </span>
                             </ListItem>
@@ -112,9 +125,10 @@
 
                     </Poptip>
 
-                    <!-- Active Status  -->
-                    <div v-if="option.active" :style="{ marginTop: '-4px' }">
-                        <Tag color="cyan">Active</Tag>
+                    <!-- Active Status -->
+                    <div :style="{ marginTop: '-4px' }">
+                        <Tag v-if="option.active.code_editor_mode" type="border" color="cyan">Active Conditionally</Tag>
+                        <Tag v-else type="border" :color="option.active.text ? 'green' : 'warning'">{{ option.active.text ? 'Active' : 'InActive' }}</Tag>
                     </div>
 
                 </Col>
@@ -146,6 +160,14 @@
         <div v-show="isExpanded">
 
             <!-- Static Option Details  -->
+
+            <!-- Comment -->
+            <span class="d-flex">
+                <Icon type="ios-chatbubbles-outline" :size="20" class="mr-1" />
+                <span class="font-weight-bold mr-2">Comment: </span><br>
+                <span v-if="option.comment">{{ option.comment }}</span>
+                <span v-else class="text-info">No comment</span>
+            </span>
                 
         </div>
 
@@ -384,11 +406,6 @@
             toggleExpansion(){
                 this.isExpanded = !this.isExpanded;
             },
-            handleAddStaticOptionModal(){
-                this.isCloning = false;
-                this.isEditing = false;
-                this.handleOpenManageStaticOptionModal();
-            },
             handleEditStaticOption(){
                 this.isCloning = false;
                 this.isEditing = true;
@@ -403,6 +420,12 @@
 
                 const self = this;
 
+                if( self.option.code_editor_mode ){
+                    var name = 'Custom Option';
+                }else{
+                    var name = self.option.name.text;
+                }
+
                 //  Make a popup confirmation modal so that we confirm the static option removal
                 this.$Modal.confirm({
                     width: '450',
@@ -415,7 +438,7 @@
                         return h(
                             'span', [
                                 'Are you sure you want to delete "',
-                                h('span', { class: ['font-weight-bold'] }, self.option.name),
+                                h('span', { class: ['font-weight-bold'] }, name),
                                 '". After this static option is deleted you cannot recover it again.'
                             ]
                         )
@@ -427,7 +450,7 @@
                 //  Remove static option from list
                 this.options.splice(this.index, 1);
 
-                //  Subscription option removed success message
+                //  Option removed success message
                 this.$Message.success({
                     content: 'Static option removed!',
                     duration: 6
