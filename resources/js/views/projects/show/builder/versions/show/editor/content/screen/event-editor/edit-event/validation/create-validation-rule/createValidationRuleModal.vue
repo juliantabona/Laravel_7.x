@@ -107,17 +107,24 @@
                     },
                     {
                         value: '3',
-                        name: 'Minimum Characters',
+                        name: 'Minimum Character Length',
                         type: 'minimum_characters',
                         error_msg: 'Please enter 3 or more characters',
                         comment: 'Makes sure that the target value contains atleast the specified number of characters e.g "3" means atleast 3 characters must be provided. This means "abc" is valid while "a" and "ab" are not valid. Remember that we also count whitespaces e.g "a b" is also 3 characters.'
                     },
                     {
                         value: '3',
-                        name: 'Maximum Characters',
+                        name: 'Maximum Character Length',
                         type: 'maximum_characters',
                         error_msg: 'Please enter no more than 3 characters',
                         comment: 'Makes sure that the target value contains no more than the specified number of characters e.g "3" means no more than 3 characters must be provided. This means "a", "ab" and "abc" are valid while "abcd" is not valid. Remember that we also count whitespaces e.g "a b" is also 3 characters.'
+                    },
+                    {
+                        value: '3',
+                        name: 'Equal To Character Length',
+                        type: 'equal_to_characters',
+                        error_msg: 'Please enter exactly 3 characters',
+                        comment: 'Makes sure that the target value contains the exact specified number of characters e.g "3" exactly 3 characters must be provided. This means "a", "ab" and "abcd" are valid while "abc" is valid. Remember that we also count whitespaces e.g "a b" is also 3 characters.'
                     },
                     {
                         name: 'Validate Email',

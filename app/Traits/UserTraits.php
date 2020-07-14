@@ -17,12 +17,12 @@ trait UserTraits
     {
         if( $users ){
                 
-            //  Transform the users
+            //  Transform the multiple instances
             return new UsersResource($users);
 
         }else{
             
-            //  Transform the company
+            //  Transform the single instance
             return new UserResource($this);
 
         }

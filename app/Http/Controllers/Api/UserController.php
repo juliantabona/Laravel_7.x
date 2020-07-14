@@ -45,7 +45,7 @@ class UserController extends Controller
     public function getUserProjects(Request $request)
     {
         //  Get the user projects
-        $projects = $this->user->projects()->paginate() ?? null;
+        $projects = $this->user->projects()->latest()->paginate() ?? null;
 
         //  Check if the user projects exist
         if ($projects) {

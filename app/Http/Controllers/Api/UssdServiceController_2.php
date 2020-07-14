@@ -21,20 +21,20 @@ class UssdServiceController extends Controller
     private $level = 1;
     private $session_id;
     private $api_trigger;
-    private $linked_screen;
     private $service_code;
     private $phone_number;
     private $request_type;
-    private $linked_display;
     private $ussdInterface;
+    private $linked_screen;
     private $is_paginating;
+    private $linked_display;
     private $display_content;
     private $display_actions;
     private $pagination_index;
     private $existing_session;
-    private $current_user_response;
     private $generated_variables;
     private $display_instructions;
+    private $current_user_response;
     private $dynamic_data_storage = [];
     private $incorrect_option_selected;
     private $last_recorded_log_microtime;
@@ -1809,7 +1809,7 @@ class UssdServiceController extends Controller
          *      ],
          *      "reference_name" => "selected_item",
          *      "no_results_message" => "No options found",
-         *      "incorrect_option_selected_message" => "You selected an incorrect option. Please try again",
+         *      "incorrect_option_selected_message" => "You selected an incorrect option. Go back and try again",
          *      "link" => [
          *          "type" => "screen",
          *          "name" => ""
@@ -2470,7 +2470,7 @@ class UssdServiceController extends Controller
                 //  If the user did not select an option that exists
             } else {
                 //  Display the custom "Incorrect option selected" otherwise use default
-                $message = ($incorrect_option_selected_message ?? 'You selected an incorrect option. Please try again')."\n";
+                $message = ($incorrect_option_selected_message ?? 'You selected an incorrect option. Go back and try again')."\n";
 
                 //  Get the "incorrect option selected" message
                 $this->incorrect_option_selected = $message;

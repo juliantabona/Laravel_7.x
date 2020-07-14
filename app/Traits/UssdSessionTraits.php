@@ -19,12 +19,12 @@ trait UssdSessionTraits
     {
         if( $ussd_sessions ){
                 
-            //  Transform the ussd sessions
+            //  Transform the multiple instances
             return new UssdSessionsResource($ussd_sessions);
 
         }else{
             
-            //  Transform the ussd session
+            //  Transform the single instance
             return new UssdSessionResource($this);
 
         }

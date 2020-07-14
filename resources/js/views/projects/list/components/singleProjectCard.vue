@@ -71,11 +71,14 @@
 
                         <div class="float-right">
                             
-                            <!-- Clone version -->
-                            <Button type="dashed" size="small" icon="ios-copy-outline">Clone</Button>
+                            <!-- Delete project -->
+                            <Button type="dashed" size="small" class="text-danger" @click.native.stop="handleOpenDeleteProjectModal()">Delete</Button>
 
-                            <!-- View version -->
-                            <Button type="dashed" size="small" class="text-primary" @click.native="navigateToViewProject()">View</Button>
+                            <!-- Clone project -->
+                            <Button type="dashed" size="small" icon="ios-copy-outline" @click.native.stop="navigateToCloneProject()">Clone</Button>
+
+                            <!-- View project -->
+                            <Button type="dashed" size="small" class="text-primary" @click.native.stop="navigateToViewProject()">View</Button>
 
                         </div>
 
@@ -87,6 +90,21 @@
 
         </Row>
 
+        <!-- 
+            MODAL TO DELETE PROJECT
+        -->
+        <template v-if="isOpenDeleteProjectModal">
+
+            <deleteProjectModal
+                :index="index"
+                :project="project"
+                :projects="projects"
+                @deleted="$emit('deleted')"
+                @visibility="isOpenDeleteProjectModal = $event">
+            </deleteProjectModal>
+
+        </template>
+
     </Card>
 
 </template>
@@ -96,8 +114,11 @@
     //  Get the custom mixin file
     var customMixin = require('./../../../../mixin.js').default;
 
+    import deleteProjectModal from './deleteProjectModal.vue';
+
     export default {
         mixins: [customMixin],
+        components: { deleteProjectModal },
         props: {
             index: {
                 type: Number,
@@ -106,11 +127,16 @@
             project: {
                 type: Object,
                 default: null
+            },
+            projects: {
+                type: Array,
+                default:() => []
             }
         },
         data(){
             return {
-                isHovering: false
+                isHovering: false,
+                isOpenDeleteProjectModal: false,
             }
         },
         computed: {
@@ -171,6 +197,13 @@
             }
         },
         methods: {
+            navigateToCloneProject(){
+                
+                //  Navigate to clone project
+                this.$router.push({ name: 'create-project', query: { project_url: encodeURIComponent(this.projectUrl) } });
+                
+                
+            },
             navigateToViewProject(){
                 
                 if( this.projectUrl ){
@@ -180,7 +213,10 @@
 
                 }
 
-            }, 
+            },
+            handleOpenDeleteProjectModal(){
+                this.isOpenDeleteProjectModal = true;
+            }
         },
     }
 </script>

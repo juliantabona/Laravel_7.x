@@ -18,6 +18,23 @@
 
             </div>
 
+            <span class="d-block mt-4 mb-4">
+                <span class="font-weight-bold mr-1">Conditional Selection:</span>
+                <i-Switch v-model="screen.conditional_displays.active" />
+            </span>
+
+            <template v-if="screen.conditional_displays.active">
+
+                <!-- Code Editor -->
+                <customEditor
+                    :useCodeEditor="true"
+                    :codeContent="screen.conditional_displays.code"
+                    @codeChange="screen.conditional_displays.code = $event"
+                    sampleCodeTemplate="ussd_service_instructions_sample_code">
+                </customEditor>
+
+            </template>
+
             <!-- Draggable displays -->
             <div class="py-2">
 
@@ -77,9 +94,10 @@
     import addDisplayModal from './addDisplayModal.vue';
     import singleDisplay from './single-display/main.vue';
     import basicButton from './../../../../../../../../../../components/_common/buttons/basicButton.vue';
+    import customEditor from './../../../../../../../../../../components/_common/wysiwygEditors/customEditor.vue';
 
     export default {
-        components: { draggable, singleDisplay, addDisplayModal, basicButton },
+        components: { draggable, singleDisplay, addDisplayModal, basicButton, customEditor },
         props: {
             screen: {
                 type: Object,

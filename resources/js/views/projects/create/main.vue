@@ -13,8 +13,19 @@
                 <!-- Heading -->
                 <Divider orientation="left" class="font-weight-bold">Create Project</Divider>
 
+                <!-- Clone Project Alert -->
+                <Alert v-if="cloneProject && !isSearching" type="info" show-icon>Cloning "{{ cloneProject.name }}"</Alert>
+
+                <template v-else>
+
+                    <!-- If we are loading, Show Loader -->
+                    <Loader v-if="isSearching && !isLoading" class="mt-2 mb-2">Searching for project to clone...</Loader>
+
+                </template>
+
                 <!-- Error Message Alert -->
-                <Alert v-if="serverErrorMessage && !isLoading" type="warning">{{ serverErrorMessage }}</Alert>
+                <Alert v-if="serverErrorMessage  && !isLoading" type="warning">{{ serverErrorMessage }}</Alert>
+                <Alert v-if="serverGeneralError  && !isLoading" type="warning">{{ serverGeneralError }}</Alert>
 
                 <Form ref="projectForm" :model="projectForm" :rules="projectFormRules">
                     
@@ -36,8 +47,8 @@
                     <FormItem prop="dedicated_short_code" :error="serverDedicatedShortCodeError">
                         <div class="d-flex">
                             <span :style="{ width: '200px' }" class="font-weight-bold">Dedicated Code: </span>  
-                            <Input type="text" v-model.number="projectForm.dedicated_short_code" placeholder="180" :disabled="isLoading"
-                                    @keyup.enter.native="handleSubmit()">
+                            <Input type="text" v-model.number="projectForm.dedicated_short_code" placeholder="180"
+                                   :disabled="isLoading" @keyup.enter.native="handleSubmit()">
                                 <span slot="prepend">*</span>
                                 <span slot="append">#</span>
                             </Input>
@@ -48,7 +59,7 @@
                     <FormItem prop="shared_short_code" :error="serverSharedShortCodeError">  
                         <div class="d-flex">
                             <span :style="{ width: '235px' }" class="font-weight-bold">Shared Code: </span>  
-                            <Select v-model="projectForm.shared_short_code" class="w-100 mr-2">
+                            <Select v-model="projectForm.shared_short_code" :disabled="isLoading" class="w-100 mr-2">
                                 <Option v-for="(shared_short_code, index) in shared_short_codes" :value="shared_short_code" :key="index">
                                     {{ shared_short_code }}
                                 </Option>
@@ -65,13 +76,14 @@
 
                     <!-- Create Button -->
                     <FormItem v-if="!isLoading">
-                        <Button type="primary" class="float-right" :disabled="isLoading" @click="handleSubmit()">Create Project</Button>
+                        <Button type="primary" class="float-right" :disabled="isSearching || isLoading" @click="handleSubmit()">Create Project</Button>
                     </FormItem>
 
                     <!-- If we are loading, Show Loader -->
                     <Loader v-show="isLoading" class="mt-2">Creating project...</Loader>
 
                 </Form>
+                
             </Card>
         </Col>
     </Row>
@@ -86,11 +98,14 @@
         data () {
 
             return {
+                cloneProject: null,
+                isSearching: false,
                 isLoading: false,
                 projectForm: {
                     name: '',
                     description: '',
                     shared_short_code: '',
+                    clone_project_id: null,
                     dedicated_short_code: '',
                 },
                 projectFormRules: {
@@ -116,6 +131,9 @@
             }
         },
         computed: {
+            serverGeneralError(){
+                return (this.serverErrors || {}).general;
+            },
             serverNameError(){
                 return (this.serverErrors || {}).name;
             },
@@ -127,7 +145,12 @@
             },
             serverSharedShortCodeError(){
                 return (this.serverErrors || {}).shared_short_code;
-            }
+            },
+            cloneProjectUrl(){
+                if( this.$route.query.project_url ){
+                    return decodeURIComponent(this.$route.query.project_url);
+                }
+            },
         },
         methods: {
             navigateToProjects(){
@@ -159,6 +182,45 @@
                     }
                 })
             },
+            fetchProjectToClone() {
+
+                //  If we have the project url
+                if( this.cloneProjectUrl ){
+
+                    //  Hold constant reference to the current Vue instance
+                    const self = this;
+
+                    //  Start loader
+                    self.isSearching = true;
+
+                    //  Use the api call() function, refer to api.js
+                    api.call('get', this.cloneProjectUrl)
+                        .then(({data}) => {
+                            
+                            //  Console log the data returned
+                            console.log(data);
+
+                            //  Get the project
+                            self.cloneProject = data || null;
+
+                            //  Update the clone project id
+                            self.$set(self.projectForm, 'clone_project_id', (data || {}).id);
+
+                            //  Stop loader
+                            self.isSearching = false;
+
+                        })         
+                        .catch(response => { 
+
+                            //  Log the responce
+                            console.error(response);
+
+                            //  Stop loader
+                            self.isSearching = false;
+
+                        });
+                }
+            },
             attemptProjectCreation(){
 
                 //  Hold constant reference to the current Vue instance
@@ -170,12 +232,15 @@
                 /**  Make an Api call to create the project. We include the
                  *   project details required for a new project creation.
                  */
-                let projectData = {
-                    name: name,
-                    description: description
-                };
+                let projectData = this.projectForm;
+                
+                /**  Note "api_home" is defined within the auth.js file.
+                 *   It holds reference to common links for ease of
+                 *   access.
+                 */
+                let url = api_home['_links']['sce:projects'].href
 
-                return api.call('post', this.user['_links']['oq:projects'].href, projectData)
+                return api.call('post', url, projectData)
                     .then(({data}) => {
 
                         //  Stop loader
@@ -244,6 +309,9 @@
                 this.resetErrors();
                 this.$refs['projectForm'].resetFields();
             }
+        },
+        created() {
+            this.fetchProjectToClone();   
         }
     }
 </script>

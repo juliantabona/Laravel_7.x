@@ -33,11 +33,13 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
     //  Project Resource Routes
     Route::prefix('projects')->group(function () {
 
+        Route::post('/', 'ProjectController@createProject')->name('project-create');
+        
         //  Single project  /projects/{project_id}
         Route::get('/{project_id}', 'ProjectController@getProject')->name('project')->where('project_id', '[0-9]+');
         Route::put('/{project_id}', 'ProjectController@updateProject')->name('project-update')->where('project_id', '[0-9]+');
-
-
+        Route::delete('/{project_id}', 'ProjectController@deleteProject')->name('project-delete')->where('project_id', '[0-9]+');
+        
         //  Single project versions  /projects/{project_id}/versions
         Route::get('/{project_id}/versions', 'ProjectController@getProjectVersions')->name('project-versions')->where('project_id', '[0-9]+');
 

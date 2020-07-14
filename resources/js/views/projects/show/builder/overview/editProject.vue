@@ -16,20 +16,20 @@
                 <Divider orientation="left" class="font-weight-bold">Project Details</Divider>
 
                 <!-- Error Message Alert -->
-                <Alert v-if="serverErrorMessage && !isLoading" type="warning">{{ serverErrorMessage }}</Alert>
+                <Alert v-if="serverErrorMessage && !isSavingChanges" type="warning">{{ serverErrorMessage }}</Alert>
 
                 <Form ref="projectForm" :model="projectForm" :rules="projectFormRules">
 
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">
-                        <Input type="text" v-model="projectForm.name" placeholder="Name" :disabled="isLoading" 
+                        <Input type="text" v-model="projectForm.name" placeholder="Name" :disabled="isSavingChanges" 
                                 maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()">
                         </Input>
                     </FormItem>
                     
                     <!-- Enter Description -->
                     <FormItem prop="description" :error="serverDescriptionError">
-                        <Input type="textarea" v-model="projectForm.description" placeholder="Description" :disabled="isLoading" 
+                        <Input type="textarea" v-model="projectForm.description" placeholder="Description" :disabled="isSavingChanges" 
                                 maxlength="500" show-word-limit @keyup.enter.native="handleSubmit()">
                         </Input>
                     </FormItem>
@@ -49,7 +49,7 @@
                     <FormItem v-if="!projectForm.online" prop="offline_message" :error="serverDedicatedShortCodeError">
                         <div class="d-flex">
                             <span :style="{ width: '200px' }" class="font-weight-bold">Offline Message: </span>
-                            <Input type="textarea" v-model="projectForm.offline_message" placeholder="offline_message" :disabled="isLoading" 
+                            <Input type="textarea" v-model="projectForm.offline_message" placeholder="offline_message" :disabled="isSavingChanges" 
                                     maxlength="160" show-word-limit @keyup.enter.native="handleSubmit()">
                             </Input>
                         </div>
@@ -59,7 +59,7 @@
                     <FormItem prop="dedicated_short_code" :error="serverDedicatedShortCodeError">
                         <div class="d-flex">
                             <span :style="{ width: '200px' }" class="font-weight-bold">Dedicated Code: </span>  
-                            <Input type="text" v-model.number="projectForm.dedicated_short_code" placeholder="180" :disabled="isLoading"
+                            <Input type="text" v-model.number="projectForm.dedicated_short_code" placeholder="180" :disabled="isSavingChanges"
                                     @keyup.enter.native="handleSubmit()">
                                 <span slot="prepend">*</span>
                                 <span slot="append">#</span>
@@ -99,12 +99,18 @@
                     </FormItem>
                     
                     <!-- Save Changes Button -->
-                    <FormItem v-if="!isLoading">
-                        <Button type="success" class="float-right" :disabled="isLoading" @click="handleSubmit()">Save Changes</Button>
+                    <FormItem v-if="!isSavingChanges">
+
+                        <basicButton :disabled="(!projectHasChanged || isSavingChanges)" :loading="isSavingChanges" 
+                                     :ripple="(projectHasChanged && !isSavingChanges)" type="success" size="large" 
+                                     class="float-right" @click.native="handleSubmit()">
+                            <span>{{ isSavingChanges ? 'Saving...' : 'Save Changes' }}</span>
+                        </basicButton>
+
                     </FormItem>
 
                     <!-- If we are loading, Show Loader -->
-                    <Loader v-show="isLoading" class="mt-2">Saving...</Loader>
+                    <Loader v-show="isSavingChanges" class="mt-2">Saving...</Loader>
 
                 </Form>
             </Card>
@@ -114,6 +120,7 @@
 </template>
 <script>
     
+    import basicButton from './../../../../../components/_common/buttons/basicButton.vue';
     import Loader from './../../../../../components/_common/loaders/default.vue';
 
     export default {
@@ -121,14 +128,21 @@
             project: {
                 type: Object,
                 default: null
+            },
+            requestToSaveChanges: {
+                type: Number,
+                default: 0
             }
         },
-        components: { Loader },
+        components: { basicButton, Loader },
         data () {
 
             return {
-                isLoading: false,
+                isSavingChanges: false,
                 projectForm: null,
+                isSavingChanges: false,
+                projectBeforeChanges: null,
+                projectHasChanged: false,
                 projectFormRules: {
                     name: [
                         { required: true, message: 'Please enter your project name', trigger: 'blur' },
@@ -156,6 +170,36 @@
                 ],
                 serverErrors: [],
                 serverErrorMessage: ''
+            }
+        },
+        watch: {
+            //  Keep track of changes on the project
+            project: {
+
+                handler: function (val, oldVal) {
+
+                    this.setup();
+
+                },
+                deep: true
+
+            },
+            //  Keep track of changes on the project form
+            projectForm: {
+
+                handler: function (val, oldVal) {
+
+                    this.notifyUnsavedChangesStatus();
+
+                },
+                deep: true
+
+            },
+            /** Watch to see if we want to save changes.
+             *  If we do handle the request.
+             */
+            requestToSaveChanges(newVal, oldVal){
+                this.handleSubmit();
             }
         },
         computed: {
@@ -200,12 +244,16 @@
             },
         },
         methods: {
+            setup(){
+                this.projectForm = this.getProjectForm();
+                this.copyProjectBeforeUpdate();
+            },
             navigateToProjectVersions(){
                 /** Note that using router.push() or router.replace() does not allow us to make a
                  *  page refresh when visiting routes. This is undesirable at this moment since our 
                  *  parent component contains the <router-view />. When the page does not refresh, 
-                 *  the <router-view /> is not able to receice the nested components defined in the 
-                 *  route.js file. This means that we are then not able to render the nested 
+                 *  the <router-view /> is not able to receive the nested components defined in the 
+                 *  routes.js file. This means that we are then not able to render the nested 
                  *  components and present them. To counter this issue we must construct the 
                  *  href and use "window.location.href" to make a hard page refresh.
                  */
@@ -230,9 +278,39 @@
                             shared_short_code: this.sharedShortCode
 
                         //  Overide the default form details with the provided project details
-                        }, this.project)
+                        }, this.project);
+
+            },
+            copyProjectBeforeUpdate(){
+
+                console.log('copyProjectBeforeUpdate');
+                
+                //  Clone the project
+                this.projectBeforeChanges = _.cloneDeep( this.projectForm );
+
+            },
+            projectHasBeenUpdated(){
+
+                console.log('projectHasBeenUpdated');
+
+                //  Check if the project has been modified
+                return !_.isEqual(this.projectForm, this.projectBeforeChanges);
+
+            },
+            notifyUnsavedChangesStatus(){
+
+                var status = this.projectHasBeenUpdated();
+
+                //  Notify the parent if we have changes to save
+                this.$emit('unsavedChanges', status);
+
+                this.projectHasChanged = status;
+
+                console.log('notifyUnsavedChangesStatus: '+this.projectHasChanged);
+
             },
             handleSubmit(){
+                console.log('handleSubmit');
 
                 //  Reset the server errors
                 this.resetErrors();
@@ -242,55 +320,66 @@
                 {   
                     //  If the validation passed
                     if (valid) {
+                        console.log('valid');
                         
                         //  Attempt to create project
-                        this.attemptProjectCreation();
+                        this.attemptProjectUpdate();
 
                     //  If the validation failed
                     } else {
                         this.$Message.warning({
-                            content: 'Sorry, you cannot sign up yet',
+                            content: 'Sorry, you cannot update yet',
                             duration: 6
                         });
                     }
                 })
             },
-            attemptProjectCreation(){
+            attemptProjectUpdate(){
+                console.log('attemptProjectUpdate');
 
                 //  Hold constant reference to the current Vue instance
                 const self = this;
 
                 //  Start loader
-                self.isLoading = true;
+                self.isSavingChanges = true;
+                self.$emit('isSaving', self.isSavingChanges);
 
-                //  Attempt to create the project using the auth create project method found in the auth.js file
-                auth.createProject(
-                    //  Pass registration details
-                    this.projectForm.name, this.projectForm.description, 
-                    this.projectForm.password, this.projectForm.password_confirmation
-                    ).then((data) => {
+                /**  Make an Api call to create the project. We include the
+                 *   project details required for a new project creation.
+                 */
+                let projectData = this.projectForm;
+
+                console.log('Saving Project');
+
+                return api.call('put', this.project['_links']['self'].href, projectData)
+                    .then(({data}) => {
 
                         //  Stop loader
-                        self.isLoading = false;
+                        self.isSavingChanges = false;
+                        self.$emit('isSaving', self.isSavingChanges);
 
-                        //  Reset the registration form
+                        self.$emit('updatedProject', data);
+
+                        //  Reset the form
                         self.resetProjectForm();
 
-                        //  Registration success message
-                        this.$Message.success({
-                            content: 'Account created!',
+                        //  Project updated success message
+                        self.$Message.success({
+                            content: 'Your project has been updated!',
                             duration: 6
                         });
+                            
+                        self.copyProjectBeforeUpdate();
 
-                        //  Redirect the user to the projects page
-                        this.$router.push({ name: 'show-projects' });
+                        self.notifyUnsavedChangesStatus();
                         
                     }).catch((response) => {
                 
                         console.log(response);
 
                         //  Stop loader
-                        self.isLoading = false;
+                        self.isSavingChanges = false;
+                        self.$emit('isSaving', self.isSavingChanges);
 
                         //  Get the error response data
                         let data = (response || {}).data;
@@ -300,7 +389,6 @@
 
                         //  Set the general error message
                         self.serverErrorMessage = (data || {}).message;
-
 
                         /** 422: Validation failed. Incorrect credentials
                          */
@@ -314,13 +402,16 @@
 
                                 //  Foreach error
                                 for (var i = 0; i < _.size(errors); i++) {
-                                    //  Get the error key e.g 'description', 'password'
+
+                                    //  Get the error key e.g 'name', 'dedicated_short_code'
                                     var prop = Object.keys(errors)[i];
-                                    //  Get the error value e.g 'These credentials do not match our records.'
+
+                                    //  Get the error value e.g 'The project name is required'
                                     var value = Object.values(errors)[i][0];
 
                                     //  Dynamically update the serverErrors for View UI to display the error on the appropriate form item
                                     self.serverErrors[prop] = value;
+
                                 }
 
                             }
@@ -339,7 +430,7 @@
             }
         },
         created(){
-            this.projectForm = this.getProjectForm();
+            this.setup();
         }
     }
 </script>

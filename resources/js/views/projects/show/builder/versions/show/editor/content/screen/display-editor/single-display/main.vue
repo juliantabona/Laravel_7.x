@@ -14,7 +14,7 @@
                 </Input>
 
                 <!-- If we support manual selection of the first display -->  
-                <template v-if="screen.first_display_indicator.selected_type == 'manual'">
+                <template v-if="!screen.conditional_displays.active">
                     
                     <!-- Show first display checkbox (Marks the display as the first display) -->
                     <Checkbox 
@@ -62,7 +62,7 @@
             
             </div>
 
-            <template v-if="screen.first_display_indicator.selected_type == 'manual'">
+            <template v-if="!screen.conditional_displays.active">
 
                 <!-- First Display Pointer -->
                 <Icon v-if="display.first_display" type="ios-pin-outline" size="20"  

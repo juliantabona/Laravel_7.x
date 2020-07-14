@@ -109,7 +109,8 @@
                         version to this component for additional use if required e.g to display the selected version
                         number.
                 -->
-                <router-view :project="project" :requestToSaveChanges="requestToSaveChanges" @loadedVersion="handleLoadedVersion" 
+                <router-view :project="project" :requestToSaveChanges="requestToSaveChanges" 
+                            @loadedVersion="handleLoadedVersion" @updatedProject="handleUpdatedProject"
                              @unsavedChanges="handleUnsavedChanges" @isSaving="handlesIsSaving"/>
                     
             </Content>
@@ -239,7 +240,12 @@
                 this.isSavingChanges = status;
             },
             handleLoadedVersion(version){
-                this.version = version;
+                this.version = Object.assign({}, version);
+            },
+            handleUpdatedProject(project){
+                this.project = Object.assign({}, project);
+
+                this.$emit('changeHeading', this.project.name)
             },
             navigateToLink(linkName){
                 /** Note that using router.push() or router.replace() does not allow us to make a

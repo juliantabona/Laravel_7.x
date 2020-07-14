@@ -123,6 +123,8 @@
                             @contentChange="event.event_data.storage.string.mode.concatenate.value = $event">
                         </customEditor>
 
+                        <br/>Join: {{ event.event_data.storage.string.mode.concatenate.value }}
+
                     </div>
 
                 </Col>

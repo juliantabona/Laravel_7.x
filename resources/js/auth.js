@@ -50,6 +50,9 @@ class Auth {
 
                     console.log('/api successful');
 
+                    //  Save the API details
+                    window.api_home = data;
+
                     //  Update the login url
                     this.loginUrl = data['_links']['sce:login']['href'];
 

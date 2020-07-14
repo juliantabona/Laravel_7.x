@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Project;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
@@ -18,7 +19,7 @@ class ProjectController extends Controller
     public function getProject($project_id)
     {
         //  Get the project
-        $project = \App\Project::where('id', $project_id)->first() ?? null;
+        $project = Project::where('id', $project_id)->first() ?? null;
 
         //  Check if the project exists
         if ($project) {
@@ -44,7 +45,31 @@ class ProjectController extends Controller
         }
     }
 
-    public function updateProject( Request $request, $ussd_service_id )
+    public function createProject( Request $request )
+    {
+        //  Check if the user is authourized to update the create
+        if ($this->user->can('create', Project::class)) {
+
+            //  Update the project
+            $project = (new Project)->initiateCreate( $request );
+
+            //  If the created successfully
+            if( $project ){
+
+                //  Return an API Readable Format of the Project Instance
+                return $project->convertToApiFormat();
+
+            }
+
+        } else {
+
+            //  Not Authourized
+            return help_not_authorized();
+
+        }
+    }
+
+    public function updateProject( Request $request, $project_id )
     {
         //  Get the project
         $project = \App\Project::where('id', $project_id)->first() ?? null;
@@ -69,13 +94,14 @@ class ProjectController extends Controller
             } else {
 
                 //  Not Authourized
-                return oq_api_not_authorized();
-            }
+                return help_not_authorized();
 
-        }else{
+            }
             
+        } else {
+
             //  Not Found
-            return oq_api_notify_no_resource();
+            return help_resource_not_fonud();
 
         }
     }
@@ -110,6 +136,39 @@ class ProjectController extends Controller
             return help_resource_not_fonud();
 
         }
+    }
+
+    public function deleteProject( Request $request, $project_id )
+    {
+        //  Get the project
+        $project = \App\Project::where('id', $project_id)->first() ?? null;
+
+        //  Check if the project exists
+        if ($project) {
+
+            //  Check if the user is authourized to permanently delete the project
+            if ($this->user->can('forceDelete', $project)) {
+
+                //  Delete the project
+                $project->delete();
+
+                //  Return nothing
+                return response()->json(null, 200);
+
+            } else {
+
+                //  Not Authourized
+                return help_not_authorized();
+
+            }
+            
+        } else {
+
+            //  Not Found
+            return help_resource_not_fonud();
+
+        }
+
     }
 
 }

@@ -11,7 +11,7 @@
         <Row :gutter="20">
 
             <!-- Screen name & markers -->
-            <Col :span="14">
+            <Col :span="12">
 
                 <!-- Screen name input (Changes the screen name) -->  
                 <Input type="text" v-model="screen.name" placeholder="Name" 
@@ -32,15 +32,37 @@
             </Col>
 
             <!-- First Display Screen Checkbox -->
-            <Col :span="8">
+            <Col :span="12">
+            
+                <div class="clearfix mb-2">
+                    <div class="float-right d-flex">
+                        <span class="font-weight-bold d-block mt-1 mr-2">Screen ID:</span>
+                        <ButtonGroup class="mr-2"
+                            v-clipboard="screen.id"
+                            v-clipboard:error="copyIdFail"
+                            v-clipboard:success="copyIdSuccess">
+                            <Button disabled>
+                                <span>{{ screen.id }}</span>
+                            </Button>
+                            <Button>
+                                <Icon type="md-copy"></Icon>
+                                Copy
+                            </Button>
+                        </ButtonGroup>
+                    </div>
+                </div>
 
-                <!-- Enable / Disable First Display Screen -->
-                <Checkbox 
-                    v-model="screen.first_display_screen"
-                    :disabled="screen.first_display_screen" class="mt-2"
-                    @on-change="handleSelectedFirstDisplayScreen($event)">
-                    First Screen
-                </Checkbox>
+                <template v-if="!builder.conditional_screens.active">
+
+                    <!-- Enable / Disable First Display Screen -->
+                    <Checkbox 
+                        v-model="screen.first_display_screen"
+                        :disabled="screen.first_display_screen" class="mt-2"
+                        @on-change="handleSelectedFirstDisplayScreen($event)">
+                        First Screen
+                    </Checkbox>
+
+                </template>
 
             </Col>
 
@@ -185,6 +207,18 @@
                 });
 
                 //  Update the builder markers
+            },
+            copyIdSuccess({ value, event }){
+                this.$Message.success({
+                    content: 'Screen ID copied!',
+                    duration: 6
+                });
+            },
+            copyIdFail({ value, event }){
+                this.$Message.warning({
+                    content: 'Could not copy the Screen ID',
+                    duration: 6
+                });
             },
             handleAddingDuplicate(tag){
                 this.$Message.warning({

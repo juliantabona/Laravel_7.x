@@ -96,9 +96,9 @@
                         </Input>
 
                     </div>
-
+                        
                     <!-- Loader -->
-                    <Loader v-show="isSendingUssdResponse" class="text-left mt-2">{{ ussdLoaderText }}</Loader>
+                    <Loader v-if="isSendingUssdResponse" class="text-left mt-2">{{ ussdLoaderText }}</Loader>
 
                     <!-- Send/Cancel buttons -->
                     <div v-if="isSendingUssdResponse == false" class="ussd_reply_container mt-3 d-flex">
@@ -122,6 +122,16 @@
                     </div>
 
                 </Card>
+
+                <div v-if="isSendingUssdResponse" class="clearfix mt-1" :style="{ position: 'relative', zIndex: 2 }">
+
+                    <!-- Stop Simulator Button -->
+                    <Button type="error" size="small" class="float-right"
+                            @click.native="closeUssdSimulator()">
+                            Stop Simulator
+                    </Button>
+
+                </div>
 
                 <div class="overlay"></div>
 

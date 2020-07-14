@@ -9,7 +9,8 @@
                 @showScreens="handleShowScreens()"
                 @selectedScreen="handleSelectedScreen($event)"
                 @showSubscriptions="handleShowSubscriptions()"
-                @showGlobalVariables="handleShowGlobalVariables()">
+                @showGlobalVariables="handleShowGlobalVariables()"
+                @showConditionalScreens="handleShowConditionalScreens()">
             </editorAside>
 
         </Col>
@@ -38,6 +39,12 @@
 
             </template>
 
+            <template v-else-if="activeView == 'Conditional Screens'">
+                
+                <conditionalScreensEditor :builder="builder"></conditionalScreensEditor>
+
+            </template>
+
         </Col>
 
     </Row>
@@ -50,9 +57,10 @@
     import screenEditor from './content/screen/main.vue';
     import globalVariablesEditor from './content/global-variables/main.vue';
     import subscriptionPlanEditor from './content/subscription-plans/main.vue';
+    import conditionalScreensEditor from './content/conditional-screens/main.vue';
 
     export default {
-        components: { editorAside, screenEditor, globalVariablesEditor, subscriptionPlanEditor },
+        components: { editorAside, screenEditor, globalVariablesEditor, subscriptionPlanEditor, conditionalScreensEditor },
         props: {
             project: {
                 type: Object,
@@ -68,7 +76,7 @@
                 screen: null,
                 activeView: 'Screens',
                 builder: this.version.builder,
-                availableViews: ['Screens', 'Global Variables', 'Subcription Plans'],
+                availableViews: ['Screens', 'Global Variables', 'Subcription Plans', 'Conditional Screens'],
             }
         },
         computed: {
@@ -148,6 +156,12 @@
 
                 //  Set "Subcription Plans" as the active viewport
                 this.handleChangeView('Global Variables');
+
+            },
+            handleShowConditionalScreens(){
+
+                //  Set "Conditional Screens" as the active viewport
+                this.handleChangeView('Conditional Screens');
 
             },
         },

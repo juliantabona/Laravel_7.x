@@ -23,6 +23,8 @@ class Project extends JsonResource
             'description' => $this->description,
             'online' => $this->online,
             'offline_message' => $this->offline_message,
+            'active_version_id' => $this->active_version_id,
+            
 
             /*  Timestamp Info  */
             'created_at' => $this->created_at,

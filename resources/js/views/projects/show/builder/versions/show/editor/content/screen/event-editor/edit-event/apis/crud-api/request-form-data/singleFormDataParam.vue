@@ -82,8 +82,7 @@
                      */
                     name: [
                         { required: true, message: 'Please enter your form data param', trigger: 'blur' },
-                        { validator: this.getUniqueNameValidator(), trigger: 'change' },
-                        { validator: this.getValidVariableNameValidator(), trigger: 'change' }
+                        { validator: this.getUniqueNameValidator(), trigger: 'change' }
                     ],
                     value: [
                         { validator: this.getHasValueValidator(), trigger: 'change' },

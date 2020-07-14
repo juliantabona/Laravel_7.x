@@ -12,31 +12,48 @@
 
                 </Col>
 
-                <Col :span="8">
+                <Col v-if="isLoading" :span="24">
 
-                    <Card class="add-sce-mini-card-button mb-3"
-                          @click.native="navigateToCreateProject()">
-                        <div class="action-title">
-                            <Icon type="ios-add" />
-                            <span>Add Project</span>
-                        </div>
-                    </Card>
-
-                    <singleProjectCard v-for="(project, index) in firstColumnProjects" :key="index" :index="index" :project="project"></singleProjectCard>
+                    <!-- If we are loading, Show Loader -->
+                    <Loader class="mt-5">Loading projects...</Loader>
 
                 </Col>
 
-                <Col :span="8">
+                <template v-else>
+                    
+                    <Col :span="8">
 
-                    <singleProjectCard v-for="(project, index) in secondColumnProjects" :key="index" :index="index" :project="project"></singleProjectCard>
+                        <Card class="add-sce-mini-card-button mb-3"
+                            @click.native="navigateToCreateProject()">
+                            <div class="action-title">
+                                <Icon type="ios-add" />
+                                <span>Add Project</span>
+                            </div>
+                        </Card>
 
-                </Col>
+                        <singleProjectCard v-for="(project, index) in firstColumnProjects" 
+                            :key="index" :index="index" :project="project" :projects="projects" @deleted="fetchProjects">
+                        </singleProjectCard>
 
-                <Col :span="8">
+                    </Col>
 
-                    <singleProjectCard v-for="(project, index) in thirdColumnProjects" :key="index" :index="index" :project="project"></singleProjectCard>
+                    <Col :span="8">
 
-                </Col>
+                        <singleProjectCard v-for="(project, index) in secondColumnProjects" 
+                            :key="index" :index="index" :project="project" :projects="projects" @deleted="fetchProjects">
+                        </singleProjectCard>
+                        
+                    </Col>
+
+                    <Col :span="8">
+
+                        <singleProjectCard v-for="(project, index) in thirdColumnProjects" 
+                            :key="index" :index="index" :project="project" :projects="projects" @deleted="fetchProjects">
+                        </singleProjectCard>
+                        
+                    </Col>
+
+                </template>
 
             </Row>
 
@@ -48,13 +65,15 @@
 
 <script>
     
+    import Loader from './../../../components/_common/loaders/default.vue';
     import singleProjectCard from './components/singleProjectCard.vue'; 
 
     export default {
-        components: { singleProjectCard },
+        components: { Loader, singleProjectCard },
         data(){
             return {
                 user: auth.getUser(),
+                isLoading: false,
                 projects: []
             }
         },

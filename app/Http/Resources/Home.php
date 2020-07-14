@@ -64,6 +64,12 @@ class Home extends JsonResource
                 'sce:logout-everyone' => [ 
                     'href' => route('logout', ['everyone' => 'true']),
                     'title' => 'Logout all devices'
+                ],
+
+                //  Link to projects resources (Used to create new project resource)
+                'sce:projects' => [
+                    'href' => route('project-create'),
+                    'title' => 'Get or create projects'
                 ]
                 
             ],

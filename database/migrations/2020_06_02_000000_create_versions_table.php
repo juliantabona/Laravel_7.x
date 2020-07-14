@@ -16,7 +16,7 @@ class CreateVersionsTable extends Migration
             $table->increments('id');
 
             /*  Version Details  */
-            $table->float('number')->nullable();
+            $table->float('number')->default(1.00)->nullable();
             $table->string('description', 500)->nullable();
 
             /*  Builder  */

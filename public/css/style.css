@@ -325,8 +325,8 @@ body {
 .circle-ripple {
     top: 50%;
     right: 50%;
-    width: 2px;
-    height: 2px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     position:absolute;
     transform: translateX(-50%);

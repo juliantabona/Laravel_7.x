@@ -191,11 +191,7 @@
 
             },
             modalWidth(){
-                if( this.eventForm.type == 'Validation' ){
-                    return '800';
-                }else{
-                    return '600';
-                }
+                return 800;
             }
         },
         methods: {

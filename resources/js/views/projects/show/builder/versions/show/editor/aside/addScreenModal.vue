@@ -276,12 +276,10 @@
                             }
                         },
                         first_display_screen: firstDisplayScreen,
-                        first_display_indicator: {
-                            selected_type: 'manual',    //  manual, conditional
-                            conditional: {
-                                code_editor_text: '',
-                            }
-                        },
+                        conditional_displays: {
+                            active: false,
+                            code: null
+                        }, 
                         displays: [],
                         markers: []
                     };

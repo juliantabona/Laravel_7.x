@@ -3,11 +3,12 @@
 namespace App;
 
 use App\Traits\CommonTraits;
+use App\Traits\ShortCodeTraits;
 use Illuminate\Database\Eloquent\Model;
 
 class ShortCode extends Model
 {
-    use CommonTraits;
+    use ShortCodeTraits, CommonTraits;
 
     /**
      * The attributes that are mass assignable.

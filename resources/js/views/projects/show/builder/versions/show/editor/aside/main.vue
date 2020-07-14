@@ -82,8 +82,8 @@
             </div>
 
             <CellGroup>
-                <Cell title="Conditional Screens" @click.native="$emit('showScreens')">
-                    <i-Switch slot="extra" />
+                <Cell title="Conditional Screens" @click.native="$emit('showConditionalScreens')">
+                    <i-Switch v-model="builder.conditional_screens.active" slot="extra" />
                 </Cell>
                 <Cell title="Subscription Plans" @click.native="$emit('showSubscriptions')"/>
                 <Cell title="Global Variables" @click.native="$emit('showGlobalVariables')"/>

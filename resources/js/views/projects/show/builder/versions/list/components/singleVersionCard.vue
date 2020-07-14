@@ -18,7 +18,8 @@
 
                 </div>
 
-                <div class="sce-mini-card-body mb-3 py-2 pl-2 pr-5">
+                <div class="sce-mini-card-body mb-3 py-2 pl-2 pr-5"
+                    :style="{ textAlignLast: (isActive ? 'auto' : 'justify') }">
 
                     <span class="d-inline-block">
                         <!-- If we have the version info provided -->
@@ -29,6 +30,10 @@
                             <span>Info</span>
                         </Poptip>
                     </span>
+
+                    <Tag v-if="isActive" color="green" class="ml-2">
+                        Active Version
+                    </Tag>
 
                 </div>
 
@@ -85,6 +90,9 @@
             }
         },
         computed: {
+            isActive(){
+                return (this.version.id == this.project.active_version_id);
+            },
             versionUrl(){
                 
                 return this.version['_links']['self'].href;

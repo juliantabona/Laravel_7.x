@@ -131,6 +131,7 @@
                                         :referenceNames="getAttributeReferenceNames(responseStatusHandle.attributes)"
                                         :placeholder="getAttributePlaceholder(responseStatusHandle, index, 0)"
                                         v-model="attribute.name"
+                                        :isRequired="false"
                                         :display="display"
                                         :builder="builder"
                                         :screen="screen"
@@ -143,13 +144,13 @@
                                 <Col :span="11">
 
                                     <Input v-model="attribute.value"
-                                        type="text" class="w-100" size="small" :disabled="index == 0"
+                                        type="text" class="w-100" size="small"
                                         :placeholder="getAttributePlaceholder(responseStatusHandle, index, 1)">
                                     </Input>
 
                                 </Col>
 
-                                <Col v-if="index != 0" :span="2" class="clearfix">
+                                <Col :span="2" class="clearfix">
 
                                     <!-- Remove Option Button  -->
                                     <Poptip confirm title="Are you sure you want to remove this attribute?" 
@@ -360,13 +361,12 @@
                 if( this.isGoodStatus(responseStatusHandle.status) ){
 
                     var examples = [
-                        ['response', '{{ '+responseStatusHandle.reference_name+' }}'],
                         ['products', '{{ '+responseStatusHandle.reference_name+'.products }}'],
                         ['orders', '{{ '+responseStatusHandle.reference_name+'.orders }}'],
                         ['users', '{{ '+responseStatusHandle.reference_name+'.users }}']
                     ];
 
-                    if( index > 3 ){
+                    if( index > 2 ){
                         return examples[0][value];
                     }else{
                         return examples[index][value];
@@ -375,15 +375,10 @@
                 }else{
                     
                     var examples = [
-                        ['error_response', '{{ '+responseStatusHandle.reference_name+' }}'],
                         ['error_message', '{{ '+responseStatusHandle.reference_name+'.error.message }}']
                     ];
 
-                    if( index == 0 ){
-                        return examples[0][value];
-                    }else{
-                        return examples[1][value];
-                    }
+                    return examples[0][value];
 
                 }
 

@@ -40,11 +40,12 @@ class UssdServiceController extends Controller
     public $screen_repeats = false;
     public $ussd_service_code_type;
     public $navigation_step_number;
+    public $navigation_request_type;
     public $dynamic_data_storage = [];
-    public $allow_dynamic_content_highlighting = false;
+    public $allow_dynamic_content_highlighting = true;
     public $default_no_select_options_message = 'No options available';  
     public $default_technical_difficulties_message = 'Sorry, we are experiencing technical difficulties';
-    public $default_incorrect_option_selected_message = 'You selected an incorrect option. Please try again';  
+    public $default_incorrect_option_selected_message = 'You selected an incorrect option. Go back and try again';  
 
     public function __construct(Request $request)
     {
@@ -693,6 +694,20 @@ class UssdServiceController extends Controller
             
             //  Include the logs if required
             if ($this->builder['simulator']['debugger']['return_logs']) {
+
+                //  Set an info log of the ussd properties
+                $this->logInfo(
+                    'USSD Properties: ' .
+                    '<div style="line-height:2.5em;margin:10px 0;">'.
+                        $this->wrapAsDynamicDataHtml('{{ ussd.text }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.text') ). "<br>" .
+                        $this->wrapAsDynamicDataHtml('{{ ussd.msisdn }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.msisdn', 'None') ). "<br>" .
+                        $this->wrapAsDynamicDataHtml('{{ ussd.request_type }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.request_type') ). "<br>" .
+                        $this->wrapAsDynamicDataHtml('{{ ussd.service_code }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.service_code') ). "<br>" .
+                        $this->wrapAsDynamicDataHtml('{{ ussd.user_response }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.user_response') ). "<br>" .
+                        $this->wrapAsDynamicDataHtml('{{ ussd.user_responses }}') .' = '.$this->wrapAsSuccessHtml( $this->convertToString( $this->getDynamicData('ussd.user_responses') ) ). "<br>" .
+                        $this->wrapAsDynamicDataHtml('{{ ussd.session_id }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.session_id') ) .
+                    '</div>'
+                );
                 
                 //  Set the logs on the response payload
                 $response['logs'] = $this->log;
@@ -877,8 +892,94 @@ class UssdServiceController extends Controller
         //  Locally store the current session details within a dynamic variable
         $this->storeUssdSessionValues();
 
+        //  Locally store the global variables within a dynamic variable
+        $outputResponse = $this->storeGlobalVariables();
+        
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
         //  Start building and showing the ussd screens
         return $this->startBuildingUssdScreens();
+    }
+
+    public function storeGlobalVariables()
+    {
+        $this->logInfo('Start processing and storing global variables');
+
+        $global_variables = $this->builder['global_variables'] ?? [];
+
+        //  Foreach global variable
+        foreach($global_variables as $global_variable){
+
+            $name = $global_variable['name'];
+            $type = $global_variable['type'];
+            $value = $global_variable['value'];
+
+            if( $name ){
+                
+                if( $type == 'String' ){
+
+                    /*************************
+                     * BUILD STRING VALUE    *
+                     ************************/
+
+                    //  Process dynamic content embedded within the text
+                    $outputResponse = $this->handleEmbeddedDynamicContentConversion($value['string']);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+                    //  Get the generated output - Convert to (String) otherwise default to empty string
+                    $value = $this->convertToString($outputResponse) ?? '';
+
+                }elseif( $type == 'Integer' ){
+
+                    /*************************
+                     * BUILD NUMBER VALUE    *
+                     ************************/
+
+                    //  Process dynamic content embedded within the text
+                    $outputResponse = $this->handleEmbeddedDynamicContentConversion($value['number']);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+                    //  Get the generated output - Convert to (Integer) otherwise default to (0)
+                    $value = $this->convertToInteger($outputResponse) ?? 0;
+
+                }elseif( $type == 'Boolean' ){
+
+                    $value = $value['boolean'];
+
+                    if( $value == 'true' ){
+
+                        $value = true;
+
+                    }elseif( $value == 'false' ){
+
+                        $value = false;
+
+                    }
+
+                }elseif( $type == 'Custom' ){
+
+                    $code = $value['code'];
+
+                    //  Process the PHP Code
+                    $outputResponse = $this->processPHPCode("$code");
+        
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+        
+                    $value = $outputResponse;
+
+                }
+
+                //  Store the value data using the given item reference name
+                $this->storeDynamicData($name, $value);
+
+            }
+        }
     }
     
     /*  Validate the existence of the builder. If the builder does not exist then
@@ -922,14 +1023,6 @@ class UssdServiceController extends Controller
             'version' => [
                 'number' => $this->version->number,
                 'description' => $this->version->description
-            ],
-            'screen' => [
-                'id' => !empty( $this->screen ) ? $this->screen->id : null,
-                'name' => !empty( $this->screen ) ? $this->screen->name : null
-            ],
-            'display' => [
-                'id' => !empty( $this->display ) ? $this->display->id : null,
-                'name' => !empty( $this->display ) ? $this->display->name : null
             ]
         ];
 
@@ -1021,11 +1114,14 @@ class UssdServiceController extends Controller
      */
     public function storeDynamicData($name = null, $value = null, $log_status = true)
     {
+
         //  If the variable name is provided and is not empty 
         if (isset($name) && !empty($name)) {
 
+            $dynamicValue = $this->getDynamicData($name);
+
             //  If the variable name does not already exist among the stored values
-            if (isset($this->dynamic_data_storage[$name])) {
+            if (isset($dynamicValue)) {
 
                 //  Set a warning log that we are overiding existing data
                 if ($log_status) {
@@ -1033,9 +1129,9 @@ class UssdServiceController extends Controller
                     $this->logInfo('Found existing data already stored within the reference name '.$this->wrapAsSuccessHtml( $name ).', overiding the information.');
                 
                 }
-
+                
                 //  Get the old data type wrapped in html tags
-                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($this->dynamic_data_storage[$name]) );
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($this->getDynamicData($name)) );
 
                 //  Set an info log of the old data stored
                 if ($log_status) {
@@ -1049,7 +1145,7 @@ class UssdServiceController extends Controller
                 $this->dynamic_data_storage[$name] = $value;
 
                 //  Get the new data type wrapped in html tags
-                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($this->dynamic_data_storage[$name]) );
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($this->getDynamicData($name)) );
 
                 //  Set an info log of the new data stored
                 if ($log_status) {
@@ -1066,6 +1162,84 @@ class UssdServiceController extends Controller
 
             }
         }
+    }
+
+    public function getDynamicData($name = null, $default_value = null)
+    {
+        //  Get the entire dynamic data storage
+        $result = $this->dynamic_data_storage;
+
+        //  If the dynamic property name has not been provided
+        if($name != null){
+
+            /** Note that the given $name can either be a simple reference name e.g "ussd"
+             *  or a more complex reference name e.g "ussd.text". The final result must
+             *  convert into any of the following:
+             * 
+             *  If $name = "ussd" then return $this->dynamic_data_storage['ussd']
+             *  If $name = "ussd.text" then return $this->dynamic_data_storage['ussd']['text]
+             *  ... e.t.c
+             */
+    
+            /** STEP 1 
+             * 
+             *  Convert $name = "ussd" into ['ussd'] 
+             * 
+             *  or
+             * 
+             *  Convert $name = "ussd.text" into ['ussd', 'text']
+             */
+            $properties = explode('.', $name);
+    
+            /** STEP 2 
+             * 
+             *  Iterate over the properties
+             */
+            for ($i = 0; $i < count($properties); $i++) { 
+                
+                /** STEP 3
+                 * 
+                 *  Foreach property e.g "ussd" or "text"
+                 *  
+                 *  Get the $result then get the property value
+                 *  from the $result e.g 
+                 * 
+                 *  $result = [ ... ] 
+                 *  $properties = ['ussd', 'text']
+                 *  $i = 0, 1, 2, 3 ...
+                 * 
+                 *  $properties[i] = 'ussd' or 'text'
+                 *  
+                 *  $result[$properties[i]] is the same as:
+                 *  $result['ussd'] or $result['text']
+                 */
+    
+                //  Make sure that the given property exists
+                if( isset($result[$properties[$i]]) ){
+    
+                    /** Equate the $result to the property value. In the first loop $result is equal to the
+                     *  data within $this->dynamic_data_storage. During this first loop we capture the value
+                     *  of $result['text'] which is exactly the same as $this->dynamic_data_storage['ussd'], 
+                     *  and then make that value the new value for the $result property. On the second loop 
+                     *  we then capture the result of $result['text'] which will be exactly the same as
+                     *  $this->dynamic_data_storage['ussd']['text']. This process keeps repeating over
+                     *  and over until we get to the last property.
+                     */
+                    $result = $result[$properties[$i]];
+    
+                }else{
+    
+                    //  Set $result to the deafult value to indicate that the value of such a property does not exist
+                    $result = $default_value;
+    
+                }
+    
+            }
+
+        }
+
+        return $result;
+        
     }
 
     /** Return the given value data type e.g String, Array, Boolean, e.t.c */
@@ -1096,6 +1270,12 @@ class UssdServiceController extends Controller
     public function wrapAsErrorHtml($value)
     {
         return $this->wrapWithinHtml('text-danger', $value);
+    }
+
+    /** Wrap in dynamic data HTML Tags */
+    public function wrapAsDynamicDataHtml($value)
+    {
+        return $this->wrapWithinHtml('dynamic-content-label', $value);
     }
 
     /** Wrap within HTML Tags */
@@ -1189,28 +1369,62 @@ class UssdServiceController extends Controller
     {
         //  Set an info log that we are searching for the first screen
         $this->logInfo('Searching for the first screen');
-
+    
         //  Get all the screens available
         $this->screens = $this->builder['screens'];
 
-        //  Get the first display screen (The one specified by the user)
-        $this->screen = collect($this->screens)->where('first_display_screen', true)->first() ?? null;
+        //  If we are using condi
+        if( $this->builder['conditional_screens']['active'] ){
 
-        //  If we did not manage to get the first display screen specified by the user
-        if (!$this->screen) {
+            $this->logInfo('Processing code to conditionally determine first screen to load');
 
-            //  Set a warning log that the default starting screen was not found
-            $this->logWarning('Default starting screen was not found');
+            //  Get the PHP Code
+            $code = $this->builder['conditional_screens']['code'];
 
-            //  Set an info log that we will use the first available screen
-            $this->logInfo('Selecting the first available screen as the default starting screen');
+            //  Process the PHP Code
+            $outputResponse = $this->processPHPCode("$code", false);
 
-            //  Select the first screen on the ussd builder by default
-            $this->screen = $this->builder['screens'][0];
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            //  Get the processed screen id
+            $screen_id = $this->convertToString($outputResponse);
+
+            if( $screen_id ){
+
+                $this->logInfo('Searching for screen using the screen id: '.$this->wrapAsSuccessHtml($screen_id));
+
+                //  Get the screen usign the screen id
+                $this->screen = $this->getScreenById($screen_id);
+                
+            }
+
+        }else{
+    
+            //  Get the first display screen (The one specified by the user)
+            $this->screen = collect($this->screens)->where('first_display_screen', true)->first() ?? null;
+    
+            //  If we did not manage to get the first display screen specified by the user
+            if (!$this->screen) {
+    
+                //  Set a warning log that the default starting screen was not found
+                $this->logWarning('Default starting screen was not found');
+    
+                //  Set an info log that we will use the first available screen
+                $this->logInfo('Selecting the first available screen as the default starting screen');
+    
+                //  Select the first screen on the ussd builder by default
+                $this->screen = $this->builder['screens'][0];
+            }
+
         }
 
-        //  Set an info log for the first selected screen
-        $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->screen['name']).' as the first screen');
+        if( $this->screen ){
+    
+            //  Set an info log for the first selected screen
+            $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->screen['name']).' as the first screen');
+
+        }
     }
 
     /** This method first checks if the screen we want to handle exists. This could be the
@@ -1230,8 +1444,10 @@ class UssdServiceController extends Controller
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($doesNotExistResponse)) return $doesNotExistResponse;
 
+        $this->screen_repeats = $this->checkIfScreenRepeats();
+
         //  Check if the current screen repeats
-        if ($this->checkIfScreenRepeats()) {
+        if ( $this->screen_repeats ) {
 
             //  Handle before repeat events
             $handleEventsResponse = $this->handleBeforeRepeatEvents();
@@ -1371,7 +1587,7 @@ class UssdServiceController extends Controller
             $outputResponse = $this->convertValueStructureIntoDynamicData($repeat_number);
 
             //  Get the generated number otherwise default to zero (0)
-            $repeat_number_value = (int) $outputResponse ?? 0;
+            $repeat_number_value = $this->convertToInteger($outputResponse) ?? 0;
 
             //  If the number is equal to zero
             if ($repeat_number_value == 0) {
@@ -1479,7 +1695,7 @@ class UssdServiceController extends Controller
                     $buildResponse = $this->startBuildingDisplays();
 
                     //  If we must navigate forward then proceed to next iteration otherwise continue
-                    if ($buildResponse == 'navigate-forward') {
+                    if ($this->navigation_request_type == 'navigate-forward') {
 
                         //  If this is not the last item then we can navigate forward
                         if (($x + 1) != count($items)) {
@@ -1608,7 +1824,7 @@ class UssdServiceController extends Controller
                         }
 
                         //  Do nothing else so that we iterate to the next specified item on the list
-                    } elseif ($buildResponse == 'navigate-backward') {
+                    } elseif ($this->navigation_request_type == 'navigate-backward') {
 
                         /** Use the forward navigation step number to decide which next iteration to target. For instance if
                          *  the number we receive equals 1 it means target the first previous item. If the number we receive
@@ -1825,24 +2041,58 @@ class UssdServiceController extends Controller
         //  Get all the displays available
         $this->displays = $this->screen['displays'];
 
-        //  Get the first display (The one specified by the user)
-        $this->display = collect($this->displays)->where('first_display', true)->first() ?? null;
+        //  If we are using condi
+        if( $this->screen['conditional_displays']['active'] ){
 
-        //  If we did not manage to get the first display specified by the user
-        if (!$this->display) {
+            $this->logInfo('Processing code to conditionally determine first display to load');
 
-            //  Set a warning log that the default starting display was not found
-            $this->logWarning('Default starting display was not found');
+            //  Get the PHP Code
+            $code = $this->screen['conditional_displays']['code'];
 
-            //  Set an info log that we will use the first available display
-            $this->logInfo('Selecting the first available display as the default starting display');
+            //  Process the PHP Code
+            $outputResponse = $this->processPHPCode("$code", false);
 
-            //  Select the first display on the available displays by default
-            $this->display = $this->displays[0];
+            //  If we have a display to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            //  Get the processed screen id
+            $display_id = $this->convertToString($outputResponse);
+
+            if( $display_id ){
+
+                $this->logInfo('Searching for display using the display id: '.$this->wrapAsSuccessHtml($display_id));
+
+                //  Get the display usign the screen id
+                $this->display = $this->getDisplayById($display_id);
+                
+            }
+
+        }else{
+
+            //  Get the first display (The one specified by the user)
+            $this->display = collect($this->displays)->where('first_display', true)->first() ?? null;
+
+            //  If we did not manage to get the first display specified by the user
+            if (!$this->display) {
+
+                //  Set a warning log that the default starting display was not found
+                $this->logWarning('Default starting display was not found');
+
+                //  Set an info log that we will use the first available display
+                $this->logInfo('Selecting the first available display as the default starting display');
+
+                //  Select the first display on the available displays by default
+                $this->display = $this->displays[0];
+            }
+
         }
 
-        //  Set an info log for the first selected display
-        $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->display['name']).' as the first display');
+        if( $this->display ){
+    
+            //  Set an info log for the first selected display
+            $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->display['name']).' as the first display');
+
+        }
     }
 
     /** This method first checks if the display we want to handle exists. This could be the
@@ -1854,7 +2104,10 @@ class UssdServiceController extends Controller
      *  additional logic such as linking to respective displays/displays
      */
     public function handleCurrentDisplay()
-    {
+    {            
+        //  Reset navigation
+        $this->resetNavigation();
+
         //  Check if the current display exists
         $doesNotExistResponse = $this->handleNonExistentDisplay();
 
@@ -1891,23 +2144,22 @@ class UssdServiceController extends Controller
             //  Handle forward navigation
             $handleForwardNavigationResponse = $this->handleNavigation('forward');
 
-            //  If we have any returned data return the response otherwise continue
-            if (!empty($handleForwardNavigationResponse)) {
-                $this->resetIncorrectOptionSelected();
-                $this->resetPagination();
-
-                return $handleForwardNavigationResponse;
-            }
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($storeInputResponse)) return $storeInputResponse;
 
             //  Handle backward navigation
             $handleBackwardNavigationResponse = $this->handleNavigation('backward');
 
-            //  If we have any returned data return the response otherwise continue
-            if (!empty($handleBackwardNavigationResponse)) {
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($storeInputResponse)) return $storeInputResponse;
+
+            //  If we intend to navigate
+            if ($this->navigation_request_type == 'navigate-forward' || $this->navigation_request_type == 'navigate-backward') {
+
                 $this->resetIncorrectOptionSelected();
                 $this->resetPagination();
 
-                return $handleBackwardNavigationResponse;
+                return $builtDisplay;
             }
 
             //  Handle linking display
@@ -1976,7 +2228,7 @@ class UssdServiceController extends Controller
         if ($this->shouldDisplayScreen($instructionsBuildResponse)) return $instructionsBuildResponse;
 
         //  Set the instruction
-        $this->display_instructions = $instructionsBuildResponse;
+        $this->display_instructions = $this->convertToString($instructionsBuildResponse);
 
         //  Build the display actions (E.g Select options)
         $actionBuildResponse = $this->buildDisplayActions();
@@ -1985,7 +2237,7 @@ class UssdServiceController extends Controller
         if ($this->shouldDisplayScreen($actionBuildResponse)) return $actionBuildResponse;
 
         //  Set the action
-        $this->display_actions = $actionBuildResponse;
+        $this->display_actions = $this->convertToString($actionBuildResponse);
 
         //  Combine the display instruction and action as the display content
         $this->display_content = $this->display_instructions.$this->display_actions;
@@ -2137,7 +2389,7 @@ class UssdServiceController extends Controller
          *           code_editor_mode => false
          *      ],
          *      incorrect_option_selected_message => [
-         *           text => 'You selected an incorrect option. Please try again',
+         *           text => 'You selected an incorrect option. Go back and try again',
          *           code_editor_text => '',
          *           code_editor_mode => false
          *      ]
@@ -2402,7 +2654,7 @@ class UssdServiceController extends Controller
          *           code_editor_mode => false
          *       ],
          *       incorrect_option_selected_message => [
-         *           text => 'You selected an incorrect option. Please try again',
+         *           text => 'You selected an incorrect option. Go back and try again',
          *           code_editor_text => '',
          *           code_editor_mode => false
          *       ],
@@ -2894,7 +3146,7 @@ class UssdServiceController extends Controller
             if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
 
             //  Get the generated output
-            $start_slice = (int) $outputResponse ?? 0;
+            $start_slice = $this->convertToInteger($outputResponse) ?? 0;
 
             //  Make sure the start slice is no less than 0
             $start_slice = ($start_slice < 0) ? 0 : $start_slice;
@@ -2913,7 +3165,7 @@ class UssdServiceController extends Controller
             if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
 
             //  Get the generated output
-            $end_slice = (int) $outputResponse ?? 160;
+            $end_slice = $this->convertToInteger($outputResponse) ?? 160;
 
             //  Make sure the end slice is no greater than 160
             $end_slice = ($end_slice > 160) ? 160 : $end_slice;
@@ -3410,6 +3662,11 @@ class UssdServiceController extends Controller
         return $content_slices;
     }
 
+    public function resetNavigation()
+    {
+        $this->navigation_request_type = null;
+    }
+    
     public function resetPagination()
     {
         $this->pagination_index = 0;
@@ -3897,7 +4154,7 @@ class UssdServiceController extends Controller
         if ( $this->screen_repeats === true ) {
 
             //  Set an info log that we are checking if the display can navigate forward
-            $this->logInfo('Checking if '.$this->wrapAsPrimaryHtml( $this->display['name'] ).' can navigate forward');
+            $this->logInfo('Checking if '.$this->wrapAsPrimaryHtml( $this->display['name'] ).' can navigate '.$type);
 
             if($type == 'forward'){
 
@@ -3925,7 +4182,7 @@ class UssdServiceController extends Controller
                 if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
 
                 //  Get the processed step value (Convert from [String] to [Number]) - Default to 1 if anything goes wrong
-                $step_number =(int) $outputResponse ?? 1;
+                $step_number = $this->convertToInteger($outputResponse) ?? 1;
                 
                 //  If the processed navigation step number is not an integer or a number greater than 1
                 if (!is_integer($step_number) || !($step_number >= 1)) {
@@ -3990,8 +4247,29 @@ class UssdServiceController extends Controller
 
                         }
 
+                        if( count($valid_inputs) == 1 ){
+                        
+                            $this->logInfo('The user input must match the following value '.$this->wrapAsPrimaryHtml( implode(', ', $valid_inputs) ).' to navigate '.$type);
+
+                        }else{
+                            
+                            $this->logInfo('The user input must match any of the the following values '.$this->wrapAsPrimaryHtml( implode(', ', $valid_inputs) ).' to navigate '.$type);
+
+                        }
+
                         //  If the user response matches any valid navigation input
-                        if (in_array($this->current_user_response, $valid_inputs)) {
+                        if (in_array($this->current_user_response, $valid_inputs)) { 
+
+
+                            if( count($valid_inputs) == 1 ){
+                        
+                                $this->logInfo('The user input '.$this->wrapAsPrimaryHtml($this->current_user_response).' matched the following value '.$this->wrapAsPrimaryHtml( implode(', ', $valid_inputs) ));
+    
+                            }else{
+
+                                $this->logInfo('The user input '.$this->wrapAsPrimaryHtml($this->current_user_response).' matched one of the following values '.$this->wrapAsPrimaryHtml( implode(', ', $valid_inputs) ));
+    
+                            }
                             
                             //  Set an info log that user response has been allowed for navigation
                             $this->logInfo($this->wrapAsSuccessHtml($this->display['name']).' user response allowed for '.$type.' navigation');
@@ -4008,7 +4286,7 @@ class UssdServiceController extends Controller
                                  *  Refer to: startRepeatScreen()
                                  *
                                  */
-                                return 'navigate-forward';
+                                $this->navigation_request_type = 'navigate-forward';
                 
                             }elseif($type == 'backward'){
 
@@ -4017,10 +4295,21 @@ class UssdServiceController extends Controller
                                  *  Refer to: startRepeatScreen()
                                  *
                                  */
-                                return 'navigate-backward';
+                                $this->navigation_request_type = 'navigate-backward';
 
                             }
 
+                        }else{
+
+                            if( count($valid_inputs) == 1 ){
+                                  
+                                $this->logInfo('Cannot navigate '.$type.' since the user input '.$this->wrapAsPrimaryHtml($this->current_user_response).' does not match the following value '.$this->wrapAsPrimaryHtml( implode(', ', $valid_inputs) ));
+    
+                            }else{
+                                  
+                                $this->logInfo('Cannot navigate '.$type.' since the user input '.$this->wrapAsPrimaryHtml($this->current_user_response).' does not match any of the following values '.$this->wrapAsPrimaryHtml( implode(', ', $valid_inputs) ));
+    
+                            }
                         }
                     }
                 }
@@ -4525,18 +4814,18 @@ class UssdServiceController extends Controller
 
         foreach ($headers as $header) {
 
-            if (!empty($header['key']) && !empty($header['value'])) {
+            if (!empty($header['name'])) {
 
                 //  Convert the "header value" into its associated dynamic value
                 $outputResponse = $this->convertValueStructureIntoDynamicData($header['value']);
     
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
-    
-                //  Get the generated output
-                $header['value'] = $this->convertToString($outputResponse);
 
-                $data[$header['key']] = $header['value'];
+                //  Get the generated output
+                $value = $this->convertToString($outputResponse);
+
+                $data[$header['name']] = $value;
 
             }
         }
@@ -4546,31 +4835,29 @@ class UssdServiceController extends Controller
 
     public function get_CRUD_Api_Form_Data()
     {
-        {
-            $form_data = $this->event['event_data']['form_data'] ?? [];
-    
-            $data = [];
-    
-            foreach ($form_data as $form_item) {
-    
-                if (!empty($form_item['key']) && !empty($form_item['value'])) {
+        $form_data = $this->event['event_data']['form_data_params'] ?? [];
 
-                    //  Convert the "form item value" into its associated dynamic value
-                    $outputResponse = $this->convertValueStructureIntoDynamicData($form_item['value']);
-        
-                    //  If we have a screen to show return the response otherwise continue
-                    if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
-        
-                    //  Get the generated output
-                    $form_item['value'] = $this->convertToString($outputResponse);
+        $data = [];
+
+        foreach ($form_data as $form_item) {
+
+            if (!empty($form_item['name'])) {
+
+                //  Convert the "form_item value" into its associated dynamic value
+                $outputResponse = $this->convertValueStructureIntoDynamicData($form_item['value']);
     
-                    $data[$form_item['key']] = $form_item['value'];
-    
-                }
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+                //  Get the generated output
+                $value = $this->convertToString($outputResponse);
+
+                $data[$form_item['name']] = $value;
+
             }
-    
-            return $data;
         }
+        
+        return $data;
     }
 
     public function get_CRUD_Api_Query_Params()
@@ -4580,23 +4867,23 @@ class UssdServiceController extends Controller
         $data = [];
 
         foreach ($query_params as $query_param) {
-    
-            if (!empty($query_param['key']) && !empty($query_param['value'])) {
 
-                //  Convert the "query param value" into its associated dynamic value
+            if (!empty($query_param['name'])) {
+
+                //  Convert the "query_param value" into its associated dynamic value
                 $outputResponse = $this->convertValueStructureIntoDynamicData($query_param['value']);
     
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
-    
-                //  Get the generated output
-                $query_param['value'] = $this->convertToString($outputResponse);
 
-                $data[$query_param['key']] = $query_param['value'];
+                //  Get the generated output
+                $value = $this->convertToString($outputResponse);
+
+                $data[$query_param['name']] = $value;
 
             }
         }
-
+        
         return $data;
     }
 
@@ -4757,7 +5044,7 @@ class UssdServiceController extends Controller
         //  Use the try/catch handles incase we run into any possible errors
         try {
             //  Set an info log that the CRUD API will be handled manually
-        $this->logInfo('Handle response '.$this->wrapAsSuccessHtml('Manually'));
+            $this->logInfo('Handle response '.$this->wrapAsSuccessHtml('Manually'));
 
             //  Get the response status code e.g "200"
             $status_code = $response->getStatusCode();
@@ -4817,21 +5104,31 @@ class UssdServiceController extends Controller
                                 /*****************************
                                  * BUILD ATTRIBUTE VALUE     *
                                  ****************************/
-        
-                                //  Convert the "attribute value" into its associated dynamic value
-                                $outputResponse = $this->convertValueStructureIntoDynamicData($value);
-        
-                                //  If we have a screen to show return the response otherwise continue
-                                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
-        
-                                //  Get the generated output
-                                $value = $outputResponse;
+                                                    
+                                //  If the provided value is a valid mustache tag
+                                if ($this->isValidMustacheTag($value, false)) {
 
-                                //  Set an info log of the attribute name
-                                $this->logInfo('Attribute: '.$this->wrapAsSuccessHtml( $this->convertToString($name) ) .' = '.$this->wrapAsSuccessHtml( $this->convertToString($value) ));
+                                    $mustache_tag = $value;
+                        
+                                    // Convert the mustache tag into dynamic data
+                                    $outputResponse = $this->convertMustacheTagIntoDynamicData($mustache_tag);
+        
+                                    //  If we have a screen to show return the response otherwise continue
+                                    if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+                        
+                                    //  Get the generated output
+                                    $value = $outputResponse;      
 
-                                //  Store the attribute data as dynamic data
-                                $this->storeDynamicData($name, $value);
+
+                                    //  Set an info log of the attribute name
+                                    $this->logInfo('Attribute: '.$this->wrapAsSuccessHtml( $this->convertToString($name) ) .' = '.$this->wrapAsSuccessHtml( $this->convertToString($value) ));
+    
+                                    //  Store the attribute data as dynamic data
+                                    $this->storeDynamicData($name, $value);
+                            
+                                    return null;
+
+                                }
 
                             }
 
@@ -5043,6 +5340,10 @@ class UssdServiceController extends Controller
 
                             return $this->applyValidationRule($target_value, $validation_rule, 'validateMaximumCharacters'); break;
 
+                        case 'equal_to_characters':
+
+                            return $this->applyValidationRule($target_value, $validation_rule, 'validateEqualToCharacters'); break;
+
                         case 'validate_email':
 
                             return $this->applyValidationRule($target_value, $validation_rule, 'validateEmail'); break;
@@ -5224,6 +5525,38 @@ class UssdServiceController extends Controller
         //  If the pattern was not matched exactly i.e validation failed
         if ( empty($target_value) || empty($value) || !(strlen($target_value) <= $maximum_characters)) {
 
+            //  Handle the failed validation
+            return $this->handleFailedValidation($validation_rule);
+
+        }
+    }
+
+    /** This method validates to make sure the target input
+     *  has characters with a length equal to a given value
+     */
+    public function validateEqualToCharacters($target_value, $validation_rule)
+    {
+        /*******************
+         * BUILD VALUE     *
+         ******************/
+        
+        $value = $validation_rule['value'];
+
+        //  Convert the "value" into its associated dynamic value
+        $outputResponse = $this->convertValueStructureIntoDynamicData($value);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        //  Get the generated output
+        $value = $outputResponse;
+
+        //  Convert to [String]
+        $target_value = $this->convertToString($target_value);
+
+        //  If the pattern was not matched exactly i.e validation failed
+        if ( empty($target_value) || empty($value) || !(strlen($target_value) == $value)) {
+            
             //  Handle the failed validation
             return $this->handleFailedValidation($validation_rule);
 
@@ -5641,7 +5974,7 @@ class UssdServiceController extends Controller
     public function applyValidationRule($target_value, $validation_rule, $callback)
     {
         try {
-            /* Perform the validation method here e.g "validateOnlyLetters()" within the try/catch
+            /** Perform the validation method here e.g "validateOnlyLetters()" within the try/catch
              *  method and pass the validation rule e.g "$this->validateOnlyLetters($target_value, $validation_rule )"
              */
 
@@ -5718,7 +6051,7 @@ class UssdServiceController extends Controller
             if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
 
             //  Get the generated output
-            $target_value = $outputResponse;
+            $target_value = $outputResponse ?? null;
 
             //  Format the target input
             $formattingResponse = $this->handleFormattingRules($target_value, $formatting_rules);
@@ -6126,6 +6459,22 @@ class UssdServiceController extends Controller
         return Str::random($target_value);
     }
 
+    public function customFormat($target_value, $formatting_rule)
+    {
+        /*******************
+         * BUILD VALUE     *
+         ******************/
+        
+        $code = $formatting_rule['value'];
+
+        //  Process the PHP Code
+        $outputResponse = $this->processPHPCode("$code");
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        return $outputResponse;
+    }
 
     /** This method gets the formatting rule and callback. The callback represents the name of
      *  the formatting function that we must run to format the current target value. Since
@@ -6174,10 +6523,627 @@ class UssdServiceController extends Controller
 
     }
 
+    /*********************************************
+     *  LOCAL STORAGE EVENT METHODS              *
+     ********************************************/
+
+    /*  handle_Local_Storage_Event()
+     *  This method gets all the local storage of the current display.
+     *  We then use these to store datasets and make them accessible
+     *  to the current display and other linked displays.
+     */
+    public function handle_Local_Storage_Event()
+    {
+        if ($this->event) {
+
+            //  Get the local storage reference name
+            $reference_name = $this->event['event_data']['reference_name'];
+
+            //  Get the local storage type e.g "string", "array"
+            $storage_type = $this->event['event_data']['storage']['selected_type'];
+
+            //  If the reference name is provided
+            if (!empty($reference_name)) {
+
+                //  If the storage type is of type "Array"
+                if ($storage_type == 'array') {
+
+                    //  Get the local storage type e.g "string", "array"
+                    $dataset_type = $this->event['event_data']['storage']['array']['dataset']['selected_type'];
+
+                    if ($dataset_type == 'values') {
+
+                        //  Get the dataset
+                        $array_values = $this->event['event_data']['storage']['array']['dataset']['values'];
+
+                        //  If the dataset was provided
+                        if (!empty($array_values)) {
+
+                            return $this->handleArrayValuesLocalStorage();
+
+                        }
+
+                    } elseif ($dataset_type == 'key_values') {
+
+                        //  Get the dataset
+                        $array_key_values = $this->event['event_data']['storage']['array']['dataset']['key_values'];
+
+                        //  If the dataset was provided
+                        if (!empty($array_key_values)) {
+
+                            return $this->handleArrayKeyValuesLocalStorage();
+
+                        }
+
+                    }
+
+                //  If the storage type is of type "String"
+                } elseif ($storage_type == 'string') {
+
+                    return $this->handleStringLocalStorage();
+
+                //  If the storage type is of type "Code"
+                } elseif ($storage_type == 'code') {
+
+                    //  Get the dataset
+                    $code = $this->event['event_data']['storage']['code']['dataset']['value'];
+
+                    //  If the dataset was provided
+                    if (!empty( $code )) {
+
+                        return $this->handleCodeLocalStorage();
+
+                    }
+
+                }
+            } else {
+
+                $this->logWarning('The provided Local Storage '. $this->wrapAsSuccessHtml($this->event['name']).' does not have a reference name');
+            
+            }
+        }
+    }
+
+    public function handleArrayValuesLocalStorage()
+    {
+        //  Get the local storage reference name
+        $reference_name = $this->event['event_data']['reference_name'];
+
+        //  Get the dataset mode e.g "replace", "append", "prepend"
+        $mode = $this->event['event_data']['storage']['array']['mode']['selected_type'];
+
+        //  Get the dataset
+        $array_values = $this->event['event_data']['storage']['array']['dataset']['values'];
+
+        $processed_values = [];
+
+        //  Foreach dataset value
+        foreach ($array_values as $array_value) {
+
+            /******************
+             * BUILD VALUE    *
+             ******************/
+
+            //  Convert the "array value" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($array_value['value']);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)){
+                
+                $outputResponse = $this->handleLocalStorageEmptyValue($reference_name, $array_value);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            }
+
+            //  Set the storage value to the received array value
+            $storage_value = $outputResponse;
+
+            //  Add current processed value to the the processed values array
+            array_push($processed_values, $storage_value);
+        }
+
+        //  Store the processed values
+        $this->handleProcessedValueStorage($reference_name, $processed_values, $mode);
+
+    }
+
+    public function handleArrayKeyValuesLocalStorage()
+    {
+        //  Get the local storage reference name
+        $reference_name = $this->event['event_data']['reference_name'];
+
+        //  Get the dataset mode e.g "replace", "append", "prepend"
+        $mode = $this->event['event_data']['storage']['array']['mode']['selected_type'];
+
+        //  Get the dataset
+        $array_key_values = $this->event['event_data']['storage']['array']['dataset']['key_values'];
+
+        $processed_values = [];
+
+        //  Foreach dataset value
+        foreach ($array_key_values as $key => $array_key_value) {
+
+            /******************
+             * BUILD VALUE    *
+             ******************/
+
+            //  Convert the "array value" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($array_key_value['value']);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)){
+                
+                $outputResponse = $this->handleLocalStorageEmptyValue($reference_name, $array_key_value);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            }
+            
+            //  Set the storage value to the received array value
+            $storage_value = $outputResponse;
+
+            //  Add current processed value to the the processed values array
+            $processed_values[$array_key_value['key']] = $storage_value;
+            
+        }
+
+        //  Store the processed values
+        $this->handleProcessedValueStorage($reference_name, $processed_values, $mode);
+    }
+
+    public function handleLocalStorageEmptyValue($name, $value = null)
+    {
+        $this->logWarning('Local Storage value for '.$this->wrapAsSuccessHtml($name).' is empty, attempting to use default value');
+
+        if( $value ){
+
+            //  Get selected default type e.g "text_input", "number_input", "true", "false", "null", 'empty_array'
+            $default_type = $value['on_empty_value']['default']['selected_type'];
     
+            if ($default_type == 'true') {
+    
+                //  Set the storage value to "True"
+                $storage_value = true;
+    
+                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('True'));
+    
+            } elseif ($default_type == 'false') {
+    
+                //  Set the storage value to "False"
+                $storage_value = false;
+    
+                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('False'));
+    
+            } elseif ($default_type == 'null') {
+    
+                //  Set the storage value to "Null"
+                $storage_value = null;
+    
+                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('Null'));
+    
+            } elseif ($default_type == 'empty_array') {
+    
+                //  Set the storage value to an "Empty Array"
+                $storage_value = [];
+    
+                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to an '.$this->wrapAsSuccessHtml('empty array []'));
+    
+            }else{
+    
+                //  Get the default value
+                $value = $value['on_empty_value']['default']['custom'];
+                    
+                /******************
+                 * BUILD VALUE    *
+                 ******************/
+    
+                //  Convert the "default value" into its associated dynamic value
+                $outputResponse = $this->convertValueStructureIntoDynamicData($value);
+    
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+    
+                //  Get the generated output
+                $storage_value = $outputResponse;
+    
+                //  Get the storage_value type wrapped in html tags
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($storage_value) );
+    
+                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to ['.$dataType.']');
+    
+            }
 
+        }else{
 
+            //  Set the storage value to "Null"
+            $storage_value = null;
 
+            $this->logInfo('The value for '.$this->wrapAsSuccessHtml($name).' is not set therefore we are defaulting the value to '.$this->wrapAsSuccessHtml('Null'));
+    
+        }
+
+        return $storage_value;
+
+    }
+
+    public function handleCodeLocalStorage()
+    {
+        //  Get the local storage reference name
+        $reference_name = $this->event['event_data']['reference_name'];
+
+        //  Get the dataset mode e.g "concatenate", "replace", "append", "prepend"
+        $mode = $this->event['event_data']['storage']['code']['mode']['selected_type'];
+
+        //  Get the dataset join
+        $join = $this->event['event_data']['storage']['code']['mode']['concatenate']['value'];
+
+        //  Get the dataset code
+        $code = $this->event['event_data']['storage']['code']['dataset']['value'];
+
+        //  Process the PHP Code
+        $outputResponse = $this->processPHPCode("$code");
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        $processed_values = $outputResponse;
+
+        //  Store the processed values
+        $this->handleProcessedValueStorage($reference_name, $processed_values, $mode, $join);
+
+    }
+
+    public function handleStringLocalStorage()
+    {
+        //  Get the local storage reference name
+        $reference_name = $this->event['event_data']['reference_name'];
+
+        //  Get the dataset mode e.g "concatenate", "replace", "append", "prepend"
+        $mode = $this->event['event_data']['storage']['string']['mode']['selected_type'];
+
+        //  Get the dataset join
+        $join = $this->event['event_data']['storage']['string']['mode']['concatenate']['value'];
+
+        //  Get the dataset
+        $value = $this->event['event_data']['storage']['string']['dataset'];
+
+        //  Convert the "value" into its associated dynamic value
+        $outputResponse = $this->convertValueStructureIntoDynamicData($value);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        //  Get the generated output - Convert to [String]
+        $processed_values = $this->convertToString($outputResponse);
+
+        //  Store the processed values
+        $this->handleProcessedValueStorage($reference_name, $processed_values, $mode, $join);
+    }
+
+    public function handleProcessedValueStorage($reference_name, $processed_values, $mode, $join = ' ')
+    {
+        //  Get any already existing data
+        $existing_value = $this->getDynamicData($reference_name);
+
+        //  Check if the given mode matches any array modes
+        $matches_array_modes = count(array_filter(['replace', 'append', 'prepend'], function ($value) use ($mode) {
+            return $mode == $value;
+        })) ? true : false;
+
+        //  Check if the given mode matches any string modes
+        $matches_string_modes = count(array_filter(['concatenate'], function ($value) use ($mode) {
+            return $mode == $value;
+        })) ? true : false;
+
+        //  If the processed value(s) matches the array modes
+        if ($matches_array_modes) {
+
+            //  If the processed value(s) is an array
+            if (is_array($processed_values)) {
+                
+                //  If the mode is set to "replace"
+                if ($mode == 'replace') {
+
+                    //  Store the array value(s) as dynamic data (Replace existing data)
+                    $this->storeDynamicData($reference_name, $processed_values);
+
+                //  If the mode is set to "append" or "prepend"
+                } else {
+
+                    /** If we have only one value e.g
+                     *  $processed_values = ["Francistown"] or $processed_values = ["Gaborone"].
+                     */
+                    if (count($processed_values) == 1) {
+                        /* Ungroup the result by removing the braces [] e.g
+                         *
+                         *  Allow for this:.
+                         *
+                         *  $this->getDynamicData('locations') = ["Francistown", "Gaborone" ]
+                         *
+                         *  Instead of this:
+                         *
+                         *  $this->getDynamicData('locations') = [ ["Francistown"], ["Gaborone"] ]
+                         *
+                         *  If we have more than one value then we do not need to do this othrwise we get:
+                         *
+                         *  $this->getDynamicData('locations') = ["1", "Francistown", "2", "Gaborone" ]
+                         *
+                         *  Instead of this:
+                         *
+                         *  $this->getDynamicData('locations') = [ ["1", "Francistown"], ["2", "Gaborone"] ]
+                         */
+                        if (isset($processed_values[0])) {
+                            $processed_values = $processed_values[0];
+                        }
+
+                    }
+
+                    if ($mode == 'append') {
+
+                        if (!empty($existing_value) && is_array($existing_value)) {
+                            
+                            $exising_array_data = $existing_value;
+
+                            //  Add after existing datasets
+                            array_push($exising_array_data, $processed_values);
+
+                            //  Store the array value(s) as dynamic data
+                            $this->storeDynamicData($reference_name, $exising_array_data);
+
+                        } else {
+
+                            //  Store the array value(s) as dynamic data
+                            $this->storeDynamicData($reference_name, [$processed_values]);
+
+                        }
+
+                        //  If the mode is set to "prepend"
+                    } elseif ($mode == 'prepend') {
+
+                        if (!empty($existing_value) && is_array($existing_value)) {
+                            
+                            $exising_array_data = $this->getDynamicData($reference_name);
+
+                            //  Add before existing datasets
+                            array_unshift($exising_array_data, $processed_values);
+
+                            //  Store the array value(s) as dynamic data
+                            $this->storeDynamicData($reference_name, $exising_array_data);
+
+                        } else {
+
+                            //  Store the array value(s) as dynamic data
+                            $this->storeDynamicData($reference_name, [$processed_values]);
+
+                        }
+                    }
+                }
+
+            } else {
+
+                $mode = $this->wrapAsSuccessHtml( getDataType($mode) );
+                
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($processed_values) );
+
+                $this->logInfo('Local Storage called '.$this->wrapAsSuccessHtml($name).' using the Mode = ['.$mode.'] requires the data to be of type ['.$this->wrapAsSuccessHtml('Array').'], however we received data of type ['.$dataType.']');
+
+            }
+
+            //  If the storage value is a string and the given mode matches the string modes
+        } elseif ($matches_string_modes) {
+
+            if (is_string($processed_values)) {
+
+                //  If the mode is set to "replace"
+                if ($mode == 'concatenate') {
+
+                    if (!empty($existing_value) && is_string($existing_value)) {
+                        
+                        $exising_string_data = $this->getDynamicData($reference_name);
+
+                        //  Concatenate the dataset
+                        $exising_string_data .= $join.$processed_values;
+
+                        //  Store the string value as dynamic data
+                        $this->storeDynamicData($reference_name, $exising_string_data);
+
+                    } else {
+
+                        //  Store the string value(s) as dynamic data
+                        $this->storeDynamicData($reference_name, $processed_values);
+
+                    }
+
+                }else{
+
+                    //  Store the string value(s) as dynamic data
+                    $this->storeDynamicData($reference_name, $processed_values);
+
+                }
+
+            } else {
+
+                $mode = $this->wrapAsSuccessHtml( getDataType($mode) );
+                
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($processed_values) );
+
+                $this->logInfo('Local Storage called '.$this->wrapAsSuccessHtml($name).' using the Mode = ['.$mode.'] requires the data to be of type ['.$this->wrapAsSuccessHtml('String').'], however we received data of type ['.$dataType.']');
+
+            }
+        }
+    }
+
+    /******************************************
+     *  REDIRECT EVENT METHODS                *
+     *****************************************/
+
+    /** This method gets all the revisit instructions of the current display. We then use these
+     *  revisit instructions to allow the current display to revisit a previous screen, marked
+     *  screen or the first launched screen of the current USSD Service Code.
+     */
+    public function handle_Revisit_Event()
+    {
+        if ($this->event) {
+
+            //  Get the trigger type e.g "automatic", "manual"
+            $trigger = $this->event['event_data']['general']['trigger']['selected_type'];
+
+            //  Get the trigger type e.g "automatic", "manual"
+            $manual_trigger_input = $this->event['event_data']['general']['trigger']['manual']['input'];
+
+            //  Get the additional responses
+            $automatic_replies = $this->event['event_data']['general']['automatic_replies'];
+
+            //  Get the redirect type e.g "home_revisit", "screen_revisit", "marked_revisit"
+            $revisit_type = $this->event['event_data']['revisit_type']['selected_type'];
+
+            $is_triggered = false;
+
+            /********************************
+             * BUILD MANUAL TRIGGER INPUT   *
+             *******************************/
+
+            //  Convert the "manual_trigger_input" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($manual_trigger_input);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            //  Get the generated output - Convert to [String]
+            $manual_trigger_input = $this->convertToString($outputResponse);
+
+            /** If the trigger is manual, this means that the redirect is only
+             *  triggered if the user provided the trigger input and if the
+             *  input matches the required value to trigger the redirect.
+             */
+            if( $trigger == 'manual' ){
+
+                $this->logInfo('Handling '.$this->wrapAsSuccessHtml('Manual Revisit').' event');
+
+                //  If the manual input is provided
+                if (!empty($manual_trigger_input)) {
+
+                    //  If the manual trigger input matches the current user input
+                    if( $manual_trigger_input == $this->current_user_response ){
+                        
+                        //  Trigger the event manually to redirect
+                        $is_triggered = true;
+    
+                    }
+
+                }
+
+            }else{
+
+                $this->logInfo('Handling '.$this->wrapAsSuccessHtml('Automatic Revisit').' event');
+
+                //  Trigger the event automatically to redirect
+                $is_triggered = true;
+
+            }
+
+            //  If the event has been triggered
+            if( $is_triggered ){
+
+                $this->logInfo('The '.$this->event['name'].' event has been triggered');
+
+                /****************************
+                 * BUILD AUTOMATIC REPLIES  *
+                 ****************************/
+
+                //  Convert the "automatic_replies" into its associated dynamic value
+                $outputResponse = $this->convertValueStructureIntoDynamicData($automatic_replies);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+                //  Get the generated output - Convert to [String]
+                $automatic_replies_text = $this->convertToString($outputResponse);
+
+                //  If the text is not a type of [String] or [Integer]
+                if ( !( is_string($automatic_replies_text) || is_integer($automatic_replies_text) )) {
+                
+                    $dataType = $this->wrapAsSuccessHtml( $this->getDataType($processed_values) );
+    
+                    $this->logInfo('The given '.$this->wrapAsSuccessHtml('Additional Responses').' must return data of type ['.$this->wrapAsSuccessHtml('String').'], however we received data of type ['.$dataType.']');
+    
+                    //  Empty the valuE
+                    $automatic_replies_text = '';
+
+                }
+
+                if( $revisit_type ==  'home_revisit'){
+
+                    return $this->handleHomeRevisit($automatic_replies_text);
+    
+                }else if( $revisit_type ==  'screen_revisit'){
+
+                    return $this->handleScreenRevisit($automatic_replies_text);
+    
+                }else if( $revisit_type ==  'marked_revisit'){
+    
+                }
+            }
+        }
+    }
+
+    public function handleHomeRevisit($automatic_replies_text = '')
+    {
+        if( !empty( $automatic_replies_text ) ){
+
+            $service_code = substr($this->service_code, 0, -1).'*'.$automatic_replies_text.'#';
+
+        }else{
+            
+            $service_code = $this->service_code;
+
+        }
+
+        $this->logInfo('Revisiting Home: '.$this->wrapAsSuccessHtml($service_code));
+
+        /** We need to re-run the handleExistingSession() method. This will allow us the opportunity
+         *  to change the database "text" value. By updating this value we are able to alter the
+         *  current session journey to force changes such as:
+         * 
+         *  - Going back
+         *  - Going back and inserting new replies
+         *  - Cancelling long Journeys
+         *  - Undoing previous actions
+         *  ...e.t.c
+        */
+        
+        //  Reset the level
+        $this->level = 1;
+
+        //  Update the text value
+        $this->text = $automatic_replies_text;
+
+        //  Handle existing session - Re-run the handleExistingSession()
+        return $this->handleExistingSession(false);
+        
+    }
+
+    public function handleScreenRevisit($automatic_replies = [])
+    {
+        $outputResponse = $this->merge_array_text_responses($this->service_code, $automatic_replies);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) {
+
+            return $outputResponse;
+
+        }
+
+        //  Get the processed service code
+        $service_code = $outputResponse;
+
+        $this->logInfo('Revisiting Screen: <span class="text-success">'.$service_code.'</span>');
+
+        return $service_code;
+    }
 
 
 
@@ -6487,7 +7453,7 @@ class UssdServiceController extends Controller
         try {
 
             //  If we have dynamic data
-            if (count($this->dynamic_data_storage)) {
+            if (count($this->getDynamicData())) {
 
                 //  Set an info log that we are setting variables with dynamic data
                 if ($log_dynamic_data) {
@@ -6497,7 +7463,7 @@ class UssdServiceController extends Controller
                 }
 
                 //  Create dynamic variables
-                foreach ($this->dynamic_data_storage as $key => $value) {
+                foreach ($this->getDynamicData() as $key => $value) {
 
                     /*  Foreach dataset use the iterator key to create the dynamic variable name and
                      *  assign the iterator value as the new variable value.
@@ -6723,44 +7689,83 @@ class UssdServiceController extends Controller
     }
 
     public function convertToString($data = '')
-    {
+    {   
         //  If the given data is not a string
         if( !is_string($data) ){
 
             //  If the data is an array
             if( is_array($data) || is_object($data) || is_bool($data) ){
-
-                //  Run json decode
-                return json_encode($data);
+                
+                $data = json_encode($data);
 
             }
 
             //  Cast data into a string format
-            return (String) $data;
+            $data = (String) $data;
 
         }
 
-        return $data;
+        //  Return data without HTML or PHP tags
+        return strip_tags($data);
     }
 
-    public function convertToInteger($data = '')
+    public function convertToInteger($data = 0)
+    {        
+        /** This will render as: $this->convertToString($data)
+         *  while being called within a try/catch handler
+         */
+        $outputResponse = $this->tryCatch('convertToString', [$data]);
+        
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        return floatval( $outputResponse );
+    
+    }
+
+    /** This method gets the validation rule and callback. The callback represents the name of
+     *  the validation function that we must run to validate the current input target. Since
+     *  we allow custom Regex patterns for custom validation support, we must perform this under
+     *  a try/catch incase the provided custom Regex pattern is invalid. This will allow us to
+     *  catch any emerging error and be able to use the handleFailedValidation() in order to
+     *  display the fatal error message and additional debugging details.
+     */
+    public function tryCatch($callback, $callback_params = [])
     {
-        //  If the given data is not an integer
-        if( !is_integer($data)  ){
+        try {
+            /** Run the custom function here. 
+             * 
+             *  The $callback is the method/function that we must run to e.g 
+             * 
+             *  If $callback = 'custom_method_1'
+             * 
+             *  Then this will call "$this->custom_method_1()"
+             * 
+             *  The $callback_params represents an array of values that must be passed to the 
+             *  method/function to become the method/function arguments e.g
+             * 
+             *  If $callback_params = ['value_1', 'value_2', ...]
+             * 
+             *  Then this will allow for "$this->custom_method_1('value_1', 'value_2', ...)"
+             * 
+             *  The result will be a custom function that will be run within the try/catch
+             *  block to catch any bad exceptions that may be triggered
+             * 
+             */
 
-            //  If the data is an array
-            if( is_array($data) || is_object($data) || is_bool($data) ){
+            return call_user_func_array(array($this, $callback), $callback_params);
 
-                return null;
+        } catch (\Throwable $e) {
 
-            }
+            //  Handle try catch error
+            return $this->handleTryCatchError($e);
 
-            //  Cast data into a Integer format
-            return (int) $data;
+        } catch (Exception $e) {
+
+            //  Handle try catch error
+            return $this->handleTryCatchError($e);
 
         }
-
-        return $data;
     }
 
     /** This method is used to handle errors caught during try-catch screnerios. 

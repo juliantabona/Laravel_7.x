@@ -9,9 +9,9 @@
         </span>
 
         <!-- First Display Screen Pointer -->
-        <Icon v-if="screen.first_display_screen" type="ios-pin-outline" size="20" 
-                :style="{ position: 'absolute', top: '5px', right: '5px' }" 
-                class="text-success font-weight-bold" />
+        <Icon v-if="screen.first_display_screen && !builder.conditional_screens.active" 
+                type="ios-pin-outline" size="20" class="text-success font-weight-bold" 
+                :style="{ position: 'absolute', top: '5px', right: '5px' }" />
 
 
         <!-- Screen menu toolbox  -->

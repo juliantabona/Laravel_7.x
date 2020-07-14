@@ -2,6 +2,7 @@
 
 namespace App;
 
+use DB;
 use App\Traits\CommonTraits;
 use App\Traits\ProjectTraits;
 use Illuminate\Database\Eloquent\Model;
@@ -82,6 +83,27 @@ class Project extends Model
     public function setOnlineAttribute($value)
     {
         $this->attributes['online'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
+    }
+
+    //  ON DELETE EVENT
+    public static function boot()
+    {
+        parent::boot();
+
+        // before delete() method call this
+        static::deleting(function ($project) {
+
+            //  Delete all versions
+            $project->versions()->delete();
+
+            //  Delete short code
+            $project->shortCode()->delete();
+
+            //  Delete all records of users being assigned to this project
+            DB::table('project_user')->where(['project_id' => $project->id])->delete();
+
+            // do the rest of the cleanup...
+        });
     }
 
 }

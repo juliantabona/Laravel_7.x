@@ -305,7 +305,7 @@
                                     code_editor_mode: false
                                 },
                                 incorrect_option_selected_message: {
-                                    text: 'You selected an incorrect option. Please try again',
+                                    text: 'You selected an incorrect option. Go back and try again',
                                     code_editor_text: '',
                                     code_editor_mode: false
                                 }
@@ -334,7 +334,7 @@
                                     code_editor_mode: false
                                 },
                                 incorrect_option_selected_message: {
-                                    text: 'You selected an incorrect option. Please try again',
+                                    text: 'You selected an incorrect option. Go back and try again',
                                     code_editor_text: '',
                                     code_editor_mode: false
                                 },
@@ -353,7 +353,7 @@
                                     code_editor_mode: false
                                 },
                                 incorrect_option_selected_message: {
-                                    text: 'You selected an incorrect option. Please try again',
+                                    text: 'You selected an incorrect option. Go back and try again',
                                     code_editor_text: '',
                                     code_editor_mode: false
                                 }
