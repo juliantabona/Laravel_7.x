@@ -5,14 +5,14 @@
         <!-- Active State -->
         <ListItem class="p-0">
             <span class="font-weight-bold mr-1">Active: </span>
-            <span v-if="event.active.code_editor_mode">
+            <span v-if="event.active.selected_type == 'conditional'">
 
                 <Icon type="ios-code" class="mr-1" size="20" />
                 <span>Custom Code</span>
 
             </span>
             <template v-else>
-                <span class="cut-text">{{ event.active.text ? 'Yes' : 'No' }}</span>
+                <span class="text-capitalize cut-text">{{ event.active.selected_type }}</span>
             </template>
         </ListItem>
         

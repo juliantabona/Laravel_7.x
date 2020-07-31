@@ -27,14 +27,14 @@
 
                             <ListItem class="p-0">
                                 <span class="font-weight-bold mr-1">Active: </span>
-                                <span v-if="keyValue.active.code_editor_mode">
+                                <span v-if="keyValue.active.selected_type == 'conditional'">
 
-                                    <Icon type="ios-code" size="20" />
+                                    <Icon type="ios-code" class="mr-1" size="20" />
                                     <span>Custom Code</span>
 
                                 </span>
                                 <template v-else>
-                                    <span class="cut-text">{{ keyValue.active.text ? 'Yes' : 'No' }}</span>
+                                    <span class="text-capitalize cut-text">{{ keyValue.active.selected_type }}</span>
                                 </template>
                             </ListItem>
 
@@ -88,8 +88,21 @@
 
                     <!-- Active Status -->
                     <div :style="{ marginTop: '-4px' }">
-                        <Tag v-if="keyValue.active.code_editor_mode" type="border" color="cyan">Active Conditionally</Tag>
-                        <Tag v-else type="border" :color="keyValue.active.text ? 'green' : 'warning'">{{ keyValue.active.text ? 'Active' : 'InActive' }}</Tag>
+
+                        <!-- Poptip with active state written in code  --> 
+                        <Poptip v-if="keyValue.active.selected_type == 'conditional'" trigger="hover" width="600" placement="top" word-wrap>
+
+                            <!-- Code sample of display  --> 
+                            <pre slot="content" v-highlightjs="keyValue.active.code"><code class="javascript"></code></pre>
+
+                            <Tag v-if="keyValue.active.selected_type == 'conditional'" type="border" color="cyan">Active Conditionally</Tag>
+
+                        </Poptip>
+
+                        <Tag v-else type="border" :color="keyValue.active.selected_type == 'yes' ? 'green' : 'warning'">
+                            {{ keyValue.active.selected_type == 'yes'  ? 'Active' : 'InActive' }}
+                        </Tag>
+
                     </div>
 
                 </Col>

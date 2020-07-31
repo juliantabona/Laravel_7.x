@@ -8,10 +8,17 @@
             {{ screen.name }}
         </span>
 
-        <!-- First Display Screen Pointer -->
-        <Icon v-if="screen.first_display_screen && !builder.conditional_screens.active" 
-                type="ios-pin-outline" size="20" class="text-success font-weight-bold" 
-                :style="{ position: 'absolute', top: '5px', right: '5px' }" />
+        <div :style="{ position: 'absolute', top: '5px', right: '5px' }">
+
+            <!-- Repeating Screen Pointer -->
+            <Icon v-if="screen.repeat.active.selected_type == 'yes' || screen.repeat.active.selected_type == 'conditional'" 
+                  type="ios-repeat" size="20" class="text-primary font-weight-bold" />
+            
+            <!-- First Display Screen Pointer -->
+            <Icon v-if="screen.first_display_screen && !builder.conditional_screens.active" 
+                  type="ios-pin-outline" size="20" class="text-success font-weight-bold" />
+
+        </div>
 
 
         <!-- Screen menu toolbox  -->

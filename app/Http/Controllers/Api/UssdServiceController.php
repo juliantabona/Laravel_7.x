@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use DB;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -34,6 +35,7 @@ class UssdServiceController extends Controller
     public $display_actions;
     public $display_content;
     public $existing_session;
+    public $chained_screens = [];
     public $pagination_index = 0;
     public $display_instructions;
     public $current_user_response;
@@ -42,6 +44,7 @@ class UssdServiceController extends Controller
     public $navigation_step_number;
     public $navigation_request_type;
     public $dynamic_data_storage = [];
+    public $navigation_target_screen_id;
     public $allow_dynamic_content_highlighting = true;
     public $default_no_select_options_message = 'No options available';  
     public $default_technical_difficulties_message = 'Sorry, we are experiencing technical difficulties';
@@ -1503,7 +1506,7 @@ class UssdServiceController extends Controller
         $this->logInfo('Checking if '.$this->wrapAsPrimaryHtml( $this->screen['name'] ).' repeats');
 
         //  Get the active state value
-        $activeState = $this->convertValueStructureIntoDynamicData($this->screen['repeat']['active']);
+        $activeState = $this->processActiveState($this->screen['repeat']['active']);
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($activeState)) return $activeState;
@@ -1694,6 +1697,59 @@ class UssdServiceController extends Controller
                     //  Start building the current screen displays
                     $buildResponse = $this->startBuildingDisplays();
 
+                    /** If we must navigate forward / backward then we must determine where the navigation must occur.
+                     *  Remember that it is possible to have multiple nested screens using the repeat logic e.g
+                     *  
+                     *  Screen 1 (Repeat logic 1) 
+                     *      Screen 2 (Repeat logic 2) 
+                     *          Screen 3 (Repeat logic 3) 
+                     *              ... e.t.c
+                     * 
+                     *  It can happen that while we are using the repeat logic in "Screen 3" that the user indicates
+                     *  that they want to navigate i.e (iterate forward/backward). In that instance we need to inspect
+                     *  where exactly does the user want to perform the navigation i.e (At Screen 1, Screen 2 or at 
+                     *  Screen 3). We can use the specified screen link to determine the target screen e.g
+                     * 
+                     *  $this->navigation_target_screen_id = "specified screen id"
+                     * 
+                     *  The "$this->navigation_target_screen_id" represents the ID of the screen that must be targeted to 
+                     *  perform the navigation action. We must match each linked Screen using the repeat logic to determine 
+                     *  if it is the target screen.
+                     */
+                    if($this->navigation_request_type == 'navigate-forward' || $this->navigation_request_type == 'navigate-backward'){
+                        
+                        //  If the current screen id does not match the navigation target screen id
+                        if($this->screen['id'] != $this->navigation_target_screen_id){
+
+                            /** Since the current screen does not match the navigation target, we need to go back to
+                             *  the previous linked screen if any and run the same logic to see if it matches up as
+                             *  the target screen. To do this we access the history of chained screens. This is a
+                             *  list of screens that were recorded each time we linked from one screen to another.
+                             *  This will allow us to check if we have any previous chaining screens
+                             */
+                            if( count( $this->chained_screens ) ){
+
+                                //  Get the last chained screen and set it as the current screen
+                                $this->screen = $this->chained_screens[ count($this->chained_screens) - 1 ];
+
+                                //  Remove the last chained screen from the list
+                                array_pop($this->chained_screens);
+
+                            }
+
+                            /** Return the build response to the previous screen for processing.
+                             *  If the previous linked screen uses the repeat logic, then it will
+                             *  also run this logic to determine if it should navigate forward or
+                             *  backward otherwise it will also return the build response to its
+                             *  previous linked screen. 
+                             */
+                            return $buildResponse;
+
+                        }
+                            
+                        //  Continue navigation processs below
+                    }
+
                     //  If we must navigate forward then proceed to next iteration otherwise continue
                     if ($this->navigation_request_type == 'navigate-forward') {
 
@@ -1805,7 +1861,7 @@ class UssdServiceController extends Controller
                                 //  Get the provided link (The display or screen we must link to after the last loop of this screen)
                                 $link = $repeat_data['after_last_loop']['link'];
 
-                                //  Get the screen matching the given link name and set it as the current screen
+                                //  Get the screen matching the given link and set it as the current screen
                                 $this->screen = $this->getScreenById($link);
 
                                 //  If the screen to link to was found
@@ -1943,7 +1999,7 @@ class UssdServiceController extends Controller
                     //  Get the provided link (The display or screen we must link to if we don't have loops for this screen)
                     $link = $repeat_data['on_no_loop']['link'];
 
-                    //  Get the screen matching the given link name and set it as the current screen
+                    //  Get the screen matching the given link and set it as the current screen
                     $this->screen = $this->getScreenById($link);
 
                     //  If the screen to link to was found
@@ -2105,8 +2161,14 @@ class UssdServiceController extends Controller
      */
     public function handleCurrentDisplay()
     {            
+        //  Reset pagination
+        $this->resetPagination();
+
         //  Reset navigation
         $this->resetNavigation();
+
+        //  Reset incorrect option selected
+        $this->resetIncorrectOptionSelected();
 
         //  Check if the current display exists
         $doesNotExistResponse = $this->handleNonExistentDisplay();
@@ -2141,6 +2203,12 @@ class UssdServiceController extends Controller
             //  If we have a screen to show return the response otherwise continue
             if ($this->shouldDisplayScreen($handleEventsResponse)) return $handleEventsResponse;
 
+            //  Handle linking to screen or display
+            $handleLinkingResponse = $this->handleLinkingDisplay();
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($handleLinkingResponse)) return $handleLinkingResponse;
+
             //  Handle forward navigation
             $handleForwardNavigationResponse = $this->handleNavigation('forward');
 
@@ -2153,28 +2221,23 @@ class UssdServiceController extends Controller
             //  If we have a screen to show return the response otherwise continue
             if ($this->shouldDisplayScreen($storeInputResponse)) return $storeInputResponse;
 
-            //  If we intend to navigate
-            if ($this->navigation_request_type == 'navigate-forward' || $this->navigation_request_type == 'navigate-backward') {
-
-                $this->resetIncorrectOptionSelected();
-                $this->resetPagination();
+            /** If the current display intends to navigate or if the linked display intends to
+             *  navigate then return the current builtDisplay. We return the current builtDisplay
+             *  incase the navigation logic cannot find the screen to navigate, then we can atleast
+             *  show the last build display information
+             */
+            if ( ($handleLinkingResponse || $this->navigation_request_type) == 'navigate-forward' ||
+                 ($handleLinkingResponse || $this->navigation_request_type) == 'navigate-backward' ) {
 
                 return $builtDisplay;
-            }
 
-            //  Handle linking display
-            $handleLinkingDisplayResponse = $this->handleLinkingDisplay();
-
-            //  If we have any returned data return the response otherwise continue
-            if (!empty($handleLinkingDisplayResponse)) {
-                return $handleLinkingDisplayResponse;
             }
                 
             // If we have the "incorrect option selected message"
             if (!empty($this->incorrect_option_selected)) {
 
-                /* Get the "incorrect option selected message" and return display (with go back option)
-                 *  to notify the user of the issue
+                /** Get the "incorrect option selected message" and return screen
+                 *  (with go back option) to notify the user of the issue
                  */
                 return $this->showCustomGoBackScreen($this->incorrect_option_selected);
 
@@ -2432,8 +2495,14 @@ class UssdServiceController extends Controller
                 $curr_option_top_separator = $options[$x]['separator']['top'];
                 $curr_option_bottom_separator = $options[$x]['separator']['bottom'];
 
+                //  Get the active state value
+                $activeState = $this->processActiveState($curr_option_active_state);
+        
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($activeState)) return $activeState;
+
                 //  If the option is active
-                if ( $this->convertValueStructureIntoDynamicData($curr_option_active_state) === true ) {
+                if ( $activeState === true ) {
 
                     /*************************
                      * BUILD OPTION NAME     *
@@ -3082,7 +3151,7 @@ class UssdServiceController extends Controller
         $pagination = $this->display['content']['pagination'];
 
         //  Get the active state value
-        $activeState = $this->convertValueStructureIntoDynamicData($pagination['active']);
+        $activeState = $this->processActiveState($pagination['active']);
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($activeState)) return $activeState;
@@ -4114,7 +4183,7 @@ class UssdServiceController extends Controller
         //  If the display name has been provided
         if (!empty($link)) {
 
-            //  Get the first display that matches the given link name
+            //  Get the first display that matches the given link
             return collect($this->screen['displays'])->where('id', $link)->first() ?? null;
 
         }
@@ -4142,7 +4211,7 @@ class UssdServiceController extends Controller
         //  If the screen name has been provided
         if ($link) {
 
-            //  Get the first screen that matches the given link name
+            //  Get the first screen that matches the given link
             return collect($this->screens)->where('id', $link)->first() ?? null;
 
         }
@@ -4273,6 +4342,19 @@ class UssdServiceController extends Controller
                             
                             //  Set an info log that user response has been allowed for navigation
                             $this->logInfo($this->wrapAsSuccessHtml($this->display['name']).' user response allowed for '.$type.' navigation');
+                            
+                            /***************************************
+                             * SET NAVIGAITON TARGET SCREEN ID     *
+                             **************************************/
+                            $link = $navigation['custom']['link'];
+
+                            //  Process the link and return the matching screen
+                            $outputResponse = $this->getScreenById($link);
+            
+                            //  If we have a screen to show return the response otherwise continue
+                            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+                            $this->navigation_target_screen_id = ($outputResponse['id'] ?? null);
 
                             /* Increment the current level so that we target the next repeat display
                              *  (This means we are targeting the same display but different instance)
@@ -4334,16 +4416,12 @@ class UssdServiceController extends Controller
 
             //  If we have a display we can link to
             if (!empty($this->linked_display)) {
-                
-                //  Set the current display as the linked display
+
+                //  Set the linked display as the current display
                 $this->display = $this->linked_display;
 
                 //  Reset the linked display to nothing
                 $this->linked_display = null;
-
-                $this->resetIncorrectOptionSelected();
-
-                $this->resetPagination();
 
                 //  Handle the current display (This means we are handling the linked display)
                 return $this->handleCurrentDisplay();
@@ -4351,16 +4429,19 @@ class UssdServiceController extends Controller
             //  If we have a screen we can link to
             } elseif (!empty($this->linked_screen)) {
 
-                //  Set the current screen as the linked screen
+                //  Add the current screen to the list of chained screens
+                array_push($this->chained_screens, $this->screen);
+
+                //  Set the linked screen as the current screen
                 $this->screen = $this->linked_screen;
 
                 //  Reset the linked screen to nothing
                 $this->linked_screen = null;
 
-                $this->resetPagination();
-
                 //  Handle the current screen (This means we are handling the linked screen)
-                return $this->handleCurrentScreen();
+                $response = $this->handleCurrentScreen();
+
+                return $response;
 
             }
         }
@@ -4522,7 +4603,7 @@ class UssdServiceController extends Controller
     public function handleEvent($event = null)
     {
         //  Get the active state value
-        $activeState = $this->convertValueStructureIntoDynamicData($event['active']);
+        $activeState = $this->processActiveState($event['active']);
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($activeState)) return $activeState;
@@ -4576,9 +4657,11 @@ class UssdServiceController extends Controller
     public function handle_CRUD_API_Event()
     {
         if ($this->event) {
-
-            //  Run the CRUD API Call
-            $apiCallResponse = $this->run_CRUD_Api_Call();
+            
+            /** Run the CRUD API Call. This will render as: $this->get_CRUD_Api_URL()
+             *  while being called within a try/catch handler
+             */
+            $apiCallResponse = $this->tryCatch('run_CRUD_Api_Call');
 
             //  If we have a screen to show return the response otherwise continue
             if ($this->shouldDisplayScreen($apiCallResponse)) return $apiCallResponse;
@@ -4590,32 +4673,42 @@ class UssdServiceController extends Controller
 
     public function run_CRUD_Api_Call()
     {
-        //  Set the CRUD API URL
-        $url = $this->get_CRUD_Api_URL();
+        /** Set the CRUD API URL. This will render as: $this->get_CRUD_Api_URL()
+         *  while being called within a try/catch handler
+         */
+        $url = $this->tryCatch('get_CRUD_Api_URL');
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($url)) return $url;
 
-        //  Set the CRUD API METHOD
-        $method = $this->get_CRUD_Api_Method();
+        /** Set the CRUD API METHOD. This will render as: $this->get_CRUD_Api_Method()
+         *  while being called within a try/catch handler
+         */
+        $method = $this->tryCatch('get_CRUD_Api_Method');
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($method)) return $method;
 
-        //  Set the CRUD API HEADERS
-        $headers = $this->get_CRUD_Api_Headers();
+        /** Set the CRUD API HEADERS. This will render as: $this->get_CRUD_Api_Headers()
+         *  while being called within a try/catch handler
+         */
+        $headers = $this->tryCatch('get_CRUD_Api_Headers');
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($headers)) return $headers;
 
-        //  Set the CRUD API FORM DATA
-        $form_data = $this->get_CRUD_Api_Form_Data();
+        /** Set the CRUD API FORM DATA. This will render as: $this->get_CRUD_Api_Form_Data()
+         *  while being called within a try/catch handler
+         */
+        $form_data = $this->tryCatch('get_CRUD_Api_Form_Data');
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($form_data)) return $form_data;
 
-        //  Set the CRUD API QUERY PARAMS
-        $query_params = $this->get_CRUD_Api_Query_Params();
+        /** Set the CRUD API QUERY PARAMS. This will render as: $this->get_CRUD_Api_Query_Params()
+         *  while being called within a try/catch handler
+         */
+        $query_params = $this->tryCatch('get_CRUD_Api_Query_Params');
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($query_params)) return $query_params;
@@ -4652,7 +4745,7 @@ class UssdServiceController extends Controller
             $this->logInfo('API Url: '.$this->wrapAsSuccessHtml($url));
 
             //  Set an info log of the CRUD API Method provided
-            $this->logInfo('API Method: '.$this->wrapAsSuccessHtml(ucwords($method)));
+            $this->logInfo('API Method: '.$this->wrapAsSuccessHtml(strtoupper($method)));
 
         }
 
@@ -4698,17 +4791,25 @@ class UssdServiceController extends Controller
         }
 
         //  If we have the form data
-        if (!empty($form_data) && is_array($form_data)) {
+        if (!empty($form_data)) {
+            
+            $convert_to_json_object = $this->event['event_data']['form_data']['convert_to_json'];
+    
+            //  If we should convert the data to a JSON Object
+            if( $convert_to_json_object ){
 
-            //  Add the form data to the form_params attribute of our API options
-            $request_options['form_params'] = $form_data;
+                //  Add the form data to the json attribute of our API options
+                $request_options['json'] = $form_data;
+    
+            }else{
 
-            foreach ($form_data as $key => $value) {
+                //  Add the form data to the form_params attribute of our API options
+                $request_options['form_params'] = $form_data;
 
-                //  Set an info log of the CRUD API form data attribute
-                $this->logInfo('Form Data: '.$this->wrapAsSuccessHtml($key).' = '.$this->wrapAsSuccessHtml($value));
-                
             }
+            
+            //  Set an info log of the CRUD API form data attribute
+            $this->logInfo('Form Data: '.$this->wrapAsSuccessHtml( $this->convertToString($form_data)) );
 
         }
 
@@ -4835,26 +4936,49 @@ class UssdServiceController extends Controller
 
     public function get_CRUD_Api_Form_Data()
     {
-        $form_data = $this->event['event_data']['form_data_params'] ?? [];
+        $use_code = $this->event['event_data']['form_data']['use_custom_code'];
+        $convert_to_json_object = $this->event['event_data']['form_data']['convert_to_json'];
 
-        $data = [];
+        if( $use_code ){
 
-        foreach ($form_data as $form_item) {
-
-            if (!empty($form_item['name'])) {
-
-                //  Convert the "form_item value" into its associated dynamic value
-                $outputResponse = $this->convertValueStructureIntoDynamicData($form_item['value']);
+            $code = $this->event['event_data']['form_data']['code'];
     
-                //  If we have a screen to show return the response otherwise continue
-                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+            //  Process the PHP Code
+            $outputResponse = $this->processPHPCode("$code");
+    
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+    
+            $data = $outputResponse;
 
-                //  Get the generated output
-                $value = $this->convertToString($outputResponse);
+        }else{
 
-                $data[$form_item['name']] = $value;
+            $data = [];
+
+            $form_data_params = $this->event['event_data']['form_data']['params'] ?? [];
+            
+            if( count($form_data_params) ){
+
+                foreach ($form_data_params as $form_item) {
+        
+                    if (!empty($form_item['name'])) {
+        
+                        //  Convert the "form_item value" into its associated dynamic value
+                        $outputResponse = $this->convertValueStructureIntoDynamicData($form_item['value']);
+            
+                        //  If we have a screen to show return the response otherwise continue
+                        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+        
+                        //  Get the generated output
+                        $value = $outputResponse;
+        
+                        $data[$form_item['name']] = $value;
+        
+                    }
+                }
 
             }
+
         }
         
         return $data;
@@ -5052,8 +5176,8 @@ class UssdServiceController extends Controller
             //  Get the response status phrase e.g "OK"
             $status_phrase = $response->getReasonPhrase() ?? '';
 
-            //  Get the response body e.g [ "products" => [ ... ] ]
-            $response_body = json_decode($response->getBody());
+            //  Get the response body and convert the JSON Object to an Array e.g [ "products" => [ ... ] ]
+            $response_body = $this->convertObjectToArray(json_decode($response->getBody()));
 
             //  Get the response status handles
             $response_status_handles = $this->event['event_data']['response']['manual']['response_status_handles'] ?? [];
@@ -5091,7 +5215,7 @@ class UssdServiceController extends Controller
 
                         //  Foreach attribute
                         foreach ($response_attributes as $response_attribute) {
-
+                            
                             //  Get the attribute name
                             $name = trim($response_attribute['name']);
 
@@ -5174,7 +5298,7 @@ class UssdServiceController extends Controller
                         return $this->showCustomScreen($outputResponse);
 
                     } elseif ($on_handle_type == 'do_nothing') {
-
+                        
                         //  Return nothing
                         return null;
 
@@ -5304,10 +5428,10 @@ class UssdServiceController extends Controller
             
             //  For each validation rule
             foreach ($validation_rules as $validation_rule) {
-
+                
                 //  Get the active state value
-                $activeState = $this->convertValueStructureIntoDynamicData($validation_rule['active']);
-
+                $activeState = $this->processActiveState($validation_rule['active']);
+        
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($activeState)) return $activeState;
         
@@ -6078,8 +6202,8 @@ class UssdServiceController extends Controller
             foreach ($formatting_rules as $formatting_rule) {
 
                 //  Get the active state value
-                $activeState = $this->convertValueStructureIntoDynamicData($formatting_rule['active']);
-
+                $activeState = $this->processActiveState($formatting_rule['active']);
+        
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($activeState)) return $activeState;
         
@@ -6115,6 +6239,10 @@ class UssdServiceController extends Controller
                         case 'trim_right':
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'trimRightFormat'); break;
+
+                        case 'convert_to_money':
+
+                            return $this->applyFormattingRule($target_value, $formatting_rule, 'converToMoneyFormat'); break;
 
                         case 'limit':
 
@@ -6233,6 +6361,32 @@ class UssdServiceController extends Controller
         return rtrim($target_value);
     }
 
+    /** This method convert a given number to represent money format
+     */
+    public function converToMoneyFormat($target_value, $formatting_rule)
+    {
+        /*******************
+         * BUILD VALUE     *
+         ******************/
+        
+        $value = $formatting_rule['value'];
+
+        //  Convert the "value" into its associated dynamic value
+        $outputResponse = $this->convertValueStructureIntoDynamicData($value);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        //  Get the generated output - Convert to [String]
+        $currency_symbol = $this->convertToString($outputResponse);
+
+        //  Convert to [Integer]
+        $target_value = $this->convertToInteger($target_value);
+
+        return $currency_symbol . number_format($target_value, 2, '.', ',');
+
+    }
+
     /** This method limits the number of characters of the target value
      */
     public function limitFormat($target_value, $formatting_rule)
@@ -6250,12 +6404,39 @@ class UssdServiceController extends Controller
         if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
 
         //  Get the generated output - Convert to [Integer]
-        $length = $this->convertToInteger($outputResponse);
+        $limit = $this->convertToInteger($outputResponse);
+
+        /*********************
+         * BUILD VALUE 2     *
+         ********************/
+        
+        $value = $formatting_rule['value_2'];
+
+        //  Convert the "value 2" into its associated dynamic value
+        $outputResponse = $this->convertValueStructureIntoDynamicData($value);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        //  Get the generated output - Convert to [Integer]
+        $trail = $this->convertToString($outputResponse);
 
         //  Convert to [String]
         $target_value = $this->convertToString($target_value);
+        
+        if( strlen($target_value) > $limit ){
 
-        return substr($target_value, 0, $length);
+            if( $limit > strlen($trail) ){
+
+                return substr($target_value, 0, $limit - strlen($trail)) . $trail;
+
+            }else{
+                
+                return substr($target_value, 0, $limit);
+
+            }
+
+        }
 
     }
 
@@ -7362,8 +7543,8 @@ class UssdServiceController extends Controller
             //  If we have a screen to show return the response otherwise continue
             if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
 
-            //  Get the generated output and convert to a JSON Object
-            $output = $this->convertToJsonObject($outputResponse);
+            //  Get the generated output
+            $output = $outputResponse;
 
             //  Get the output type wrapped in html tags
             $dataType = $this->wrapAsSuccessHtml( $this->getDataType($output) );
@@ -7411,11 +7592,14 @@ class UssdServiceController extends Controller
                 //  Replace all curly braces and spaces with nothing e.g convert "{{ company.name }}" into "company.name"
                 $text = preg_replace("/[{}\s]*/", '', $text);
 
-                //  Replace one or more occurences of the period with "->" e.g convert "company.name" or "company..name" into "company->name"
-                $text = preg_replace("/[\.]+/", '->', $text);
+                //  Replace one or more occurences of the period with "." e.g convert "company..name" or "company...name" into "company.name"
+                $text = preg_replace("/[\.]+/", '.', $text);
 
                 //  Remove left and right spaces (If Any)
                 $text = trim($text);
+
+                //  Convert the dot syntaxt to array syntax e.g "company.details.name" into "company['details']['name']"
+                $text = $this->convertDotSyntaxToArraySyntax($text);
 
                 //  If we should add the PHP "$" sign
                 if ($add_sign == true) {
@@ -7443,6 +7627,62 @@ class UssdServiceController extends Controller
             return $this->handleTryCatchError($e);
 
         }
+    }
+
+    public function convertDotSyntaxToArraySyntax($text)
+    {
+        //  Start with an empty result
+        $result = '';
+
+        //  If the text provided has a value
+        if( $text ){
+
+            /** This following process converts the given $text with dot notation
+             *  syntax e.g "data.value.nested_value" into a valid array notation
+             *  synataxt e.g "data['value']['nested_value']". The returned value
+             *  is not an actual array but a string that maintains the proper
+             *  written syntax of an array that must then be proccessed to 
+             *  get the actual value.
+             */
+
+            /** STEP 1
+            * 
+            *  Convert $text = "data.value.nested_value" into ['data', 'value', 'nested_value']
+
+            */
+            $properties = explode('.', $text);
+    
+            /** STEP 2 
+            * 
+            *  Iterate over the properties
+            */
+            for ($i = 0; $i < count($properties); $i++) { 
+                
+                /** STEP 3
+                * 
+                *  Foreach property e.g "data", "value" or "nested_value" property
+                */
+
+                //  If this is the first property e.g "data"
+                if( $i == 0 ){
+                    
+                    //  This sets the first element e.g "data"
+                    $result = $properties[$i];
+
+                }else{
+                    
+                    //  This sets the follow-up elements e.g "data['value']" or "data['value']['nested_value']"
+                    $result .= '[\''.$properties[$i].'\']';
+
+                }
+    
+            }
+
+        }
+
+        //  Return the final result
+        return $result;
+
     }
 
     /** Proccess and execute PHP Code
@@ -7479,16 +7719,17 @@ class UssdServiceController extends Controller
                      *  $price = 450;
                      *
                      *  ... e.t.c
-                     *
-                     *  Convert the value to a JSON Object. Converting each value into an object helps us
-                     *  target nested values by using the "->" symbol e.g we can access deeply nested
-                     *  values in this way:
-                     *
-                     *  $company->details->contacts->phone;
-                     *
                      */
 
-                    ${$key} = $this->convertToJsonObject($value);
+                    if( is_object($value) ){
+                        
+                        ${$key} = $this->convertObjectToArray(json_decode($value));
+
+                    }else{
+
+                        ${$key} = $value;
+
+                    }
 
                     //  Set an info log for the created variable and its dynamic data value
                     if ($log_dynamic_data) {
@@ -7562,6 +7803,58 @@ class UssdServiceController extends Controller
 
         //  Return the data as is
         return $data;
+    }
+
+    /** Convert the given Object into a valid Array if its a
+     *  valid Object otherwise return the original value
+     */
+    public function convertObjectToArray($data) 
+    { 
+        if (is_object($data)) { 
+        
+            $data = get_object_vars($data); 
+        
+        } 
+        
+        if (is_array($data)) { 
+            
+            return array_map(array($this, 'convertObjectToArray'), $data); 
+        
+        } else { 
+            
+            return $data; 
+        
+        } 
+    
+    }
+
+    public function processActiveState($active_state)
+    {   
+        //  If the active state property was found
+        if( $active_state ){
+
+            //  If the active status is set to yes
+            if( $active_state['selected_type'] == 'yes' ){
+
+                //  Return true to indicate that the state is active
+                return true;
+
+            }elseif( $active_state['selected_type'] == 'no' ){
+
+                //  Return false to indicate that the state is not active
+                return true;
+
+            }elseif( $active_state['selected_type'] == 'conditional' ){
+
+                $code = $active_state['code'];
+
+                //  Process the PHP Code
+                return $this->processPHPCode("$code");
+
+            }
+
+        }
+
     }
 
     /** Convert mustache tags embedded within the given string into their corresponding

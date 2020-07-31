@@ -24,7 +24,10 @@
 
                 <Row :gutter="12">
 
-                    <Col :span="validationRuleForm.active.code_editor_mode ? 24 : 16">
+                    <Col :span="24">
+                            
+                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
+                        <activeStateSelector v-model="validationRuleForm.active" class="mb-2"></activeStateSelector>
 
                         <!-- Enter Name -->
                         <FormItem prop="name" class="mb-2">
@@ -33,13 +36,6 @@
                                 <span slot="prepend">Name</span>
                             </Input>
                         </FormItem>
-
-                    </Col>
-
-                    <Col :span="validationRuleForm.active.code_editor_mode ? 24 : 8">
-                    
-                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
-                        <activeStateCheckbox v-model="validationRuleForm.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
 
                     </Col>
 
@@ -104,7 +100,7 @@
 
     import modalMixin from './../../../../../../../../../../../../../components/_mixins/modal/main.vue';
 
-    import activeStateCheckbox from './../../../../../../../editor/content/screen/activeStateCheckbox.vue';
+    import activeStateSelector from './../../../../../../../editor/content/screen/activeStateSelector.vue';
     import customRegexValidationRule from './validationRuleTypes/customRegexValidationRule.vue';
     import basicValidationRule from './validationRuleTypes/basicValidationRule.vue';
     import textOrCodeEditor from './../../../../textOrCodeEditor.vue';
@@ -113,7 +109,7 @@
     export default {
         mixins: [modalMixin],
         components: { 
-            activeStateCheckbox, customRegexValidationRule, basicValidationRule, textOrCodeEditor, commentInput
+            activeStateSelector, customRegexValidationRule, basicValidationRule, textOrCodeEditor, commentInput
         },
         props: {
             index: {

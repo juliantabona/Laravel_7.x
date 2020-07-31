@@ -6,9 +6,17 @@
 
             <!-- Target & Active State -->
             <Row :gutter="12" class="bg-grey-light border pt-3 pb-2 px-2 mb-3">
+
+                <!-- Active State -->
+                <Col :span="24">
+                                
+                    <!-- Show active state checkbox (Marks if this is active / inactive) -->
+                    <activeStateSelector v-model="pagination.active" class="mb-2"></activeStateSelector>
+
+                </Col>
                 
                 <!-- Target -->
-                <Col :span="scrollActiveSettingsExpanded ? 24 : 12" class="d-flex">
+                <Col :span="24" class="d-flex">
                 
                     <span class="d-block font-weight-bold text-dark mt-2 mr-2">Target: </span>
                     
@@ -20,14 +28,6 @@
 
                     </Select>
 
-                </Col>
-
-                <!-- Active State -->
-                <Col :span="scrollActiveSettingsExpanded ? 24 : 12" class="mb-3">
-
-                    <!-- Show active state checkbox (Marks if this is active / inactive) -->
-                    <activeStateCheckbox v-model="pagination.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
-                
                 </Col>
 
             </Row>
@@ -205,11 +205,11 @@
 <script>
 
     import textOrCodeEditor from './../../../textOrCodeEditor.vue';
-    import activeStateCheckbox from './../../../activeStateCheckbox.vue';
+    import activeStateSelector from './../../../activeStateSelector.vue';
     import customEditor from './../../../../../../../../../../../../components/_common/wysiwygEditors/customEditor.vue';
 
     export default {
-        components: { textOrCodeEditor, activeStateCheckbox, customEditor },
+        components: { textOrCodeEditor, activeStateSelector, customEditor },
         props: { 
             screen: {
                 type: Object,

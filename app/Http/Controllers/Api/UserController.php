@@ -11,17 +11,33 @@ class UserController extends Controller
 
     public function __construct(Request $request)
     {
-        //  Get the specified user's id or use the authenticated users id
-        $user_id = $request->route('user_id') ?? auth('api')->user()->id;
+        //  Get the specified user's id
+        $user_id = $request->route('user_id');
 
-        //  Get the user
-        $this->user = \App\User::where('id', $user_id)->first() ?? null;
+        //  If the user id was not provided
+        if( !$user_id && auth('api')->user() ){
 
-        //  Check if the user exists
-        if ( !$this->user ) {
+            //  Get the authenticated users id
+            $user_id = auth('api')->user()->id;
 
-            //  Not Found
-            return help_resource_not_fonud();
+        }
+
+        if( $user_id ){
+
+            //  Get the user
+            $this->user = \App\User::where('id', $user_id)->first() ?? null;
+    
+            //  Check if the user exists
+            if ( !$this->user ) {
+    
+                //  Not Found
+                return help_resource_not_fonud();
+    
+            }
+
+        }else{
+
+            $this->user = null;
 
         }
     }

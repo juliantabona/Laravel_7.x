@@ -118,9 +118,16 @@
                         comment: 'Remove whitespace at the end of the target value'
                     },
                     {
+                        name: 'Convert To Money',
+                        type: 'convert_to_money',
+                        value: 'P',
+                        comment: 'Convert a given number to represent money format e.g "25" into "P25.00"'
+                    },
+                    {
                         name: 'Limit',
                         type: 'limit',
                         value: '10',
+                        value_2: '...',
                         comment: 'Limit the number of characters of the target value'
                     },
                     {

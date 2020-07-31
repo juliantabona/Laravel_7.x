@@ -6,10 +6,10 @@
         <Col :span="24">
 
             <div class="border-bottom-dashed mt-3 pb-3 mb-3">
-
+                            
                 <!-- Show active state checkbox (Marks if this is active / inactive) -->
-                <activeStateCheckbox v-model="screen.repeat.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
-
+                <activeStateSelector v-model="screen.repeat.active" class="mb-2"></activeStateSelector>
+                
             </div>
 
             <!-- Repeat Screen Type -->
@@ -48,10 +48,10 @@
     import repeatEventManager from './repeat-event-manager/main.vue';
     import repeatOnNumberSettings from './repeat-on-number/main.vue';
     import repeatOnItemsSettings from './repeat-on-items/main.vue';
-    import activeStateCheckbox from './../activeStateCheckbox.vue';
+    import activeStateSelector from './../activeStateSelector.vue';
 
     export default {
-        components: { repeatEventManager, repeatOnNumberSettings, repeatOnItemsSettings, activeStateCheckbox },
+        components: { repeatEventManager, repeatOnNumberSettings, repeatOnItemsSettings, activeStateSelector },
         props: {
             screen: {
                 type: Object,

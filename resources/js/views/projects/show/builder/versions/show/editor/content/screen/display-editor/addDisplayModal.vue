@@ -262,9 +262,8 @@
                                             code_editor_mode: false
                                         },
                                         active: {
-                                            text: true,
-                                            code_editor_text: '',
-                                            code_editor_mode: false
+                                            selected_type: 'yes',
+                                            code: ''
                                         },
                                         value: {
                                             text: '',
@@ -376,9 +375,8 @@
                     //  Pagination settings
                     pagination: {
                         active: {
-                            text: true,
-                            code_editor_text: '',
-                            code_editor_mode: false
+                            selected_type: 'yes',
+                            code: ''
                         },
                         content_target: {
                             selected_type: 'both'         //  instruction, action, both

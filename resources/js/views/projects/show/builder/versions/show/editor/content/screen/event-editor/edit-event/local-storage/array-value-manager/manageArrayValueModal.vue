@@ -24,14 +24,10 @@
 
                 <Row :gutter="12">
 
-                    <Col :span="8" :offset="16">
-                    
-                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
-                        <activeStateCheckbox v-model="arrayValueForm.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
-
-                    </Col>
-
                     <Col :span="24">
+                                
+                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
+                        <activeStateSelector v-model="arrayValueForm.active" class="mb-2"></activeStateSelector>
 
                         <!-- Enter Value -->
                         <FormItem prop="value">
@@ -114,14 +110,14 @@
     var globalCustomMixin = require('./../../../../../../../../../../../../../mixin.js').default;
     var localCustomMixin = require('./../localMixin.js').default;
 
-    import activeStateCheckbox from './../../../../../../../editor/content/screen/activeStateCheckbox.vue';
+    import activeStateSelector from './../../../../../../../editor/content/screen/activeStateSelector.vue';
     import textOrCodeEditor from './../../../../textOrCodeEditor.vue';
     import commentInput from './../../../../commentInput.vue';
 
     export default {
         mixins: [modalMixin, globalCustomMixin, localCustomMixin],
         components: { 
-            activeStateCheckbox, textOrCodeEditor, commentInput
+            activeStateSelector, textOrCodeEditor, commentInput
         },
         props: {
             index: {
@@ -236,9 +232,8 @@
                         }
                     },
                     active: {
-                        text: true,
-                        code_editor_text: '',
-                        code_editor_mode: false
+                        selected_type: 'yes',
+                        code: ''
                     },
                     comment: '',
                     hexColor: '#CECECE'

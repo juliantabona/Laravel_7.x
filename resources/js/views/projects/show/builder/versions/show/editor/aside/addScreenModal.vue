@@ -208,9 +208,8 @@
                         name: screenName, 
                         repeat: {
                             active: {
-                                text: false,
-                                code_editor_text: '',
-                                code_editor_mode: false
+                                selected_type: 'no',
+                                code: ''
                             },
                             selected_type: 'repeat_on_number',  //  repeat_on_number, repeat_on_items, custom_repeat
                             repeat_on_number: {

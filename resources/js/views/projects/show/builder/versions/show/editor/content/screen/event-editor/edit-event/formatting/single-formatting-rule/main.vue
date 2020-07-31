@@ -27,14 +27,14 @@
 
                             <ListItem class="p-0">
                                 <span class="font-weight-bold mr-1">Active: </span>
-                                <span v-if="formattingRule.active.code_editor_mode">
+                                <span v-if="formattingRule.active.selected_type == 'conditional'">
 
                                     <Icon type="ios-code" class="mr-1" size="20" />
                                     <span>Custom Code</span>
 
                                 </span>
                                 <template v-else>
-                                    <span class="cut-text">{{ formattingRule.active.text ? 'Yes' : 'No' }}</span>
+                                    <span class="text-capitalize cut-text">{{ formattingRule.active.selected_type }}</span>
                                 </template>
                             </ListItem>
 
@@ -59,8 +59,21 @@
 
                     <!-- Active Status -->
                     <div :style="{ marginTop: '-4px' }">
-                        <Tag v-if="formattingRule.active.code_editor_mode" type="border" color="cyan">Active Conditionally</Tag>
-                        <Tag v-else type="border" :color="formattingRule.active.text ? 'green' : 'warning'">{{ formattingRule.active.text ? 'Active' : 'InActive' }}</Tag>
+
+                        <!-- Poptip with active state written in code  --> 
+                        <Poptip v-if="formattingRule.active.selected_type == 'conditional'" trigger="hover" width="600" placement="top" word-wrap>
+
+                            <!-- Code sample of display  --> 
+                            <pre slot="content" v-highlightjs="formattingRule.active.code"><code class="javascript"></code></pre>
+
+                            <Tag v-if="formattingRule.active.selected_type == 'conditional'" type="border" color="cyan">Active Conditionally</Tag>
+
+                        </Poptip>
+
+                        <Tag v-else type="border" :color="formattingRule.active.selected_type == 'yes' ? 'green' : 'warning'">
+                            {{ formattingRule.active.selected_type == 'yes'  ? 'Active' : 'InActive' }}
+                        </Tag>
+
                     </div>
 
                 </Col>

@@ -85,34 +85,20 @@
                         <Button disabled>
                             <span>{{ display.id }}</span>
                         </Button>
-                        <Button>
+                        <Button type="warning">
                             <Icon type="md-copy"></Icon>
-                            Copy
+                            Copy ID
                         </Button>
-                    </ButtonGroup>
+                    </ButtonGroup> 
     
-                    <Dropdown :key="toggleMenuOptionsKey" trigger="click" placement="bottom-end" class="mt-1">
+                    <Dropdown trigger="click" placement="bottom-end" class="mt-1">
 
                         <!-- Show More Icon -->
                         <Icon type="md-more" :size="20"/>
 
                         <DropdownMenu slot="list">
-                            <!-- Main Options -->
-                            <Dropdown v-for="(option, index) in toggleMenuOptions" placement="left-start" :key="index">
-                                <DropdownItem>
-                                    <Icon type="ios-arrow-back" />
-                                    {{ option.name }}
-                                </DropdownItem>
-                                <DropdownMenu slot="list">
-                                    <DropdownItem 
-                                        v-clipboard="getPropertyToCopy(option.property)"
-                                        v-clipboard:error="copyDisplayPropertiesFail"
-                                        v-clipboard:success="copyDisplayPropertiesSuccess">
-                                        Copy
-                                    </DropdownItem>
-                                    <DropdownItem @click.native="pasteCopiedProperty(option.property)">Paste</DropdownItem>
-                                </DropdownMenu>
-                            </Dropdown>
+                            <DropdownItem @click.native="openCopyDisplayPropertiesModal()">Copy Properties</DropdownItem>
+                            <DropdownItem @click.native="pasteCopiedProperty()">Paste Properties</DropdownItem>
                         </DropdownMenu>
                     </Dropdown>
 
@@ -165,11 +151,25 @@
 
         </template>
 
+        <!-- 
+             MODAL TO OPEN COPY DISPLAY PROPERTIES MODAL
+        -->
+        <template v-if="isOpenCopyDisplayPropertiesModal">
+
+            <copyDisplayPropertiesModal
+                :display="display"
+                @visibility="isOpenCopyDisplayPropertiesModal = $event">
+            </copyDisplayPropertiesModal>
+
+        </template>
+
     </Card>
 
 </template>
 
 <script>
+
+    import copyDisplayPropertiesModal from './copyDisplayPropertiesModal';
 
     import addDisplayModal from './../addDisplayModal.vue';
 
@@ -190,8 +190,8 @@
 
     export default {
         components: { 
-            addDisplayModal, displayInstruction, displayPagination, displayNavigation,
-            displayAction, displayEvents
+            copyDisplayPropertiesModal, addDisplayModal, displayInstruction,
+            displayPagination, displayNavigation, displayAction, displayEvents
         },
         props: {
             index: {
@@ -219,8 +219,8 @@
             return {
                 isEditing: false,
                 activeNavTab: '1',
-                toggleMenuOptionsKey: 1,
                 isOpenAddDisplayModal: false,
+                isOpenCopyDisplayPropertiesModal: false,
             }
         },
         computed: {
@@ -342,6 +342,9 @@
             }
         },
         methods: {
+            openCopyDisplayPropertiesModal(){
+                this.isOpenCopyDisplayPropertiesModal = true;
+            },
             handleEditDisplay(){
                 this.isEditing = !this.isEditing;
             },
@@ -433,63 +436,15 @@
                     duration: 6
                 });
             },
-            copyDisplayPropertiesSuccess({ value, event }){
-                this.$Message.success({
-                    content: 'Copied!',
-                    duration: 6
-                });
-            },
-            copyDisplayPropertiesFail({ value, event }){
-                this.$Message.warning({
-                    content: 'Failed to copy!',
-                    duration: 6
-                });
-            },
-            getPropertyToCopy(property){
-                /** Generate an Object holding the information of the 
-                 *  property we want to copy e.g
-                 * 
-                 *  {
-                 *      description: { ... }
-                 *  }
-                 *  
-                 *  or
-                 * 
-                 *  {
-                 *      action: { ... }
-                 *  }
-                 */
-                return {
-                    [property]: this.display.content[property]
-                }
-            },
             async pasteCopiedProperty(property){
-
-                //  Get the clipboard data
-                var clipboardData = await navigator.clipboard.readText();
+                
+                //  Get the display properties from the local storage
+                var display_properties = window.localStorage.getItem('display_properties');
 
                 //  Convert String to Object
-                clipboardData = clipboardData ? JSON.parse(clipboardData) : null;
-
-                /** Update the property of the current display
-                 * 
-                 *  Same as:
-                 * 
-                 *  this.display.content.description = Object.assign({}, this.display.content.description, clipboardData[description]);
-                 * 
-                 *  or
-                 * 
-                 *  this.display.content.action = Object.assign({}, this.display.content.action, clipboardData[action]);
-                 */
-                this.display.content[property] = Object.assign({}, this.display.content[property], clipboardData[property]);
-
-                /** Reset the toggle menu to get the latest updates via the "getPropertyToCopy( ... )" method.
-                 *  This will make sure that we always get the recently updated version of "this.display" so
-                 *  that when we copy to the clipboard we don't accidentally copy the previous "this.display"
-                 *  data that was stored.  
-                 * 
-                 */
-                ++this.toggleMenuOptionsKey;
+                display_properties = display_properties ? JSON.parse(display_properties) : null;
+                
+                this.display.content = Object.assign({}, this.display.content, display_properties);
 
                 this.$Message.success({
                     content: 'Pasted to display!',

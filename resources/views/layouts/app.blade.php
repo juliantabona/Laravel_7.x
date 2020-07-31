@@ -25,7 +25,13 @@
     -->
     <link href="{{ asset('css/devices.min.css') }}" rel="stylesheet">
 
-    <!-- Custom Styles -->
+    <!-- Import Vue-highlgihtjs Styles 
+        - For displaying code samples with color (e.g PHP Code) on HTML 
+        - https://highlightjs.org/
+    -->
+    <link href="{{ asset('css/highlight.min.css') }}" rel="stylesheet">
+
+    <!-- Custom styles -->
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     
 </head>

@@ -40,8 +40,21 @@
 
                     <!-- Active Status -->
                     <div :style="{ marginTop: '-4px' }">
-                        <Tag v-if="event.active.code_editor_mode" type="border" color="cyan">Active Conditionally</Tag>
-                        <Tag v-else type="border" :color="event.active.text ? 'green' : 'warning'">{{ event.active.text ? 'Active' : 'InActive' }}</Tag>
+
+                        <!-- Poptip with active state written in code  --> 
+                        <Poptip v-if="event.active.selected_type == 'conditional'" trigger="hover" width="600" placement="top" word-wrap>
+
+                            <!-- Code sample of display  --> 
+                            <pre slot="content" v-highlightjs="event.active.code"><code class="javascript"></code></pre>
+
+                            <Tag v-if="event.active.selected_type == 'conditional'" type="border" color="cyan">Active Conditionally</Tag>
+
+                        </Poptip>
+
+                        <Tag v-else type="border" :color="event.active.selected_type == 'yes' ? 'green' : 'warning'">
+                            {{ event.active.selected_type == 'yes'  ? 'Active' : 'InActive' }}
+                        </Tag>
+
                     </div>
 
                      <!-- Event Type -->

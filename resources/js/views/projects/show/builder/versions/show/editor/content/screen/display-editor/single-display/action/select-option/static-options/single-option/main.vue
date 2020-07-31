@@ -17,14 +17,26 @@
                     <div v-if="option.name.code_editor_mode" class="d-flex">
                         <Icon type="ios-code-working" class="mr-1" :size="20" :style="{ marginTop: '-3px' }" />
                         <span>Code name</span>
+
+                        <!-- Poptip with display name written in code  --> 
+                        <Poptip trigger="hover" width="600" placement="top" word-wrap>
+
+                            <!-- Code sample of display  --> 
+                            <pre slot="content" v-highlightjs="option.name.code_editor_text"><code class="javascript"></code></pre>
+                            <Icon type="ios-information-circle-outline" class="text-primary" :style="{ margin: '-4px 0 0 10px' }" size="20" />
+
+                        </Poptip>
+
                     </div>
 
                     <template v-else>
+
                         <!-- If we have a display name  -->
                         <span v-if="option.name.text" class="single-draggable-item-title d-block font-weight-bold cut-text" v-html="option.name.text"></span>
                         
                         <!-- If we don't have a display name  -->
                         <span v-else class="single-draggable-item-title text-danger d-inline-block">No display name</span>
+                        
                     </template>
 
                 </Col>
@@ -38,14 +50,14 @@
 
                             <ListItem class="p-0">
                                 <span class="font-weight-bold mr-1">Active: </span>
-                                <span v-if="option.active.code_editor_mode">
+                                <span v-if="option.active.selected_type == 'conditional'">
 
                                     <Icon type="ios-code" class="mr-1" size="20" />
                                     <span>Custom Code</span>
 
                                 </span>
                                 <template v-else>
-                                    <span class="cut-text">{{ option.active.text ? 'Yes' : 'No' }}</span>
+                                    <span class="text-capitalize cut-text">{{ option.active.selected_type }}</span>
                                 </template>
                             </ListItem>
 
@@ -127,8 +139,21 @@
 
                     <!-- Active Status -->
                     <div :style="{ marginTop: '-4px' }">
-                        <Tag v-if="option.active.code_editor_mode" type="border" color="cyan">Active Conditionally</Tag>
-                        <Tag v-else type="border" :color="option.active.text ? 'green' : 'warning'">{{ option.active.text ? 'Active' : 'InActive' }}</Tag>
+
+                        <!-- Poptip with active state written in code  --> 
+                        <Poptip v-if="option.active.selected_type == 'conditional'" trigger="hover" width="600" placement="top" word-wrap>
+
+                            <!-- Code sample of display  --> 
+                            <pre slot="content" v-highlightjs="option.active.code"><code class="javascript"></code></pre>
+
+                            <Tag v-if="option.active.selected_type == 'conditional'" type="border" color="cyan">Active Conditionally</Tag>
+
+                        </Poptip>
+
+                        <Tag v-else type="border" :color="option.active.selected_type == 'yes' ? 'green' : 'warning'">
+                            {{ option.active.selected_type == 'yes'  ? 'Active' : 'InActive' }}
+                        </Tag>
+
                     </div>
 
                 </Col>

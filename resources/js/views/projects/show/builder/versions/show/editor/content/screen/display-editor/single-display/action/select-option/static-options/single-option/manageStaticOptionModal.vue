@@ -21,39 +21,22 @@
 
             <!-- Form -->
             <Form ref="staticOptionForm" :model="staticOptionForm" :rules="staticOptionFormRules">
-
-                <Row :gutter="12">
-
-                    <Col :span="staticOptionForm.active.code_editor_mode || staticOptionForm.active.code_editor_mode ? 24 : 16">
-
-                        <!-- Enter Name -->
-                        <FormItem prop="name" class="mb-1">
-
-                            <textOrCodeEditor
-                                size="small"
-                                title="Display Name"
-                                :placeholder="'1. My Messages ({{ messages.count }})'"
-                                sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"
-                                :value="staticOptionForm.name">
-                            </textOrCodeEditor>
-
-                        </FormItem>
-
-                    </Col>
-
-                    <Col :span="staticOptionForm.active.code_editor_mode || staticOptionForm.active.code_editor_mode ? 24 : 8">
-
-                        <!-- Enable / Disable -->
-                        <FormItem prop="active" class="mb-1">
                                 
-                            <!-- Show active state checkbox (Marks if this is active / inactive) -->
-                            <activeStateCheckbox v-model="staticOptionForm.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
+                <!-- Show active state checkbox (Marks if this is active / inactive) -->
+                <activeStateSelector v-model="staticOptionForm.active" class="mb-2"></activeStateSelector>
 
-                        </FormItem>
+                <!-- Enter Name -->
+                <FormItem prop="name" class="mb-1">
 
-                    </Col>
+                    <textOrCodeEditor
+                        size="small"
+                        title="Display Name"
+                        :placeholder="'1. My Messages ({{ messages.count }})'"
+                        sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"
+                        :value="staticOptionForm.name">
+                    </textOrCodeEditor>
 
-                </Row>
+                </FormItem>
 
                 <!-- Enter Value -->
                 <FormItem prop="value" class="mb-1">
@@ -147,13 +130,13 @@
     var customMixin = require('./../../../../../../../../../../../../../../../mixin.js').default;
 
     import screenAndDisplaySelector from './../../../../../../screenAndDisplaySelector.vue';
-    import activeStateCheckbox from './../../../../../../activeStateCheckbox.vue';
+    import activeStateSelector from './../../../../../../activeStateSelector.vue';
     import textOrCodeEditor from './../../../../../../textOrCodeEditor.vue';
     import commentInput from './../../../../../../commentInput.vue';
 
     export default {
         mixins: [modalMixin, customMixin],
-        components: { screenAndDisplaySelector, activeStateCheckbox, textOrCodeEditor, commentInput },
+        components: { screenAndDisplaySelector, activeStateSelector, textOrCodeEditor, commentInput },
         props: {
 
             index: {
@@ -272,6 +255,10 @@
                 }
 
             },
+            expandColumn(){
+                return this.staticOptionForm.name.code_editor_mode ||
+                       this.staticOptionForm.active.code_editor_mode || this.staticOptionForm.active.code_editor_mode;
+            },
             getStaticOptionNumber(){
                 /**
                  *  Returns the static option number. We use this as we list the static options.
@@ -308,9 +295,8 @@
                             code_editor_mode: false
                         },
                         active: {
-                            text: true,
-                            code_editor_text: '',
-                            code_editor_mode: false
+                            selected_type: 'yes',
+                            code: ''
                         },
                         value: {
                             text: '',

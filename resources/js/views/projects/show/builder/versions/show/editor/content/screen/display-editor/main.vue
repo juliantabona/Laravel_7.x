@@ -19,7 +19,7 @@
             </div>
 
             <span class="d-block mt-4 mb-4">
-                <span class="font-weight-bold mr-1">Conditional Selection:</span>
+                <span class="font-weight-bold mr-1">Conditional Display Selection:</span>
                 <i-Switch v-model="screen.conditional_displays.active" />
             </span>
 

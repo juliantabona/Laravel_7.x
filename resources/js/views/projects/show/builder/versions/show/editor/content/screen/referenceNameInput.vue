@@ -13,7 +13,7 @@
 
             <!-- Reference Name Input -->
             <FormItem prop="name" class="mb-0">
-                <Input  type="text" v-model="referenceForm.name" placeholder="Reference name" class="w-100 mb-2"
+                <Input  type="text" v-model="referenceForm.name" :placeholder="placeholder" class="w-100 mb-2"
                         :size="size" maxlength="50" show-word-limit @keyup.native="handleSubmit()">
                         <div slot="prepend">@</div>
                 </Input>
@@ -73,6 +73,10 @@
                 type: Boolean,
                 default: true
             },
+            placeholder: {
+                type: String,
+                default: 'Reference name'
+            }
         },
         data(){
 

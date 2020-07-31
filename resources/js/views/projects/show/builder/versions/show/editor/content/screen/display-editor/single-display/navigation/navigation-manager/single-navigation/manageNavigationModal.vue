@@ -25,7 +25,10 @@
                 <Row :gutter="12">
 
                     <!-- Navigation Name -->
-                    <Col :span="navigationForm.active.code_editor_mode ? 24 : 16">
+                    <Col :span="24">
+                                
+                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
+                        <activeStateSelector v-model="navigationForm.active" class="mb-2"></activeStateSelector>
 
                         <!-- Enter Name -->
                         <FormItem prop="name" class="mb-2">
@@ -33,14 +36,6 @@
                                     <span slot="prepend">Name</span>
                             </Input>
                         </FormItem>
-
-                    </Col>
-
-                    <!-- Navigation Active Status -->
-                    <Col :span="navigationForm.active.code_editor_mode ? 24 : 8">
-                    
-                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
-                        <activeStateCheckbox v-model="navigationForm.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
 
                     </Col>
 
@@ -82,6 +77,14 @@
                             :value="navigationForm.custom.step">
                         </textOrCodeEditor>
 
+                        <!-- Select Screen / Display Link (Navigation Target) -->
+                        <screenAndDisplaySelector 
+                            title="Navigation Target:"
+                            :link="navigationForm.custom.link" class="mt-2"
+                            :disableCurrentScreen="false" :showDisplays="false"
+                            :builder="builder" :screen="screen" :display="display">
+                        </screenAndDisplaySelector>
+
                     </Col>   
 
                     <!-- Regex Navigation Settings  -->
@@ -106,6 +109,14 @@
                             :value="navigationForm.regex.step"
                             sampleCodeTemplate="ussd_service_select_navigation_input_sample_code">
                         </textOrCodeEditor>
+
+                        <!-- Select Screen / Display Link (Navigation Target) -->
+                        <screenAndDisplaySelector 
+                            title="Navigation Target:"
+                            :link="navigationForm.regex.link" class="mt-2"
+                            :disableCurrentScreen="false" :showDisplays="false"
+                            :builder="builder" :screen="screen" :display="display">
+                        </screenAndDisplaySelector>
 
                     </Col>
 
@@ -144,14 +155,15 @@
 <script>
 
     import modalMixin from './../../../../../../../../../../../../../../components/_mixins/modal/main.vue';
-    import activeStateCheckbox from './../../../../../activeStateCheckbox.vue';
+    import screenAndDisplaySelector from './../../../../../screenAndDisplaySelector.vue';
+    import activeStateSelector from './../../../../../activeStateSelector.vue';
     import textOrCodeEditor from './../../../../../textOrCodeEditor.vue';
     import commentInput from './../../../../../commentInput.vue';
     var localCustomMixin = require('./../localMixin.js').default;
 
     export default {
         mixins: [modalMixin, localCustomMixin],
-        components: { activeStateCheckbox, textOrCodeEditor, commentInput },
+        components: { screenAndDisplaySelector, activeStateSelector, textOrCodeEditor, commentInput },
         props: {
             index: {
                 type: Number,
@@ -364,9 +376,8 @@
                         id: this.generateNavigationId(),
                         name: 'Navigation ' + navigation_number,
                         active: {
-                            text: true,
-                            code_editor_text: '',
-                            code_editor_mode: false
+                            selected_type: 'yes',
+                            code: ''
                         },
                         selected_type: 'custom',  //  none, any, only_numbers, custom, regex
                         custom: {
@@ -379,6 +390,11 @@
                                 text: '1',
                                 code_editor_text: '',
                                 code_editor_mode: false
+                            },
+                            link: {
+                                text: this.screen.id,
+                                code_editor_text: '',
+                                code_editor_mode: false
                             }
                         },
                         regex: {
@@ -389,6 +405,11 @@
                             },
                             step: {
                                 text: '1',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            link: {
+                                text: this.screen.id,
                                 code_editor_text: '',
                                 code_editor_mode: false
                             }

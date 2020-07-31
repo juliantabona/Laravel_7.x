@@ -264,9 +264,8 @@
                     type: eventType,
                     name: '',
                     active: {
-                        text: true,
-                        code_editor_text: '',
-                        code_editor_mode: false
+                        selected_type: 'yes',
+                        code: ''
                     },
                     event_data: {},
                     hexColor: '#CECECE'
@@ -287,7 +286,12 @@
                         method: 'get',
                         trigger: 'on-enter',
                         query_params: [],
-                        form_data_params: [],
+                        form_data: {
+                            convert_to_json: true,
+                            use_custom_code: false,
+                            params: [],
+                            code: ''
+                        },
                         headers: [],
                         response:{
                             general: {
@@ -368,7 +372,44 @@
                 return {
                     name: 'Handle Payment',
                     event_data: {
-
+                        description: {
+                            text: '', 
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
+                        price: {
+                            text: '', 
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
+                        line_items: {
+                            group_reference: {
+                                text: '', 
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            template_reference_name: '',
+                            template_name: {
+                                text: '',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            template_description: {
+                                text: '',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            template_quantity: {
+                                text: '',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            template_price: {
+                                text: '',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            }
+                        }
                     }
                 }
 

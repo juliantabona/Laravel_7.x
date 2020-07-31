@@ -50,6 +50,12 @@ import Clipboard from 'v-clipboard';
 
 Vue.use(Clipboard);
 
+// Import vue-highlgihtjs for displaying code samples with color (e.g PHP Code) on HTML
+import VueHighlightJS from 'vue-highlightjs'
+ 
+// Tell Vue.js to use vue-highlightjs
+Vue.use(VueHighlightJS)
+
 /** GLOBAL COMPONENTS */
 
 //  This component is called within itself and must be registered globally to solve recursive issues

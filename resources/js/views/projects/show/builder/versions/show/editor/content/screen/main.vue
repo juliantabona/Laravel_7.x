@@ -130,14 +130,18 @@
                 
                  var tabName = 'Repeat Screen';
 
-                if( this.screen.repeat.active.code_editor_mode ){
+                if( this.screen.repeat.active.selected_type == 'conditional' ){
+
                     tabName += ' (Conditional)';
-                }else{
-                    if( this.screen.repeat.active.text ){
-                        tabName += ' (Yes)';
-                    }else {
-                        tabName += ' (No)';
-                    }
+
+                }else if( this.screen.repeat.active.selected_type == 'yes' ){
+                    
+                    tabName += ' (Yes)';
+
+                }else if( this.screen.repeat.active.selected_type == 'no' ){
+                    
+                    tabName += ' (No)';
+
                 }
 
                 return tabName;

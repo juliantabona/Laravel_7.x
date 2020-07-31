@@ -24,7 +24,10 @@
 
                 <Row :gutter="12">
 
-                    <Col :span="eventForm.active.code_editor_mode ? 24 : 16">
+                    <Col :span="24">
+                            
+                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
+                        <activeStateSelector v-model="eventForm.active" class="mb-2"></activeStateSelector>
 
                         <!-- Enter Name -->
                         <FormItem prop="name" class="mb-2">
@@ -32,13 +35,6 @@
                                     <span slot="prepend">Name</span>
                             </Input>
                         </FormItem>
-
-                    </Col>
-
-                    <Col :span="eventForm.active.code_editor_mode ? 24 : 8">
-                    
-                        <!-- Show active state checkbox (Marks if this is active / inactive) -->
-                        <activeStateCheckbox v-model="eventForm.active" sampleCodeTemplate="ussd_service_select_option_display_name_sample_code"></activeStateCheckbox>
 
                     </Col>
 
@@ -55,6 +51,9 @@
             
             <!-- Edit CRUD API Event --> 
             <editCrudApiEvent v-if="eventForm.type == 'CRUD API'" v-bind="$props" :event="eventForm"></editCrudApiEvent>
+            
+            <!-- Edit BILLING API Event --> 
+            <editBillingApiEvent v-if="eventForm.type == 'Billing API'" v-bind="$props" :event="eventForm"></editBillingApiEvent>
 
             <!-- Edit Validation Event --> 
             <editValidationEvent v-if="eventForm.type == 'Validation'" v-bind="$props" :event="eventForm"></editValidationEvent>
@@ -94,12 +93,13 @@
 </template>
 <script>
 
-    import activeStateCheckbox from './../../../../../editor/content/screen/activeStateCheckbox.vue';
+    import activeStateSelector from './../../../../../editor/content/screen/activeStateSelector.vue';
     import modalMixin from './../../../../../../../../../../../components/_mixins/modal/main.vue';
     import commentInput from './../../commentInput.vue';
 
     //  Get the Event components used to edit
     import editLocalStorageEvent from './local-storage/main.vue';
+    import editBillingApiEvent from './apis/billing-api/main.vue';
     import editCrudApiEvent from './apis/crud-api/main.vue';
     import editValidationEvent from './validation/main.vue';
     import editFormattingEvent from './formatting/main.vue';
@@ -110,8 +110,8 @@
     export default {
         mixins: [modalMixin],
         components: { 
-            activeStateCheckbox, commentInput, editLocalStorageEvent, editCrudApiEvent, editValidationEvent,
-            editFormattingEvent, editRedirectEvent, editRevisitEvent
+            activeStateSelector, commentInput, editLocalStorageEvent, editBillingApiEvent, editCrudApiEvent, 
+            editValidationEvent, editFormattingEvent, editRedirectEvent, editRevisitEvent
         },
         props: {
             index: {

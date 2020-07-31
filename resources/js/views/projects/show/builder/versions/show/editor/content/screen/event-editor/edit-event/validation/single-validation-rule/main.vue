@@ -27,14 +27,14 @@
 
                             <ListItem class="p-0">
                                 <span class="font-weight-bold mr-1">Active: </span>
-                                <span v-if="validationRule.active.code_editor_mode">
+                                <span v-if="validationRule.active.selected_type == 'conditional'">
 
                                     <Icon type="ios-code" class="mr-1" size="20" />
                                     <span>Custom Code</span>
 
                                 </span>
                                 <template v-else>
-                                    <span class="cut-text">{{ validationRule.active.text ? 'Yes' : 'No' }}</span>
+                                    <span class="text-capitalize cut-text">{{ validationRule.active.selected_type }}</span>
                                 </template>
                             </ListItem>
 
@@ -72,8 +72,21 @@
 
                     <!-- Active Status -->
                     <div :style="{ marginTop: '-4px' }">
-                        <Tag v-if="validationRule.active.code_editor_mode" type="border" color="cyan">Active Conditionally</Tag>
-                        <Tag v-else type="border" :color="validationRule.active.text ? 'green' : 'warning'">{{ validationRule.active.text ? 'Active' : 'InActive' }}</Tag>
+
+                        <!-- Poptip with active state written in code  --> 
+                        <Poptip v-if="validationRule.active.selected_type == 'conditional'" trigger="hover" width="600" placement="top" word-wrap>
+
+                            <!-- Code sample of display  --> 
+                            <pre slot="content" v-highlightjs="validationRule.active.code"><code class="javascript"></code></pre>
+
+                            <Tag v-if="validationRule.active.selected_type == 'conditional'" type="border" color="cyan">Active Conditionally</Tag>
+
+                        </Poptip>
+
+                        <Tag v-else type="border" :color="validationRule.active.selected_type == 'yes' ? 'green' : 'warning'">
+                            {{ validationRule.active.selected_type == 'yes'  ? 'Active' : 'InActive' }}
+                        </Tag>
+
                     </div>
 
                 </Col>
