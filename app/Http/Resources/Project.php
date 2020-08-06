@@ -51,11 +51,16 @@ class Project extends JsonResource
                 ],
 
                 //  Link to the ussd service builder
-                'oq:ussd_service_builder' => [
+                'sce:ussd_service_builder' => [
                     'href' => route('ussd-service-builder'),
                     'title' => 'The ussd service builder',
                 ],
 
+                //  Link to the payment methods
+                'sce:payment_methods' => [
+                    'href' => route('payment-methods'),
+                    'title' => 'The payment methods used for billing'
+                ]
             ],
 
             /*  Embedded Resources */

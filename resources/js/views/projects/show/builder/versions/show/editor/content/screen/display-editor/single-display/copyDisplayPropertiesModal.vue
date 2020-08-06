@@ -88,8 +88,6 @@
             copyProperties(){
 
                 var display_properties = {};
-                console.log('this.display');
-                console.log(this.display);
 
                 //  If the property was already selected then remove it
                 for (let index = 0; index < this.selected_properties.length; index++) {

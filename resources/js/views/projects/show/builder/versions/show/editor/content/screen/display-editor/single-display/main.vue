@@ -436,20 +436,24 @@
                     duration: 6
                 });
             },
-            async pasteCopiedProperty(property){
+            pasteCopiedProperty(property){
                 
                 //  Get the display properties from the local storage
                 var display_properties = window.localStorage.getItem('display_properties');
 
                 //  Convert String to Object
                 display_properties = display_properties ? JSON.parse(display_properties) : null;
-                
-                this.display.content = Object.assign({}, this.display.content, display_properties);
 
-                this.$Message.success({
-                    content: 'Pasted to display!',
-                    duration: 6
-                });
+                if( screen_properties != null ){
+                
+                    this.display.content = Object.assign({}, this.display.content, display_properties);
+
+                    this.$Message.success({
+                        content: 'Pasted to display!',
+                        duration: 6
+                    });
+
+                }
 
             }
         }

@@ -14,7 +14,7 @@
             <Col :span="12">
 
                 <!-- Screen name input (Changes the screen name) -->  
-                <Input type="text" v-model="screen.name" placeholder="Name" 
+                <Input type="text" v-model="localScreen.name" placeholder="Name" 
                         maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()">
                         <span slot="prepend">Name</span>
                 </Input>
@@ -38,17 +38,28 @@
                     <div class="float-right d-flex">
                         <span class="font-weight-bold d-block mt-1 mr-2">Screen ID:</span>
                         <ButtonGroup class="mr-2"
-                            v-clipboard="screen.id"
+                            v-clipboard="localScreen.id"
                             v-clipboard:error="copyIdFail"
                             v-clipboard:success="copyIdSuccess">
                             <Button disabled>
-                                <span>{{ screen.id }}</span>
+                                <span>{{ localScreen.id }}</span>
                             </Button>
                             <Button>
                                 <Icon type="md-copy"></Icon>
                                 Copy
                             </Button>
                         </ButtonGroup>
+    
+                        <Dropdown trigger="click" placement="bottom-end" class="mt-1">
+
+                            <!-- Show More Icon -->
+                            <Icon type="md-more" :size="20"/>
+
+                            <DropdownMenu slot="list">
+                                <DropdownItem @click.native="openCopyScreenPropertiesModal()">Copy Properties</DropdownItem>
+                                <DropdownItem @click.native="pasteCopiedProperty()">Paste Properties</DropdownItem>
+                            </DropdownMenu>
+                        </Dropdown>
                     </div>
                 </div>
 
@@ -56,8 +67,8 @@
 
                     <!-- Enable / Disable First Display Screen -->
                     <Checkbox 
-                        v-model="screen.first_display_screen"
-                        :disabled="screen.first_display_screen" class="mt-2"
+                        v-model="localScreen.first_display_screen"
+                        :disabled="localScreen.first_display_screen" class="mt-2"
                         @on-change="handleSelectedFirstDisplayScreen($event)">
                         First Screen
                     </Checkbox>
@@ -77,14 +88,26 @@
                 </Tabs>
             
                 <!-- Screen displays -->
-                <displayEditor v-show="activeNavTab == 1" :globalMarkers="globalMarkers" :screen="screen" :builder="builder"></displayEditor>
+                <displayEditor v-show="activeNavTab == 1" :globalMarkers="globalMarkers" :screen="localScreen" :builder="builder"></displayEditor>
                 
                 <!-- Screen displays -->
-                <repeatScreenSettings v-show="activeNavTab == 2" :globalMarkers="globalMarkers" :screen="screen" :builder="builder"></repeatScreenSettings>
+                <repeatScreenSettings v-show="activeNavTab == 2" :globalMarkers="globalMarkers" :screen="localScreen" :builder="builder"></repeatScreenSettings>
                 
             </Col>
 
         </Row>
+
+        <!-- 
+             MODAL TO OPEN COPY SCREEN PROPERTIES MODAL
+        -->
+        <template v-if="isOpenCopyScreenPropertiesModal">
+
+            <copyScreenPropertiesModal
+                :screen="localScreen"
+                @visibility="isOpenCopyScreenPropertiesModal = $event">
+            </copyScreenPropertiesModal>
+
+        </template>
 
     </Card>
 
@@ -92,12 +115,13 @@
 
 <script>
 
+    import copyScreenPropertiesModal from './copyScreenPropertiesModal';
     import repeatScreenSettings from './repeat-editor/main.vue';
     import displayEditor from './display-editor/main.vue';
     import VueTagsInput from '@johmun/vue-tags-input';
 
     export default {
-        components: { VueTagsInput, displayEditor, repeatScreenSettings },
+        components: { copyScreenPropertiesModal, repeatScreenSettings, displayEditor, VueTagsInput },
         props: {
             screen: {
                 type: Object,
@@ -112,13 +136,15 @@
             return {
                 markerText: '',
                 activeNavTab: '1',
+                localScreen: this.screen,
+                isOpenCopyScreenPropertiesModal: false,
             }
         },
         computed: {
             screenDisplaysTabName(){
                 
                  var tabName = 'Screen Displays';
-                 var totalDisplays = this.screen.displays.length;
+                 var totalDisplays = this.localScreen.displays.length;
 
                 if( totalDisplays ){
                     tabName += ' ('+totalDisplays+')';
@@ -130,15 +156,15 @@
                 
                  var tabName = 'Repeat Screen';
 
-                if( this.screen.repeat.active.selected_type == 'conditional' ){
+                if( this.localScreen.repeat.active.selected_type == 'conditional' ){
 
                     tabName += ' (Conditional)';
 
-                }else if( this.screen.repeat.active.selected_type == 'yes' ){
+                }else if( this.localScreen.repeat.active.selected_type == 'yes' ){
                     
                     tabName += ' (Yes)';
 
-                }else if( this.screen.repeat.active.selected_type == 'no' ){
+                }else if( this.localScreen.repeat.active.selected_type == 'no' ){
                     
                     tabName += ' (No)';
 
@@ -193,7 +219,7 @@
 
             },
             screenMarkers(){
-                return this.screen.markers.map(marker => {
+                return this.localScreen.markers.map(marker => {
                     return {
                         text: marker.name
                     }
@@ -201,10 +227,33 @@
             }
         },
         methods: {
+            openCopyScreenPropertiesModal(){
+                this.isOpenCopyScreenPropertiesModal = true;
+            },
+            pasteCopiedProperty(property){
+                
+                //  Get the screen properties from the local storage
+                var screen_properties = window.localStorage.getItem('screen_properties');
+
+                //  Convert String to Object
+                screen_properties = screen_properties ? JSON.parse(screen_properties) : null;
+
+                if( screen_properties != null ){
+                
+                    this.localScreen = Object.assign({}, this.localScreen, screen_properties);
+
+                    this.$Message.success({
+                        content: 'Pasted to screen!',
+                        duration: 6
+                    });
+
+                }
+
+            },
             addMarker(tags){
 
                 //  Update the screen markers
-                this.screen.markers = tags.map(tag => {
+                this.localScreen.markers = tags.map(tag => {
                     return {
                         name: tag.text
                     } 
@@ -236,7 +285,7 @@
                 for(var x = 0; x < this.builder.screens.length; x++){
 
                     //  Disable the first display screen attribute for each screen except the current screen
-                    if( this.builder.screens[x].id != this.screen.id){
+                    if( this.builder.screens[x].id != this.localScreen.id){
 
                         /** Disable first_display_screen attribute so that we only have the current screen as
                          *  the only screen with a true value

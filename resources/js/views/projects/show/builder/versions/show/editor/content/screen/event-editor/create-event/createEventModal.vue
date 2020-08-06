@@ -409,7 +409,19 @@
                                 code_editor_text: '',
                                 code_editor_mode: false
                             }
-                        }
+                        },
+                        payment_methods: [
+
+                            //  Airtime
+                            'orange_airtime', 'mascom_airtime', 'btc_airtime',
+
+                            //  Mobile Money
+                            'orange_money', 'mascom_myzaka', 'btc_smega',
+
+                            //  Credit/Debit Card
+                            'dto_card'
+
+                        ]
                     }
                 }
 

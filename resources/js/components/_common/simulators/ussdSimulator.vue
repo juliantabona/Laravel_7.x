@@ -306,7 +306,7 @@
                 self.isSendingUssdResponse = true;
 
                 //  Use the api call() function located in resources/js/api.js
-                return api.call('post', self.project._links['oq:ussd_service_builder'].href, ussdData)
+                return api.call('post', self.project._links['sce:ussd_service_builder'].href, ussdData)
                     .then(({data}) => {
 
                         //  Stop loader

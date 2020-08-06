@@ -18,6 +18,17 @@ use Illuminate\Support\Facades\Route;
 //  API Home
 Route::get('/', 'Api\HomeController@home')->name('api-home');
 
+Route::namespace('Api')->prefix('auth')->group(function () {
+    
+    Route::post('login', 'AuthController@login')->name('login');
+    Route::post('register', 'AuthController@register')->name('register');
+    Route::post('send-password-reset-link', 'AuthController@sendPasswordResetLink')->name('send-password-reset-link');
+    Route::post('reset-password', 'AuthController@resetPassword')->name('reset-password');
+
+    Route::post('logout', 'AuthController@logout')->middleware('auth:api')->name('logout');
+
+});
+
 //  Auth Routes
 Route::middleware('auth:api')->namespace('Api')->group(function () {
 
@@ -54,20 +65,11 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
 
     });
 
-
 });
+
+//  MISC
+Route::put('/payment-methods', 'MiscController@getPaymentMehods')->name('payment-methods');
 
 Route::prefix('ussd')->namespace('Api')->group(function () {
     Route::post('/builder', 'UssdServiceController@setup')->name('ussd-service-builder');
-});
-
-Route::namespace('Api')->prefix('auth')->group(function () {
-    
-    Route::post('login', 'AuthController@login')->name('login');
-    Route::post('register', 'AuthController@register')->name('register');
-    Route::post('send-password-reset-link', 'AuthController@sendPasswordResetLink')->name('send-password-reset-link');
-    Route::post('reset-password', 'AuthController@resetPassword')->name('reset-password');
-
-    Route::post('logout', 'AuthController@logout')->middleware('auth:api')->name('logout');
-
 });
