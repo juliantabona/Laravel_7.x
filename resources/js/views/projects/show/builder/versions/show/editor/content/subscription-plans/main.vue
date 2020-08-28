@@ -19,7 +19,7 @@
         </div>
 
         <!-- Subscription Plans -->
-        <Table :columns="columns" :data="builder.subscription_plans" :style="{ overflow: 'inherit' }" 
+        <Table :columns="columns" :data="version.builder.subscription_plans" :style="{ overflow: 'inherit' }" 
                 class="mb-5" size="small" max-height="300" no-data-text="No Subscription Plans Found">
 
             <!-- Subscription Plan Name -->
@@ -54,7 +54,7 @@
 
             <manageSubscriptionPlanModal
                 :index="index"
-                :builder="builder"
+                :version="version"
                 :isCloning="isCloning"
                 :subscriptionPlan="subscriptionPlan"
                 @saveChanges="handleSaveChanges($event)"
@@ -75,7 +75,7 @@
     export default {
         components: { manageSubscriptionPlanModal, basicButton },
         props: {
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
@@ -112,7 +112,7 @@
         },
         computed: {
             subcriptionPlansExist(){
-                return this.builder.subscription_plans.length ? true : false;
+                return this.version.builder.subscription_plans.length ? true : false;
             },
             addButtonType(){
                 return this.subcriptionPlansExist ? 'primary' : 'success';
@@ -126,10 +126,10 @@
              *  for changes on each input or select field, then update the subscription_plans.
              */
             updateSubscriptionPlanData(subscriptionPlan, index){
-                this.$set(this.builder.subscription_plans, index, subscriptionPlan);
+                this.$set(this.version.builder.subscription_plans, index, subscriptionPlan);
             },
             handleSaveChanges(updatedSubscriptionPlan){
-                this.$set(this.builder.subscription_plans, this.index, updatedSubscriptionPlan);
+                this.$set(this.version.builder.subscription_plans, this.index, updatedSubscriptionPlan);
             },
             handleConfirmRemoveSubscriptionPlan(index){
 
@@ -161,7 +161,7 @@
                 this.handleOpenAddSubscriptionPlanModal();
             },
             handleRemoveSubscriptionPlan(index){
-                this.builder.subscription_plans.splice(index, 1);
+                this.version.builder.subscription_plans.splice(index, 1);
 
                 this.$Message.success({
                     content: 'Subscription plan removed!',
@@ -171,13 +171,13 @@
             handleEditSubscriptionPlan(index){
                 this.index = index;
                 this.isCloning = false;
-                this.subscriptionPlan = this.builder.subscription_plans[index];
+                this.subscriptionPlan = this.version.builder.subscription_plans[index];
                 this.handleOpenAddSubscriptionPlanModal();
             },
             handleCloneSubscriptionPlan(index){
                 this.index = index;
                 this.isCloning = true;
-                this.subscriptionPlan = this.builder.subscription_plans[index];
+                this.subscriptionPlan = this.version.builder.subscription_plans[index];
                 this.handleOpenAddSubscriptionPlanModal();
             },
             handleOpenAddSubscriptionPlanModal(subscriptionPlan){

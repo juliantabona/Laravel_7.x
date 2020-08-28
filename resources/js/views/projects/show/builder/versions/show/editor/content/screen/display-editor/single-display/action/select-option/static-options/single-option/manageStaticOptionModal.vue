@@ -93,7 +93,7 @@
                 <!-- Select Screen / Display Link -->
                 <screenAndDisplaySelector 
                     :link="staticOptionForm.link" class="mt-2"
-                    :builder="builder" :screen="screen" :display="display">
+                    :version="version" :screen="screen" :display="display">
                 </screenAndDisplaySelector>
 
                 <!-- Enter Comment -->
@@ -155,7 +155,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

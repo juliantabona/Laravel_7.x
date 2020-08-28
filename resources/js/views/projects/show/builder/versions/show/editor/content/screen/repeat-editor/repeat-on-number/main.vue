@@ -29,7 +29,7 @@
                         <!-- Total Items Reference Name -->
                         <referenceNameInput 
                             v-model="screen.repeat.repeat_on_number.total_loops_reference_name"
-                            :builder="builder" :screen="screen" title="Total Items"
+                            :version="version" :screen="screen" title="Total Items"
                             :inlineLayout="false" :isRequired="false">
                         </referenceNameInput>
 
@@ -40,7 +40,7 @@
                         <!-- Item Index Reference Name -->
                         <referenceNameInput 
                             v-model="screen.repeat.repeat_on_number.loop_index_reference_name"
-                            :builder="builder" :screen="screen" title="Item Index"
+                            :version="version" :screen="screen" title="Item Index"
                             :inlineLayout="false" :isRequired="false">
                         </referenceNameInput>
 
@@ -51,7 +51,7 @@
                         <!-- Item Number Reference Name -->
                         <referenceNameInput 
                             v-model="screen.repeat.repeat_on_number.loop_number_reference_name"
-                            :builder="builder" :screen="screen" title="Item Number"
+                            :version="version" :screen="screen" title="Item Number"
                             :inlineLayout="false" :isRequired="false">
                         </referenceNameInput>
 
@@ -62,7 +62,7 @@
                         <!-- Item Number Reference Name -->
                         <referenceNameInput 
                             v-model="screen.repeat.repeat_on_number.is_first_loop_reference_name"
-                            :builder="builder" :screen="screen" title="Is First Item"
+                            :version="version" :screen="screen" title="Is First Item"
                             :inlineLayout="false" :isRequired="false">
                         </referenceNameInput>
 
@@ -73,7 +73,7 @@
                         <!-- Is Last Item Reference Name -->
                         <referenceNameInput 
                             v-model="screen.repeat.repeat_on_number.is_last_loop_reference_name"
-                            :builder="builder" :screen="screen" title="Is Last Item"
+                            :version="version" :screen="screen" title="Is Last Item"
                             :inlineLayout="false" :isRequired="false">
                         </referenceNameInput>
 
@@ -112,7 +112,7 @@
                         <!-- Select Screen Link -->
                         <screenAndDisplaySelector 
                             :link="screen.repeat.repeat_on_number.on_no_loop.link"
-                            :builder="builder" :screen="screen" :showDisplays="false">
+                            :version="version" :screen="screen" :showDisplays="false">
                         </screenAndDisplaySelector>
 
                     </Col>
@@ -150,7 +150,7 @@
                         <!-- Select Screen Link -->
                         <screenAndDisplaySelector 
                             :link="screen.repeat.repeat_on_number.after_last_loop.link"
-                            :builder="builder" :screen="screen" :showDisplays="false">
+                            :version="version" :screen="screen" :showDisplays="false">
                         </screenAndDisplaySelector>
 
                     </Col>
@@ -178,7 +178,7 @@
                 type: Object,
                 default: () => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             }

@@ -206,7 +206,7 @@
                 :option="option"
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 :options="options"
                 :isCloning="isCloning"
                 :isEditing="isEditing"
@@ -238,7 +238,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },
@@ -290,7 +290,7 @@
                         if( isScreen ){
                             
                             //  If we have a matching screen return true otherwise false
-                            var screens = this.builder.screens.filter( (screen) => {
+                            var screens = this.version.builder.screens.filter( (screen) => {
                                 
                                 return ( screen.id == this.option.link.text ) ? true : false;
 
@@ -375,7 +375,7 @@
                 if( isScreen ){
                     
                     //  If we have a matching screen return true otherwise false
-                    var screens = this.builder.screens.filter( (screen) => {
+                    var screens = this.version.builder.screens.filter( (screen) => {
                         
                         return ( screen.id == this.option.link.text ) ? true : false;
 

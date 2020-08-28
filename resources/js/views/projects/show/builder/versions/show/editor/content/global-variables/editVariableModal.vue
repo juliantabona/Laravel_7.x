@@ -67,7 +67,7 @@
                 type: Object,
                 default: () => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             }

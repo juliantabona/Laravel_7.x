@@ -1,7 +1,7 @@
 <template>
 
     <!-- Focus Ripple  -->
-    <focusRipple :ripple="ripple">
+    <focusRipple :ripple="ripple" :color="rippleColor">
 
         <!-- Button  -->
         <Button :type="type" :size="size" :disabled="disabled" :loading="loading" :class="buttonClass">
@@ -44,6 +44,10 @@
             ripple: {
                 type: Boolean,
                 default: false
+            },
+            rippleColor: {
+                type: String,
+                default: 'green'
             },
             disabled: {
                 type: Boolean,

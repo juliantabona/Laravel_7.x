@@ -15,8 +15,11 @@
 
             <!-- Single Event  -->
             <singleEvent v-for="(event, index) in events" :key="event.id+'_'+index"
+                :usingGlobalEventManager="usingGlobalEventManager"
+                :usingImportEventManager="usingImportEventManager"
+                @import="handleImport($event)"
                 :globalMarkers="globalMarkers"
-                :builder="builder"
+                :version="version"
                 :display="display"
                 :screen="screen"
                 :events="events"
@@ -29,13 +32,21 @@
 
         </draggable>
 
-        <div class="clearfix">
+        <div v-if="!usingImportEventManager" class="clearfix">
 
             <!-- Add Static Option Button -->
-            <basicButton :type="addButtonType" size="default" icon="ios-add" :showIcon="true"
-                            class="float-right" :ripple="!eventsExist"
+            <basicButton :type="addButtonType" size="small" icon="ios-add" :showIcon="true"
+                            class="float-right" :ripple="!eventsExist" iconDirection="left"
                             @click.native="handleAddEvent()">
-                <span>Add Event</span>
+                <span>{{ btnText }}</span>
+            </basicButton>
+
+            <!-- Add Static Option Button -->
+            <basicButton
+                v-if="!usingGlobalEventManager" class="float-right mr-2" type="primary" size="small" 
+                icon="ios-cloud-download-outline" :showIcon="true" iconDirection="left"
+                @click.native="handleImportEvent()">
+                <span>Import Event</span>
             </basicButton>
 
         </div>
@@ -49,9 +60,23 @@
                 :events="events"
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 @visibility="isOpenAddEventModal = $event">
             </createEventModal>
+    
+        </template>
+
+        <!-- 
+            MODAL TO IMPORT GLOBAL EVENT
+        -->
+        <template v-if="isOpenImportGlobalEventModal">
+
+            <importGlobalEventModal
+                :events="events"
+                :version="version"
+                @import="handleImport($event)"
+                @visibility="isOpenImportGlobalEventModal = $event">
+            </importGlobalEventModal>
     
         </template>
 
@@ -64,10 +89,11 @@
     import draggable from 'vuedraggable';
     import singleEvent from './single-event/main.vue';
     import createEventModal from './create-event/createEventModal.vue';
+    import importGlobalEventModal from './import-event/importGlobalEventModal.vue';
     import basicButton from './../../../../../../../../../../components/_common/buttons/basicButton.vue';
 
     export default {
-        components: { draggable, singleEvent, createEventModal, basicButton },
+        components: { draggable, singleEvent, createEventModal, importGlobalEventModal, basicButton },
         props: { 
             events: {
                 type: Array,
@@ -81,18 +107,32 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },
             globalMarkers: {
                 type: Array,
                 default: () => []
+            },
+            btnText: {
+                type: String,
+                default: 'Add Event'
+            },
+            usingGlobalEventManager: {
+                type: Boolean,
+                default: false
+            },
+            usingImportEventManager: {
+                type: Boolean,
+                default: false
             }
+            
         },
         data(){
             return {
                 isOpenAddEventModal: false,
+                isOpenImportGlobalEventModal: false
             }
         },
         computed: {
@@ -107,9 +147,31 @@
             }
         },
         methods: {
+            handleImportEvent(){
+                this.isOpenImportGlobalEventModal = true;
+            },
+            handleImport(event){
+                
+                if( this.isOpenImportGlobalEventModal == false ){
+
+                    this.$emit('import', event);
+
+                }else{
+                    
+                    this.events.push(event);
+
+                    //  Event imported success message
+                    this.$Message.success({
+                        content: 'Event imported!',
+                        duration: 6
+                    });
+                    
+                }
+            },
             handleAddEvent(){
                 this.isOpenAddEventModal = true;
-            }
+            },
+            
         }
     };
   

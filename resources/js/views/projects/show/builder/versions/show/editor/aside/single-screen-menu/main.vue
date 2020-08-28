@@ -15,7 +15,7 @@
                   type="ios-repeat" size="20" class="text-primary font-weight-bold" />
             
             <!-- First Display Screen Pointer -->
-            <Icon v-if="screen.first_display_screen && !builder.conditional_screens.active" 
+            <Icon v-if="screen.first_display_screen && !version.builder.conditional_screens.active" 
                   type="ios-pin-outline" size="20" class="text-success font-weight-bold" />
 
         </div>
@@ -23,7 +23,19 @@
 
         <!-- Screen menu toolbox  -->
         <div class="screen-menu-item-toolbox">
+    
+            <Dropdown trigger="click" placement="left-start" class="mt-1">
 
+                <!-- Show More Icon -->
+                <Icon type="md-more" class="screen-menu-item-icon hidable mr-1" :size="20"/>
+
+                <DropdownMenu slot="list">
+                    <DropdownItem>Copy ID</DropdownItem>
+                    <DropdownItem>Copy Name</DropdownItem>
+                </DropdownMenu>
+
+            </Dropdown>
+                    
             <!-- Remove Screen Button  -->
             <Icon type="ios-trash-outline" class="screen-menu-item-icon hidable mr-1" size="20" @click="handleConfirmRemoveScreen(index)"/>
 
@@ -42,7 +54,7 @@
 
             <addScreenModal
                 :screen="screen"
-                :builder="builder"
+                :version="version"
                 @selectedScreen="handleSelectedScreen($event)"
                 @visibility="isOpenAddScreenModal = $event">
             </addScreenModal>
@@ -68,7 +80,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },
@@ -84,7 +96,7 @@
         },
         computed: {
             totalScreens(){
-                return this.builder.screens.length;
+                return this.version.builder.screens.length;
             }
         },
         methods: {
@@ -97,7 +109,7 @@
                     this.$emit('selectedScreen', index);
 
                 //  If the user selected any screen menu accept the current active menu
-                }else if( (this.builder.screens[index] || {}).id != (this.activeScreen || {}).id ){
+                }else if( (this.version.builder.screens[index] || {}).id != (this.activeScreen || {}).id ){
 
                     //  Send an update of the selected screen
                     this.$emit('selectedScreen', index);
@@ -139,17 +151,17 @@
                 var deletingActiveScreen = false;
 
                 //  If the screen being deleted is the current active screen
-                if( (this.activeScreen || {}).id == this.builder.screens[this.index].id ){
+                if( (this.activeScreen || {}).id == this.version.builder.screens[this.index].id ){
 
                     deletingActiveScreen = true;
 
                 }
 
                 //  Remove screen from list
-                this.builder.screens.splice(this.index, 1);
+                this.version.builder.screens.splice(this.index, 1);
 
                 //  Check if we have a screen that has been set as the first display screen
-                var firstDisplayScreenExists = this.builder.screens.filter( (screen) => { 
+                var firstDisplayScreenExists = this.version.builder.screens.filter( (screen) => { 
                     return screen.first_display_screen == true;
                 }).length ? true : false;
 
@@ -160,7 +172,7 @@
                     if( this.totalScreens ){
 
                         //  Set the first screen as the first display screen
-                        this.$set(this.builder.screens[0], 'first_display_screen', true);
+                        this.$set(this.version.builder.screens[0], 'first_display_screen', true);
 
                     }
 

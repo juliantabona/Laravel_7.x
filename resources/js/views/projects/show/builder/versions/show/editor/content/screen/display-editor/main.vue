@@ -18,10 +18,29 @@
 
             </div>
 
-            <span class="d-block mt-4 mb-4">
-                <span class="font-weight-bold mr-1">Conditional Display Selection:</span>
-                <i-Switch v-model="screen.conditional_displays.active" />
-            </span>
+            <Row :gutter="20">
+
+                <Col :span="12">
+
+                    <span class="align-items-center d-flex">
+                        <Icon type="md-share" class="bg-grey-light border mr-2 p-1 rounded-circle" size="20" />
+                        <span class="font-weight-bold mr-1">Conditional Display Selection:</span>
+                        <i-Switch v-model="screen.conditional_displays.active" />
+                    </span>
+
+                </Col>
+
+                <Col :span="12">
+                
+                    <Input 
+                        type="text" v-model="searchTerm"  
+                        prefix="ios-search" class="mb-2"
+                        placeholder="Search by display name or id">
+                    </Input>
+
+                </Col>
+
+            </Row>
 
             <template v-if="screen.conditional_displays.active">
 
@@ -42,7 +61,7 @@
                 <template v-if="displaysExist">
                     
                     <draggable 
-                        :list="screen.displays"
+                        :list="filteredDisplays"
                         @start="drag=true" 
                         @end="drag=false" 
                         :options="{
@@ -52,9 +71,10 @@
                         }">
 
                         <!-- Single display menu  -->
-                        <singleDisplay v-for="(display, index) in screen.displays" :key="index"
+                        <singleDisplay v-for="(display, index) in filteredDisplays" :key="index"
                             :globalMarkers="globalMarkers"
-                            :builder="builder"
+                            :isFiltered="isFiltered"
+                            :version="version"
                             :display="display"
                             :screen="screen"
                             :index="index">
@@ -78,7 +98,7 @@
 
             <addDisplayModal
                 :screen="screen"
-                :builder="builder"
+                :version="version"
                 @visibility="isOpenAddDisplayModal = $event">
             </addDisplayModal>
 
@@ -103,7 +123,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
@@ -114,7 +134,9 @@
         },
         data(){
             return {
-                isOpenAddDisplayModal: false
+                searchTerm: '',
+                isFiltered: false,
+                isOpenAddDisplayModal: false,
             }
         },
         computed: {
@@ -123,6 +145,39 @@
             },
             addButtonType(){
                 return this.displaysExist ? 'primary' : 'success';
+            },
+            filteredDisplays(){
+
+                if( this.searchTerm ){
+
+                    this.isFiltered = true;
+
+                    //  Return filtered displays
+                    return this.screen.displays.filter((display, index) => {
+                        
+                        var searchTerm = this.searchTerm.trim().toLowerCase();
+                        
+                        var displayName = display.name.trim().toLowerCase();
+
+                        //  Define the search pattern
+                        var regex_pattern = RegExp(searchTerm,'g');
+
+                        //  Search displays who's name or id matches with our search argument
+                        if( (regex_pattern.test(displayName) || searchTerm == display.id) ){
+                            return true;
+                        }
+                        
+                        return false;
+                    })
+
+                }else{
+
+                    this.isFiltered = false;
+
+                    //  Return all displays
+                    return this.screen.displays;
+                    
+                }
             }
         },
         methods: {

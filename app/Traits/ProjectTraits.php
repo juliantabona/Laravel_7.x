@@ -45,7 +45,7 @@ trait ProjectTraits
         if ( $request->input('clone_project_id') ) {
 
             //  Retrieve the project to clone
-            $this->project_to_clone = \App\Project::find( $request->input('clone_project_id') )->with('versions')->first();
+            $this->project_to_clone = \App\Project::where('id', $request->input('clone_project_id') )->with('versions')->first();
 
         }
         
@@ -125,6 +125,7 @@ trait ProjectTraits
             foreach ($this->project_to_clone->versions as $version_to_clone) {
 
                 //  Retrieve the version details
+                $request->merge(['user_id' => auth()->user()->id]);
                 $request->merge(['number' => $version_to_clone->number]);
                 $request->merge(['builder' => $version_to_clone->builder]);
                 $request->merge(['description' => $version_to_clone->description]);

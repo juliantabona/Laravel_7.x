@@ -18,7 +18,7 @@
 
             <div class="bg-grey-light border mt-2 mb-3 pt-3 px-2 pb-2">
                 
-                <navigationManager :navigations="display.content.screen_repeat_navigation.forward_navigation" :builder="builder" :screen="screen" :display="display"></navigationManager>
+                <navigationManager :navigations="display.content.screen_repeat_navigation.forward_navigation" :version="version" :screen="screen" :display="display"></navigationManager>
 
             </div>
 
@@ -31,7 +31,7 @@
 
             <div class="bg-grey-light border mt-2 mb-3 pt-3 px-2 pb-2">
                 
-                <navigationManager :navigations="display.content.screen_repeat_navigation.backward_navigation" :builder="builder" :screen="screen" :display="display"></navigationManager>
+                <navigationManager :navigations="display.content.screen_repeat_navigation.backward_navigation" :version="version" :screen="screen" :display="display"></navigationManager>
 
             </div>
 
@@ -56,7 +56,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             }

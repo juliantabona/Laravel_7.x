@@ -10,22 +10,19 @@
                 <!-- Screen Settings Navigation Tabs -->
                 <TabPane v-for="(currentTabName, key) in navTabs" :key="key" :label="currentTabName" :name="currentTabName"></TabPane>
 
-            </Tabs>
+            </Tabs> 
 
             <!-- General -->
-            <requestUrl v-show="activeNavTab == 'General'" v-bind="$props"></requestUrl>
+            <general v-show="activeNavTab == 'General'" v-bind="$props"></general>
 
-            <!-- Query Params -->
-            <requestQueryParams v-show="activeNavTab == 'Payment Methods'" v-bind="$props"></requestQueryParams>
+            <!-- Payment Methods -->
+            <paymentMethods v-show="activeNavTab == 'Payment Methods'" v-bind="$props"></paymentMethods>
 
-            <!-- Form Data -->
-            <requestFormData v-show="activeNavTab == 'Form Data'" v-bind="$props"></requestFormData>
-                
-            <!-- Headers -->
-            <requestHeaders v-show="activeNavTab == 'Headers'" v-bind="$props"></requestHeaders>
-                
-            <!-- Responses -->
-            <requestResponses v-show="activeNavTab == 'Responses'" v-bind="$props"></requestResponses>
+            <!-- Payment Success -->
+            <paymentSuccess v-show="activeNavTab == 'Payment Success'" v-bind="$props"></paymentSuccess>
+
+            <!-- Payment Fail -->
+            <paymentFail v-show="activeNavTab == 'Payment Fail'" v-bind="$props"></paymentFail>
 
         </div>
     </div>
@@ -34,20 +31,14 @@
 
 <script>
     
-    //  Get the Request URL Settings
-    import requestUrl from './request-url/main.vue';
-
-    //  Get the Request Query Params Settings
-    import requestQueryParams from './request-query-params/main.vue';
-
-    //  Get the Request Form Data Settings
-    import requestFormData from './request-form-data/main.vue';
-
-    //  Get the Request Form Data Settings
-    import requestHeaders from './request-headers/main.vue';
-
-    //  Get the display editor
-    import requestResponses from './request-response/main.vue';
+    import general from './general/main.vue';
+    
+    import paymentMethods from './payment-methods/main.vue';
+    
+    import paymentSuccess from './payment-success/main.vue';
+    
+    import paymentFail from './payment-fail/main.vue';
+    
 
     export default {
         props: {
@@ -71,7 +62,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
@@ -85,7 +76,7 @@
             },
         },
         components: {
-            requestUrl, requestQueryParams, requestFormData, requestHeaders, requestResponses
+            general, paymentMethods, paymentSuccess, paymentFail
         },
         data(){
             return{
@@ -95,7 +86,7 @@
         }, 
         computed: {
             navTabs(){
-                var tabs = ['General', 'Payment Methods', 'Form Data', 'Headers', 'Responses'];
+                var tabs = ['General', 'Payment Methods', 'Payment Success', 'Payment Fail'];
 
                 return tabs;
             }

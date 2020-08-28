@@ -35,6 +35,8 @@
                                 
                                 <Card @click.native="handleSelectedEvent(event)" :padding="0">
                                     
+                                    <Badge v-if="(event.children || {}).length" :count="event.children.length" type="info" slot="extra" />
+
                                     <div :style="{ padding: '14px' }">
 
                                         <!-- Event Icon -->
@@ -88,7 +90,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             }
@@ -135,10 +137,24 @@
                         type: "Custom Code"
                     },
                     {
+                        type: "Linking"
+                    },
+                    {
                         type: "Revisit"
                     },
                     {
                         type: "Redirect"
+                    },
+                    {
+                        type: "Account Management",
+                        children: [
+                            {
+                                type: "Create Account",
+                            },
+                            {
+                                type: "Update Account",
+                            }
+                        ]
                     }
                 ],
                 displayEvents: []
@@ -191,6 +207,14 @@
                 }else{
 
                     var newEvent = this.createEvent( event.type );
+
+                    //  If we are turning this event into a Global event
+                    if( newEvent.global ){
+
+                        //  Add the event to the list of Global Events
+                        this.version.builder.global_events.push(newEvent);
+
+                    }
                     
                     this.events.push(newEvent);
 
@@ -247,7 +271,11 @@
                 }else if( eventType == 'Custom Code' ){
 
                     event = this.get_Custom_Code_Event();
-                    
+
+                }else if( eventType == 'Linking' ){
+
+                    event = this.get_Linking_Event();
+
                 }else if( eventType == 'Revisit' ){
 
                     event = this.get_Revisit_Event();
@@ -256,12 +284,17 @@
 
                     event = this.get_Redirect_Event();
                     
+                }else if( eventType == 'Create Account' ){
+
+                    event = this.get_Create_Account_Event();
+                    
                 }
 
                 //  Overide the general event structure with the relevant event specific data
                 return Object.assign({
                     id: this.generateEventId(),
                     type: eventType,
+                    global: false,
                     name: '',
                     active: {
                         selected_type: 'yes',
@@ -410,18 +443,26 @@
                                 code_editor_mode: false
                             }
                         },
-                        payment_methods: [
-
-                            //  Airtime
-                            'orange_airtime', 'mascom_airtime', 'btc_airtime',
-
-                            //  Mobile Money
-                            'orange_money', 'mascom_myzaka', 'btc_smega',
-
-                            //  Credit/Debit Card
-                            'dto_card'
-
-                        ]
+                        payment_methods: [],
+                        payment_success: {
+                            display_message: {
+                                text: '', 
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            sms_message: {
+                                text: '', 
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            }
+                        },
+                        payment_fail: {
+                            display_message: {
+                                text: '', 
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            }
+                        }
                     }
                 }
 
@@ -524,6 +565,30 @@
                 }
 
             },
+            get_Linking_Event(){
+                
+                return {
+                    name: 'Linking',
+                    event_data: {
+                        trigger: {
+                            selected_type: 'automatic',     //  automatic, manual
+                            manual: {
+                                input: {
+                                    text: '',
+                                    code_editor_text: '',
+                                    code_editor_mode: false
+                                }
+                            }
+                        },
+                        link: {
+                            text: '',
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        }
+                    }
+                }
+
+            },
             get_Revisit_Event(){
                 
                 return {
@@ -584,6 +649,27 @@
                             text: '',
                             code_editor_text: '',
                             code_editor_mode: false
+                        }
+                    }
+                }
+
+            },
+            get_Create_Account_Event(){
+                
+                return {
+                    name: 'Create Account',
+                    event_data: {
+                        first_name: '',
+                        last_name: '',
+                        mobile_number: '{{ ussd.msisdn }}',
+                        additional_fields: [],
+                        after_success: {
+                            type: 'link',   //  link, revisit
+                            link: {
+                                text: '',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            }
                         }
                     }
                 }

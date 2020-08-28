@@ -10,7 +10,7 @@
              functionality to enhance the experience. Refer to modalMixin.
         -->
         <Modal
-            width="600"
+            width="800"
             :title="modalTitle"
             v-model="modalVisible"
             @on-visible-change="detectClose">
@@ -32,7 +32,7 @@
                         <!-- Enter Name -->
                         <FormItem prop="name" class="mb-2">
                             <Input  type="text" v-model="formattingRuleForm.name" placeholder="Formatting Rule name" 
-                                    :disabled="formattingRuleForm.type != 'custom_format'">
+                                    :disabled="formattingRuleForm.type != 'custom_code'">
                                 <span slot="prepend">Name</span>
                             </Input>
                         </FormItem>
@@ -52,7 +52,7 @@
             
             <!-- Edit Custom Regex Formatting Rule --> 
             <customFormattingRule 
-                v-if="formattingRuleForm.type == 'custom_format'" 
+                v-if="formattingRuleForm.type == 'custom_code'" 
                 :formattingRule="formattingRuleForm">
             </customFormattingRule>
             
@@ -119,7 +119,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

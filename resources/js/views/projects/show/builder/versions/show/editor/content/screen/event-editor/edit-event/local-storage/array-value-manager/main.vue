@@ -17,7 +17,7 @@
             <singleArrayValue v-for="(arrayValue, index) in arrayValues" :key="arrayValue.id+'_'+index"
                 :arrayValues="arrayValues"
                 :arrayValue="arrayValue"
-                :builder="builder"
+                :version="version"
                 :display="display"
                 :screen="screen"
                 :index="index">
@@ -47,7 +47,7 @@
             <manageArrayValueModal
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 :isCloning="false"
                 :isEditing="false"
                 :arrayValues="arrayValues"
@@ -86,7 +86,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },

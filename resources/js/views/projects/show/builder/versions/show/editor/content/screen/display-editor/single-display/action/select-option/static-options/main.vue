@@ -19,7 +19,7 @@
                 <!-- Single Static Option  -->
                 <singleStaticOption v-for="(option, index) in options" :key="index"
                     :options="options"
-                    :builder="builder"
+                    :version="version"
                     :display="display"
                     :screen="screen"
                     :option="option"
@@ -53,7 +53,7 @@
                 <!-- Reference Name Input -->
                 <referenceNameInput 
                     v-model="display.content.action.select_option.static_options.reference_name"
-                    :builder="builder" :screen="screen" :display="display"
+                    :version="version" :screen="screen" :display="display"
                     :isRequired="false">
                 </referenceNameInput>
 
@@ -91,7 +91,7 @@
             <manageStaticOptionModal
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 :options="options"
                 :isCloning="false"
                 :isEditing="false"
@@ -128,7 +128,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

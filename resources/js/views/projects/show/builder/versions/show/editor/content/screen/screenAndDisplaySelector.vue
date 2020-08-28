@@ -69,7 +69,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
@@ -107,7 +107,7 @@
                 //  If we are allowed to show the screens
                 if( this.showScreens ){
 
-                    var screens = this.builder.screens.map(function(currentScreen, index){
+                    var screens = this.version.builder.screens.map(function(currentScreen, index){
 
                         return {
                             value: currentScreen.id,

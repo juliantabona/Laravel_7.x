@@ -17,7 +17,7 @@
             <singleKeyValue v-for="(keyValue, index) in keyValues" :key="keyValue.id+'_'+index"
                 :keyValues="keyValues"
                 :keyValue="keyValue"
-                :builder="builder"
+                :version="version"
                 :display="display"
                 :screen="screen"
                 :index="index">
@@ -47,7 +47,7 @@
             <manageKeyValueModal
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 :isCloning="false"
                 :isEditing="false"
                 :keyValues="keyValues"
@@ -86,7 +86,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },

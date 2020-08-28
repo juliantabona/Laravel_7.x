@@ -19,7 +19,7 @@
         </div>
 
         <!-- Global Variable Settings -->
-        <Table :columns="columns" :data="builder.global_variables" :style="{ overflow: 'inherit' }" 
+        <Table :columns="columns" :data="version.builder.global_variables" :style="{ overflow: 'inherit' }" 
                 class="mb-5" size="small" max-height="300" no-data-text="No Variables Found">
 
             <!-- Property Name -->
@@ -69,7 +69,7 @@
             <template slot-scope="{ row, index }" slot="action">
                 <Button type="primary" size="small" class="mr-1"
                         :disabled="!['String', 'Custom'].includes(row.type)" 
-                        @click="handleOpenEditVariableModal(builder.global_variables[index])">Edit</Button>
+                        @click="handleOpenEditVariableModal(version.builder.global_variables[index])">Edit</Button>
                 <Button type="error" size="small" @click="handleConfirmRemoveVariable(index)">Delete</Button>
             </template>
 
@@ -82,7 +82,7 @@
 
             <editVariableModal
                 :index="index"
-                :builder="builder"
+                :version="version"
                 :variable="variable"
                 @visibility="isOpenEditVariableModal = $event">
             </editVariableModal>
@@ -101,7 +101,7 @@
     export default {
         components: { editVariableModal, basicButton },
         props: {
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
@@ -148,7 +148,7 @@
         },
         computed: {
             variablesExist(){
-                return this.builder.global_variables.length ? true : false;
+                return this.version.builder.global_variables.length ? true : false;
             },
             addButtonType(){
                 return this.variablesExist ? 'primary' : 'success';
@@ -162,10 +162,10 @@
              *  for changes on each input or select field, then update the global_variables.
              */
             updateVariableData(variable, index){
-                this.$set(this.builder.global_variables, index, variable);
+                this.$set(this.version.builder.global_variables, index, variable);
             },
             handleAddVariable(){
-                this.builder.global_variables.push({
+                this.version.builder.global_variables.push({
                     name: null,
                     type: null,
                     value: {
@@ -198,7 +198,7 @@
                         return h(
                             'span', [
                                 'Are you sure you want to delete "',
-                                h('span', { class: ['font-weight-bold'] }, (self.builder.global_variables[index] || {}).name),
+                                h('span', { class: ['font-weight-bold'] }, (self.version.builder.global_variables[index] || {}).name),
                                 '". After this variable is deleted you cannot recover it again.'
                             ]
                         )
@@ -206,7 +206,7 @@
                 });
             },
             handleRemoveVariable(index){
-                this.builder.global_variables.splice(index, 1);
+                this.version.builder.global_variables.splice(index, 1);
 
                 this.$Message.success({
                     content: 'Variable removed!',

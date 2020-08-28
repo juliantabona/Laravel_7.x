@@ -29,13 +29,19 @@ class Version extends JsonResource
             '_links' => [
 
                 'curies' => [
-                    ['name' => 'oq', 'href' => 'https://oqcloud.co.bw/docs/rels/{rel}', 'templated' => true],
+                    ['name' => 'sce', 'href' => 'https://oqcloud.co.bw/docs/rels/{rel}', 'templated' => true],
                 ],
 
                 //  Link to current resource
                 'self' => [
                     'href' => route('version', ['version_id' => $this->id]),
                     'title' => 'This version',
+                ],
+
+                //  Link to the payment methods
+                'sce:payment_methods' => [
+                    'href' => route('payment-methods'),
+                    'title' => 'The payment methods used for billing'
                 ]
                 
             ]

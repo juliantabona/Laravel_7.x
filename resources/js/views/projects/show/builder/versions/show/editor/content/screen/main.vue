@@ -63,7 +63,7 @@
                     </div>
                 </div>
 
-                <template v-if="!builder.conditional_screens.active">
+                <template v-if="!version.builder.conditional_screens.active">
 
                     <!-- Enable / Disable First Display Screen -->
                     <Checkbox 
@@ -88,10 +88,13 @@
                 </Tabs>
             
                 <!-- Screen displays -->
-                <displayEditor v-show="activeNavTab == 1" :globalMarkers="globalMarkers" :screen="localScreen" :builder="builder"></displayEditor>
+                <displayEditor v-show="activeNavTab == 1" :globalMarkers="globalMarkers" :screen="localScreen" :version="version"></displayEditor>
+                
+                <!-- Screen requirements -->
+                <screenRequirements v-show="activeNavTab == 2" :screen="localScreen" :version="version"></screenRequirements>
                 
                 <!-- Screen displays -->
-                <repeatScreenSettings v-show="activeNavTab == 2" :globalMarkers="globalMarkers" :screen="localScreen" :builder="builder"></repeatScreenSettings>
+                <repeatScreenSettings v-show="activeNavTab == 3" :globalMarkers="globalMarkers" :screen="localScreen" :version="version"></repeatScreenSettings>
                 
             </Col>
 
@@ -116,21 +119,26 @@
 <script>
 
     import copyScreenPropertiesModal from './copyScreenPropertiesModal';
+    import screenRequirements from './requirements/main.vue';
     import repeatScreenSettings from './repeat-editor/main.vue';
     import displayEditor from './display-editor/main.vue';
     import VueTagsInput from '@johmun/vue-tags-input';
 
     export default {
-        components: { copyScreenPropertiesModal, repeatScreenSettings, displayEditor, VueTagsInput },
+        components: { copyScreenPropertiesModal, screenRequirements, repeatScreenSettings, displayEditor, VueTagsInput },
         props: {
             screen: {
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
+            globalMarkers: {
+                type: Array,
+                default: () => []
+            }
         },
         data(){
             return {
@@ -152,9 +160,35 @@
 
                 return tabName;
             },
+            requiremenentsTabName(){
+
+                var requirementsCount = 0;
+
+                if( this.localScreen.requirements.requires_account.active.selected_type == 'yes' ||
+                    this.localScreen.requirements.requires_account.active.selected_type == 'conditional' ){
+
+                    requirementsCount += 1;
+
+                }
+
+                if( this.localScreen.requirements.requires_subscription.active.selected_type == 'yes' ||
+                    this.localScreen.requirements.requires_subscription.active.selected_type == 'conditional' ){
+
+                    requirementsCount += 1;
+
+                }
+
+                if( requirementsCount ){
+                    var tabName = 'Requirements ('+requirementsCount+')';
+                }else{
+                    var tabName = 'Requirements';
+                }
+
+                return tabName;
+            },
             repeatTabName(){
                 
-                 var tabName = 'Repeat Screen';
+                 var tabName = 'Repeat';
 
                 if( this.localScreen.repeat.active.selected_type == 'conditional' ){
 
@@ -175,48 +209,9 @@
             navTabs(){
                 return [
                     { name: this.screenDisplaysTabName, value: '1' },
-                    { name: this.repeatTabName, value: '2' }
+                    { name: this.requiremenentsTabName, value: '2' },
+                    { name: this.repeatTabName, value: '3' }
                 ];
-            },
-            globalMarkers(){
-                
-                //  If we have screens
-                if( this.builder.screens.length ){
-
-                    //  Get the screen marked as the first screen
-                    var markers = this.builder.screens.map( (screen) => { 
-                            return screen.markers.map( (marker) => { 
-                                return {
-                                    text: marker.name
-                                }
-                            })
-                        }).flat(1);
-
-                    var uniqueMarkers = [];
-
-                    //  Only get unique markers (Remove duplicate markers if any)
-                    for (let x = 0; x < markers.length; x++) {
-
-                        //  Check if the marker has already been added
-                        for (let y = 0; y < uniqueMarkers.length; y++) {
-                            //  If it already has been added
-                            if( markers[x].text == uniqueMarkers[y].text ){
-                                //  Remove the older marker
-                                uniqueMarkers.splice(y, 1);
-                            }
-                        }
-
-                        //  Add the current marker
-                        uniqueMarkers.push(markers[x]);
-
-                    }
-
-                    //  Return the unique markers
-                    return uniqueMarkers;
-                }
-
-                return [];
-
             },
             screenMarkers(){
                 return this.localScreen.markers.map(marker => {
@@ -241,6 +236,12 @@
                 if( screen_properties != null ){
                 
                     this.localScreen = Object.assign({}, this.localScreen, screen_properties);
+
+                    //  Get the index of the current screen
+                    var index = this.version.builder.screens.findIndex(screen => screen.id === this.localScreen.id);
+
+                    //  Update the builder screens
+                    this.$set(this.version.builder.screens, index, this.localScreen);
 
                     this.$Message.success({
                         content: 'Pasted to screen!',
@@ -282,20 +283,20 @@
             handleSelectedFirstDisplayScreen(event){
                 
                 //  Foreach screen
-                for(var x = 0; x < this.builder.screens.length; x++){
+                for(var x = 0; x < this.version.builder.screens.length; x++){
 
                     //  Disable the first display screen attribute for each screen except the current screen
-                    if( this.builder.screens[x].id != this.localScreen.id){
+                    if( this.version.builder.screens[x].id != this.localScreen.id){
 
                         /** Disable first_display_screen attribute so that we only have the current screen as
                          *  the only screen with a true value
                          */
-                        this.builder.screens[x].first_display_screen = false;
+                        this.version.builder.screens[x].first_display_screen = false;
 
                     }else{
 
                         //  Make sure that the first display screen attribute for the current screen enabled
-                        this.builder.screens[x].first_display_screen = true;
+                        this.version.builder.screens[x].first_display_screen = true;
 
                     }
                 }

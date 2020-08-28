@@ -37,7 +37,7 @@
             <singleValidationRule v-for="(validationRule, index) in validationRules" :key="validationRule.id+'_'+index"
                 :validationRules="validationRules"
                 :validationRule="validationRule"
-                :builder="builder"
+                :version="version"
                 :display="display"
                 :screen="screen"
                 :index="index">
@@ -102,7 +102,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },

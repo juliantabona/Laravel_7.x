@@ -58,7 +58,7 @@
                 <Icon type="ios-copy-outline" class="single-draggable-item-icon mr-2" size="20" @click="handleCloneDisplay()"/>
 
                 <!-- Move Display Button  -->
-                <Icon type="ios-move" class="single-draggable-item-icon dragger-handle mr-2" size="20" />
+                <Icon v-if="!isFiltered" type="ios-move" class="single-draggable-item-icon dragger-handle mr-2" size="20" />
             
             </div>
 
@@ -117,16 +117,16 @@
             <displayInstruction v-show="activeNavTab == '1'" :display="display"></displayInstruction>
 
             <!-- Display Action -->
-            <displayAction v-show="activeNavTab == '2'" :builder="builder" :screen="screen" :display="display"></displayAction>
+            <displayAction v-show="activeNavTab == '2'" :version="version" :screen="screen" :display="display"></displayAction>
 
             <!-- Display Events -->
-            <displayEvents v-show="activeNavTab == '3'" :globalMarkers="globalMarkers" :builder="builder" :screen="screen" :display="display"></displayEvents>
+            <displayEvents v-show="activeNavTab == '3'" :globalMarkers="globalMarkers" :version="version" :screen="screen" :display="display"></displayEvents>
 
             <!-- Display Navigation -->
-            <displayNavigation v-show="activeNavTab == '4'" :builder="builder" :screen="screen" :display="display"></displayNavigation>
+            <displayNavigation v-show="activeNavTab == '4'" :version="version" :screen="screen" :display="display"></displayNavigation>
 
             <!-- Display Pagination -->
-            <displayPagination v-show="activeNavTab == '5'" :builder="builder" :screen="screen" :display="display"></displayPagination>
+            <displayPagination v-show="activeNavTab == '5'" :version="version" :screen="screen" :display="display"></displayPagination>
 
         </div>
 
@@ -145,7 +145,7 @@
             <addDisplayModal
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 @visibility="isOpenAddDisplayModal = $event">
             </addDisplayModal>
 
@@ -206,13 +206,17 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
             globalMarkers: {
                 type: Array,
                 default: () => []
+            },
+            isFiltered: {
+                type: Boolean,
+                default: false
             }
         },
         data(){
@@ -269,10 +273,10 @@
                 
                  var tabName = 'Pagination';
 
-                if( this.display.content.pagination.active.code_editor_mode ){
+                if( this.display.content.pagination.active.selected_type == 'conditional' ){
                     tabName += ' (Conditional)';
                 }else{
-                    if( this.display.content.pagination.active.text ){
+                    if( this.display.content.pagination.active.selected_type == 'yes' ){
                         tabName += ' (On)';
                     }else {
                         tabName += ' (Off)';
@@ -300,8 +304,9 @@
 
             },
             navigationIsSupported(){
-                return ( this.screen.repeat.active.code_editor_mode ) || 
-                       ( !this.screen.repeat.active.code_editor_mode && this.screen.repeat.active.text)
+
+                return (this.screen.repeat.active.selected_type == 'conditional' || 
+                        this.screen.repeat.active.selected_type == 'yes' );
             },
             toggleMenuOptions(){
                 
@@ -444,7 +449,7 @@
                 //  Convert String to Object
                 display_properties = display_properties ? JSON.parse(display_properties) : null;
 
-                if( screen_properties != null ){
+                if( display_properties != null ){
                 
                     this.display.content = Object.assign({}, this.display.content, display_properties);
 

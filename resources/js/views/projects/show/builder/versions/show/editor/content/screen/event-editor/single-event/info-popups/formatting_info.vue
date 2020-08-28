@@ -33,7 +33,7 @@
             </span>
             <template v-else>
                 <span v-if="event.event_data.target.text" v-html="event.event_data.target.text" class="cut-text"></span>
-                <span v-else class="text-danger">No Target</span>
+                <span v-else :class="isUsingCustomCodeRules ? 'text-info' : 'text-danger'">No Target</span>
             </template>
         </ListItem>
 
@@ -89,17 +89,33 @@
             }
         },
         computed: {
+            isUsingCustomCodeRules(){
+                return this.event.event_data.rules.filter( (rule) => { 
+
+                    //  If this rule uses custom code
+                    if( rule.type == 'custom_code' ){
+                        //  If this custom code is active
+                        if( rule.active.selected_type == 'yes' || rule.active.selected_type == 'conditional'){
+                            return true;
+                        }
+                    }
+                    
+                    return false;
+
+                }).length ? true : false;
+
+            },
             isValidEvent(){
                 /** This event is invalid if:
                  * 
-                 *  1) We are not using code editor mode and the target value is not provided 
+                 *  1) We are not using code editor mode and the target value is not provided unless we have
                  *  2) We do not have the reference name provided
                  *  2) We do not have any rules provided
                  *  
                  */
-                if( !this.event.event_data.target.code_editor_mode && !this.event.event_data.target.text ||
-                    !this.event.event_data.reference_name ||
-                    !this.numberOfFormattingRules){
+                if( (!this.isUsingCustomCodeRules && !this.event.event_data.target.code_editor_mode && !this.event.event_data.target.text) ||
+                     !this.event.event_data.reference_name ||
+                     !this.numberOfFormattingRules){
 
                     return false;
 

@@ -72,6 +72,10 @@
 
                     type = 'ios-code-working';
                     
+                }else if( this.eventType == 'Linking' ){
+
+                    type = 'ios-link';
+
                 }else if( this.eventType == 'Revisit' ){
 
                     type = 'ios-repeat';
@@ -80,7 +84,21 @@
 
                     type = 'ios-arrow-round-forward';
                     
+                }else if( this.eventType == 'Account Management' ){
+
+                    type = 'ios-people-outline';
+                    
+                }else if( this.eventType == 'Create Account' ){
+
+                    type = 'ios-person-add-outline';
+                    
+                }else if( this.eventType == 'Update Account' ){
+
+                    type = 'ios-person-outline';
+                    
                 }
+
+                
 
                 return type;
             }

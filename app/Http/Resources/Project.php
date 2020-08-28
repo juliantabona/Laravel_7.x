@@ -34,7 +34,7 @@ class Project extends JsonResource
             '_links' => [
 
                 'curies' => [
-                    ['name' => 'oq', 'href' => 'https://oqcloud.co.bw/docs/rels/{rel}', 'templated' => true],
+                    ['name' => 'sce', 'href' => 'https://oqcloud.co.bw/docs/rels/{rel}', 'templated' => true],
                 ],
 
                 //  Link to current resource
@@ -54,13 +54,8 @@ class Project extends JsonResource
                 'sce:ussd_service_builder' => [
                     'href' => route('ussd-service-builder'),
                     'title' => 'The ussd service builder',
-                ],
-
-                //  Link to the payment methods
-                'sce:payment_methods' => [
-                    'href' => route('payment-methods'),
-                    'title' => 'The payment methods used for billing'
                 ]
+                
             ],
 
             /*  Embedded Resources */

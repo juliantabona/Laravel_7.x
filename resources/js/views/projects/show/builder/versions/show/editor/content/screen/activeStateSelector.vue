@@ -5,18 +5,32 @@
 
         <div class="d-flex">
 
-            <span class="font-weight-bold mt-1 mr-2">{{ title }}</span> 
+            <!-- If the title is passed as a prop -->
+            <span v-if="title" class="font-weight-bold mt-1 mr-2" :style="titleStyle">{{ title }}</span>
 
-            <Select v-model="value.selected_type">
-                <Option v-for="(activeStateOption, index) in activeStateOptions" 
-                        :value="activeStateOption.value" :key="index">
-                    {{ activeStateOption.name }}
-                </Option>
-            </Select>
+            <!-- If the title is passed as a named slot -->
+            <slot name="title"></slot>
+
+            <div class="w-100">
+
+                <Select v-model="value.selected_type" :disabled="disabled" class="w-100">
+                    <Option v-for="(activeStateOption, index) in activeStateOptions" 
+                            :value="activeStateOption.value" :key="index">
+                        {{ activeStateOption.name }}
+                    </Option>
+                </Select>
+
+                <!-- If this is disabled and we have a disabled message -->
+                <span v-if="disabled && disabledMessage" class="text-info font-weight-bold d-block mt-1">
+                    <Icon type="ios-information-circle-outline" class="mr-1" :size="20" />
+                    <span>{{ disabledMessage }}</span>
+                </span>
+                
+            </div>
             
         </div>
 
-        <template v-if="value.selected_type == 'conditional'">
+        <template v-if="value.selected_type == 'conditional' && !disabled">
 
             <!-- Code Editor -->
             <customEditor
@@ -44,9 +58,21 @@
                 type: String,
                 default: null
             },
+            disabled: {
+                type: Boolean,
+                default: false
+            },
+            disabledMessage: {
+                type: String,
+                default: ''
+            },
             title: {
                 type: String,
                 default: 'Active:'
+            },
+            titleStyle: {
+                type: Object,
+                default: null
             },
             value: {
                 type: Object,

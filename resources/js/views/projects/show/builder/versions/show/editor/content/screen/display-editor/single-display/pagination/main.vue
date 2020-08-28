@@ -14,7 +14,7 @@
 
             <span class="d-block font-weight-bold text-dark mt-3 mb-3">Pagination Settings: </span>
                 
-            <paginationManager :builder="builder" :screen="screen" :display="display"></paginationManager>
+            <paginationManager :version="version" :screen="screen" :display="display"></paginationManager>
 
         </div>
 
@@ -38,7 +38,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             }

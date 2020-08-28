@@ -26,7 +26,7 @@
             <!-- Template Reference Name Input -->
             <referenceNameInput 
                 v-model="display.content.action.select_option.dynamic_options.template_reference_name" class="w-100"
-                :builder="builder" :screen="screen" :display="display">
+                :version="version" :screen="screen" :display="display">
             </referenceNameInput>
         
         </Col>
@@ -62,7 +62,7 @@
                     <!-- Reference Name Input -->
                     <referenceNameInput 
                         v-model="display.content.action.select_option.dynamic_options.reference_name" class="w-100"
-                        :builder="builder" :screen="screen" :display="display">
+                        :version="version" :screen="screen" :display="display">
                     </referenceNameInput>
 
                 </div>
@@ -75,7 +75,7 @@
                 <!-- Select Screen / Display Link -->
                 <screenAndDisplaySelector 
                     :link="display.content.action.select_option.dynamic_options.link"
-                    :builder="builder" :screen="screen" :display="display">
+                    :version="version" :screen="screen" :display="display">
                 </screenAndDisplaySelector>
 
             </div>
@@ -130,7 +130,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

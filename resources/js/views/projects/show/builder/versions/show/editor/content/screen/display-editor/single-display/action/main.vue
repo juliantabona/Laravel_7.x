@@ -65,13 +65,13 @@
                     <!-- Single Value Input Manager -->
                     <singleValueInputManager 
                         v-if="display.content.action.input_value.selected_type == 'single_value_input'" 
-                        :builder="builder" :screen="screen" :display="display">
+                        :version="version" :screen="screen" :display="display">
                     </singleValueInputManager>
 
                     <!-- Multi Value Input Manager -->
                     <multiValueInputManager 
                         v-if="display.content.action.input_value.selected_type == 'multi_value_input'" 
-                        :builder="builder" :screen="screen" :display="display">
+                        :version="version" :screen="screen" :display="display">
                     </multiValueInputManager>
 
                 </template>
@@ -83,19 +83,19 @@
                     <!-- Static Select Options Manager -->
                     <staticOptionsManager 
                         v-if="display.content.action.select_option.selected_type == 'static_options'" 
-                        :builder="builder" :screen="screen" :display="display">
+                        :version="version" :screen="screen" :display="display">
                     </staticOptionsManager>
 
                     <!-- Dynamic Select Options Manager -->
                     <dynamicOptionsManager 
                         v-if="display.content.action.select_option.selected_type == 'dynamic_options'" 
-                        :builder="builder" :screen="screen" :display="display">
+                        :version="version" :screen="screen" :display="display">
                     </dynamicOptionsManager>
 
                     <!-- Code Select Options Manager -->
                     <codeOptionsManager 
                         v-if="display.content.action.select_option.selected_type == 'code_editor_options'" 
-                        :builder="builder" :screen="screen" :display="display">
+                        :version="version" :screen="screen" :display="display">
                     </codeOptionsManager>
 
                 </div>
@@ -138,7 +138,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

@@ -34,7 +34,7 @@
                                     v-model="display.content.action.input_value.multi_value_input.reference_names[index]"
                                     :referenceNames="display.content.action.input_value.multi_value_input.reference_names"
                                     :display="display"
-                                    :builder="builder"
+                                    :version="version"
                                     :screen="screen"
                                     :index="index">
                                 </referenceNameInput>
@@ -84,7 +84,7 @@
             <!-- Next Screen Selector -->
             <screenAndDisplaySelector 
                 :link="display.content.action.input_value.multi_value_input.link" 
-                :builder="builder" :screen="screen" :display="display">
+                :version="version" :screen="screen" :display="display">
             </screenAndDisplaySelector>
 
         </Col>
@@ -95,7 +95,7 @@
         <template v-if="isOpenAddReferenceNameModal">
 
             <addReferenceNameModal
-                :builder="builder" :screen="screen" :display="display"
+                :version="version" :screen="screen" :display="display"
                 @visibility="isOpenAddReferenceNameModal = $event">
             </addReferenceNameModal>
 
@@ -122,7 +122,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

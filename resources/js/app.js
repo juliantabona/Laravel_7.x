@@ -32,6 +32,8 @@ Vue.use(ViewUI, { locale });
 // const files = require.context('./', true, /\.vue$/i)
 // files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
 
+Vue.component('eventsManager',  require('./views/projects/show/builder/versions/show/editor/content/screen/event-editor/main.vue').default);
+
 //  Basic App Scaffolding
 import App from './App.vue';
 

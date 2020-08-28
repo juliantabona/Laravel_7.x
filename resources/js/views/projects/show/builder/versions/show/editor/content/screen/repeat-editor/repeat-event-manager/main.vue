@@ -20,7 +20,7 @@
 
             <div class="bg-grey-light border mt-2 mb-3 pt-3 px-2 pb-2">
                 
-                <eventsManager :events="screen.repeat.events.before_repeat" :globalMarkers="globalMarkers" :builder="builder" :screen="screen"></eventsManager>
+                <eventsManager :events="screen.repeat.events.before_repeat" :globalMarkers="globalMarkers" :version="version" :screen="screen"></eventsManager>
 
             </div>
 
@@ -33,7 +33,7 @@
 
             <div class="bg-grey-light border mt-2 mb-3 pt-3 px-2 pb-2">
                 
-                <eventsManager :events="screen.repeat.events.after_repeat" :globalMarkers="globalMarkers" :builder="builder" :screen="screen"></eventsManager>
+                <eventsManager :events="screen.repeat.events.after_repeat" :globalMarkers="globalMarkers" :version="version" :screen="screen"></eventsManager>
 
             </div>
 
@@ -45,16 +45,13 @@
 
 <script>
 
-    import eventsManager from './../../event-editor/main.vue';
-
     export default {
-        components: { eventsManager },
         props: { 
             screen:{
                 type: Object,
                 default: () => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },

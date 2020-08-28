@@ -42,6 +42,12 @@
                     </basicButton>
 
                 </div>
+                
+                <Input 
+                    type="text" v-model="searchTerm"  
+                    prefix="ios-search" class="mb-2"
+                    placeholder="Search by screen name or id">
+                </Input>
 
                 <!-- Draggable screen menus -->
                 <div class="screen-menu-container border-top py-2">
@@ -51,24 +57,34 @@
                         
                         <draggable 
                             class="ussd-builder-screen-menus"
-                            :list="builder.screens"
+                            :list="filteredScreens"
                             @start="drag=true" 
                             @end="drag=false" 
                             :options="{
                                 group:'screen-menus', 
                                 handle:'.dragger-handle',
-                                draggable:'.screen-menu-item'
+                                draggable:'.screen-menu-item-wrapper'
                             }">
 
-                            <!-- Single Screen Menu  -->
-                            <singleScreenMenu v-for="(currentScreen, index) in builder.screens" :key="index"   
-                                :index="index"
-                                :builder="builder"
-                                :activeScreen="screen"
-                                :screen="currentScreen"
-                                @showScreens="$emit('showScreens')"
-                                @selectedScreen="handleSelectedScreen($event)">
-                            </singleScreenMenu>
+                            <div v-for="(currentScreen, index) in version.builder.screens" :key="index"
+                                 class="screen-menu-item-wrapper">
+                                
+                                <!-- Only show filtere screens -->
+                                <template v-if="filteredScreenIds.includes(currentScreen.id)">
+
+                                    <!-- Single Screen Menu  -->
+                                    <singleScreenMenu   
+                                        :index="index"
+                                        :version="version"
+                                        :activeScreen="screen"
+                                        :screen="currentScreen"
+                                        @showScreens="$emit('showScreens')"
+                                        @selectedScreen="handleSelectedScreen($event)">
+                                    </singleScreenMenu>
+
+                                </template>
+
+                            </div>
 
                         </draggable>
                         
@@ -82,11 +98,20 @@
             </div>
 
             <CellGroup>
-                <Cell title="Conditional Screen Selection" @click.native="$emit('showConditionalScreens')">
-                    <i-Switch v-model="builder.conditional_screens.active" slot="extra" />
+                <Cell @click.native="$emit('showConditionalScreens')">
+                    <span name="label" class="align-items-center d-flex" :style="{ marginLeft: '-10px' }">
+                        <Icon type="md-share" class="bg-grey-light border mr-1 p-1 rounded-circle" size="16" />
+                        <span class="mr-2">Conditional Screen Selection</span>
+                        <i-Switch v-model="version.builder.conditional_screens.active" />
+                    </span>
                 </Cell>
                 <Cell title="Subscription Plans" @click.native="$emit('showSubscriptions')"/>
-                <Cell title="Global Variables" @click.native="$emit('showGlobalVariables')"/>
+                <Cell title="Global Variables" @click.native="$emit('showGlobalVariables')">
+                    <Badge :count="totalGlobalVariables" type="info" slot="extra" />
+                </Cell>
+                <Cell title="Global Events" @click.native="$emit('showGlobalEvents')">
+                    <Badge :count="totalGlobalEvents" type="info" slot="extra" />
+                </Cell>
             </CellGroup>
             
         </Card>
@@ -97,7 +122,7 @@
         <template v-if="isOpenAddScreenModal">
 
             <addScreenModal
-                :builder="builder"
+                :version="version"
                 @selectedScreen="handleSelectedScreen($event)"
                 @visibility="isOpenAddScreenModal = $event">
             </addScreenModal>
@@ -125,13 +150,14 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
         },
         data(){
             return {
+                searchTerm: '',
                 isOpenAddScreenModal: false,
                 subcription_plans: [
                     {
@@ -148,8 +174,44 @@
             }
         },
         computed: {
+            totalGlobalEvents(){
+                return this.version.builder.global_events.length;
+            },
+            totalGlobalVariables(){
+                return this.version.builder.global_variables.length;
+            },
+            filteredScreens(){
+
+                if( this.searchTerm ){
+                    //  Return filtered screens
+                    return this.version.builder.screens.filter((screen, index) => {
+                        
+                        var searchTerm = this.searchTerm.trim().toLowerCase();
+                        
+                        var screenName = screen.name.trim().toLowerCase();
+
+                        //  Define the search pattern
+                        var regex_pattern = RegExp(searchTerm,'g');
+
+                        //  Search screens who's name or id matches with our search argument
+                        if( (regex_pattern.test(screenName) || searchTerm == screen.id) ){
+                            return true;
+                        }
+                        
+                        return false;
+                    })
+                }else{
+                    //  Return all screens
+                    return this.version.builder.screens;
+                }
+            },
+            filteredScreenIds(){
+                return this.filteredScreens.map((screen) => {
+                    return screen.id;
+                });
+            },
             screensExist(){
-                return this.builder.screens.length ? true : false;
+                return this.filteredScreens.length ? true : false;
             },
             addButtonType(){
                 return this.screensExist ? 'default' : 'success';

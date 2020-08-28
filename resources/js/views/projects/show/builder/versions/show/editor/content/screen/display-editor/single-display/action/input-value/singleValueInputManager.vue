@@ -7,7 +7,7 @@
             <!-- Reference Name Input -->
             <referenceNameInput 
                 v-model="display.content.action.input_value.single_value_input.reference_name"
-                :builder="builder" :screen="screen" :display="display"
+                :version="version" :screen="screen" :display="display"
                 title="Reference:">
             </referenceNameInput>
             
@@ -17,7 +17,7 @@
 
             <screenAndDisplaySelector 
                 :link="display.content.action.input_value.single_value_input.link" 
-                :builder="builder" :screen="screen" :display="display">
+                :version="version" :screen="screen" :display="display">
             </screenAndDisplaySelector>
 
         </div>
@@ -42,7 +42,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

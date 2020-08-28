@@ -13,12 +13,12 @@ trait PaymentMethodTraits
      *  Converts to the appropriate Api Response Format
      *
      */
-    public function convertToApiFormat($locations = null)
+    public function convertToApiFormat($payment_methods = null)
     {
-        if( $locations ){
+        if( $payment_methods ){
                 
             //  Transform the multiple instances
-            return new PaymentMethodsResource($locations);
+            return new PaymentMethodsResource($payment_methods);
 
         }else{
             

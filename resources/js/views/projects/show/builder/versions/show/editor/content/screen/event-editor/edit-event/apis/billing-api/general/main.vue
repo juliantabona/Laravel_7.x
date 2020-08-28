@@ -67,7 +67,7 @@
                     <!-- Template Reference Name -->
                     <referenceNameInput 
                         v-model="event.event_data.line_items.template_reference_name" class="w-100"
-                        :builder="builder" :screen="screen" :display="display"
+                        :version="version" :screen="screen" :display="display"
                         :isRequired="false" :placeholder="'item'">
                     </referenceNameInput>
                 
@@ -158,7 +158,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

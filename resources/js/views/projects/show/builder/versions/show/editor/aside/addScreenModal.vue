@@ -57,7 +57,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default:() => {}
             },
@@ -68,7 +68,7 @@
             const uniqueNameValidator = (rule, value, callback) => {
 
                 //  Check if screens with the same name exist
-                var similarNamesExist = this.builder.screens.filter( (screen) => { 
+                var similarNamesExist = this.version.builder.screens.filter( (screen) => { 
                     //  If the given value matches the screen name
                     return (value == screen.name);
                 }).length;
@@ -105,7 +105,7 @@
                 return this.isCloning ? 'Clone' : 'Add Screen'
             },
             totalScreens(){
-                return this.builder.screens.length;
+                return this.version.builder.screens.length;
             }
         },
         methods: {
@@ -173,7 +173,7 @@
                 clonedScreen.first_display_screen = false;
 
                 //  Add the cloned screen to the rest of the other screens
-                this.builder.screens.push(clonedScreen);
+                this.version.builder.screens.push(clonedScreen);
 
                 var newScreenIndex = this.totalScreens - 1;
                 
@@ -198,7 +198,7 @@
                  *  display screen, then we make this screen the first display screen by
                  *  default.
                  */
-                var firstDisplayScreen = !((this.builder.screens || []).filter( (screen) => { 
+                var firstDisplayScreen = !((this.version.builder.screens || []).filter( (screen) => { 
                     return screen.first_display_screen == true;
                 }).length ? true : false);
 
@@ -206,6 +206,30 @@
                 var screenTemplate = {
                         id: id,
                         name: screenName, 
+                        requirements: {
+                            requires_account: {
+                                active: {
+                                    selected_type: 'no',
+                                    code: ''
+                                },
+                                link: {
+                                    text: '',
+                                    code_editor_text: '',
+                                    code_editor_mode: false
+                                }
+                            },
+                            requires_subscription: {
+                                active: {
+                                    selected_type: 'no',
+                                    code: ''
+                                },
+                                link: {
+                                    text: '',
+                                    code_editor_text: '',
+                                    code_editor_mode: false
+                                }
+                            },
+                        },
                         repeat: {
                             active: {
                                 selected_type: 'no',
@@ -284,7 +308,7 @@
                     };
 
                 //  Add the screen to the screen tree
-                this.builder.screens.push( screenTemplate );
+                this.version.builder.screens.push( screenTemplate );
 
                 var newScreenIndex = this.totalScreens - 1;
                 

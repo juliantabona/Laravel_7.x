@@ -17,7 +17,7 @@
             <singleNavigation v-for="(navigation, index) in navigations" :key="navigation.id+'_'+index"
                 :navigations="navigations"
                 :navigation="navigation"
-                :builder="builder"
+                :version="version"
                 :display="display"
                 :screen="screen"
                 :index="index">
@@ -47,7 +47,7 @@
             <manageNavigationModal
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 :isCloning="false"
                 :isEditing="false"
                 :navigations="navigations"
@@ -82,7 +82,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             }

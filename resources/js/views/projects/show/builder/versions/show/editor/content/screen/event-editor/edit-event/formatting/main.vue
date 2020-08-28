@@ -24,7 +24,7 @@
         <referenceNameInput 
             class="mb-2"
             v-model="event.event_data.reference_name"
-            :builder="builder" :screen="screen" :display="display"
+            :version="version" :screen="screen" :display="display"
             title="Alternative Reference:" :inlineLayout="false">
         </referenceNameInput>
 
@@ -43,7 +43,7 @@
             <singleFormattingRule v-for="(formattingRule, index) in formattingRules" :key="formattingRule.id+'_'+index"
                 :formattingRules="formattingRules"
                 :formattingRule="formattingRule"
-                :builder="builder"
+                :version="version"
                 :display="display"
                 :screen="screen"
                 :index="index">
@@ -112,7 +112,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },

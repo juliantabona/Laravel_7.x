@@ -5,9 +5,9 @@
         <!-- Event Title -->
         <div slot="title" class="cursor-pointer" @click="toggleExpansion()">
             
-            <Row>
+            <Row>  
 
-                <Col :span="14" class="d-flex">
+                <Col :span="12" class="d-flex">
 
                     <!-- Expand / Collapse Icon  -->
                     <Icon :type="arrowDirection" 
@@ -18,7 +18,7 @@
 
                 </Col>
 
-                <Col class="d-flex" :span="10">
+                <Col class="d-flex" :span="12">
                 
                     <!-- Failed Link Warning -->
                     <Poptip trigger="hover" width="350" placement="top" word-wrap>
@@ -57,10 +57,10 @@
 
                     </div>
 
-                     <!-- Event Type -->
-                    <div :style="{ marginTop: '-4px' }">
+                    <div :style="{ marginTop: '-2px' }">
                         
-                        <Tag type="border" color="cyan">
+                        <!-- Event Type -->
+                        <Tag type="border" color="cyan" class="m-0">
 
                             <!-- Event Icon -->
                             <eventIcon :eventType="event.type" :size="20" class="mr-1"></eventIcon>
@@ -71,6 +71,17 @@
                             <template v-if="hasValidationRules">
                                 | <span class="font-weight-bold">{{ numberOfValidationRules }} {{ numberOfValidationRules == '1' ? 'Rule' : 'Rules' }}</span> 
                             </template>
+
+                        </Tag>
+                        
+                        <!-- Global Event Tag -->
+                        <Tag v-if="event.global && !usingImportEventManager" type="border" color="orange" class="m-0">
+
+                            <!-- Event Icon -->
+                            <Icon type="ios-globe-outline" :size="20" />
+
+                            <!-- Event Type -->
+                            <span>Global</span>
 
                         </Tag>
 
@@ -84,8 +95,15 @@
         <!-- Event Toolbar (Edit, Move, Delete Buttons) -->
         <div slot="extra">
 
-            <div class="single-draggable-item-toolbox">
+            <div v-if="usingImportEventManager" :style="{ marginTop: '-2px' }">
+                
+                <Button type="primary" @click.native="handleImport()" size="small">Import</Button>
 
+            </div>
+
+            <div v-else class="single-draggable-item-toolbox">
+
+                
                 <!-- Remove Event Button  -->
                 <Icon type="ios-trash-outline" class="single-draggable-item-icon mr-2" size="20" @click="handleConfirmRemoveEvent()" />
 
@@ -127,11 +145,12 @@
                 :events="events"
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 :isCloning="isCloning"
                 :isEditing="isEditing"
                 :globalMarkers="globalMarkers"
-                @visibility="isOpenManageEventModal = $event">
+                @visibility="isOpenManageEventModal = $event"
+                :usingGlobalEventManager="usingGlobalEventManager">
             </manageEventModal>
 
         </template>
@@ -148,9 +167,6 @@
     import formattingInfo from './info-popups/formatting_info.vue'
     import revisitInfo from './info-popups/revisit_info.vue'
     import redirectInfo from './info-popups/redirect_info.vue'
-
-    
-    
     import crudApiInfo from './info-popups/crud_api_info.vue';
     import eventIcon from './../eventIcon.vue';
 
@@ -179,13 +195,21 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },
             globalMarkers: {
                 type: Array,
                 default: () => []
+            },
+            usingGlobalEventManager: {
+                type: Boolean,
+                default: false
+            },
+            usingImportEventManager: {
+                type: Boolean,
+                default: false
             }
         },
         data(){
@@ -257,7 +281,87 @@
                     }
                 });
             },
+            handleImport(){
+
+                /** Notify the eventManager component that is embedded
+                 *  on the importGlobalEventModal.vue component
+                 */
+                this.$emit('import', this.events[this.index]);
+            },
             handleRemoveEvent() {
+
+                //  Get the event id
+                var eventId = this.events[this.index].id
+
+                //  If we are deleting this event from the Global Events Manager
+                if( this.usingGlobalEventManager ){
+
+                    //  Foreach screen that matches this event, make updates to disable the global feature
+                    var updatedScreens = this.version.builder.screens.map((screen) => {
+
+                        //  Update the screen repeat events
+                        screen.repeat.events.before_repeat = screen.repeat.events.before_repeat.map((event) => {
+
+                            //  If the event ids match
+                            if( event.id == eventId ){
+                                event.global = false; 
+                            }
+
+                            return event;
+
+                        });
+
+                        //  Update the screen repeat events
+                        screen.repeat.events.before_repeat = screen.repeat.events.before_repeat.map((event) => {
+
+                            //  If the event ids match
+                            if( event.id == eventId ){
+                                event.global = false; 
+                            }
+
+                            return event;
+
+                        });
+
+                        //  Update the screen display events
+                        screen.displays = screen.displays.map((display) => {
+
+                            //  Update the screen display before reply events
+                            display.content.events.before_reply = display.content.events.before_reply.map((event) => {
+
+                                //  If the event ids match
+                                if( event.id == eventId ){
+                                    event.global = false; 
+                                }
+
+                                return event;
+
+                            });
+
+                            //  Update the screen display after reply events
+                            display.content.events.after_reply = display.content.events.after_reply.map((event) => {
+
+                                //  If the event ids match
+                                if( event.id == eventId ){
+                                    event.global = false; 
+                                }
+
+                                return event;
+
+                            });
+
+                            return display;
+
+                        });
+
+                        return screen;
+
+                    });
+
+                    //  Update the builder screens with the latest event details
+                    this.$set(this.version.builder, 'screens', updatedScreens);
+
+                }
 
                 //  Remove event from list
                 this.events.splice(this.index, 1);

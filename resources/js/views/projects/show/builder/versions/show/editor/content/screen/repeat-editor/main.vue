@@ -29,13 +29,13 @@
             </div>
 
             <!-- Repeat On Items Settings -->
-            <repeatOnItemsSettings v-if="screen.repeat.selected_type == 'repeat_on_items'" :screen="screen" :builder="builder"></repeatOnItemsSettings>
+            <repeatOnItemsSettings v-if="screen.repeat.selected_type == 'repeat_on_items'" :screen="screen" :version="version"></repeatOnItemsSettings>
             
             <!-- Repeat On Number Settings -->
-            <repeatOnNumberSettings v-if="screen.repeat.selected_type == 'repeat_on_number'" :screen="screen" :builder="builder"></repeatOnNumberSettings>
+            <repeatOnNumberSettings v-if="screen.repeat.selected_type == 'repeat_on_number'" :screen="screen" :version="version"></repeatOnNumberSettings>
 
             <!-- Repeat Events -->
-            <repeatEventManager :globalMarkers="globalMarkers" :screen="screen" :builder="builder"></repeatEventManager>
+            <repeatEventManager :globalMarkers="globalMarkers" :screen="screen" :version="version"></repeatEventManager>
         
         </Col>
 
@@ -57,7 +57,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

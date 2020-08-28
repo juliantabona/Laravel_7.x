@@ -733,7 +733,20 @@ class UssdServiceController extends Controller
         //  Check if the text represents screen content 
         if( $this->shouldDisplayScreen($text) ){
 
-            return  substr($text, 4);
+            $text = substr($text, 4);
+
+            //  If the text extracted is not empty
+            if( !empty($text) ){
+
+                //  Return the text
+                return $text;
+
+            //  Return an empty string to prevent returning "false" when the text is empty
+            }else{
+                
+                return '';
+
+            }
 
         }
 
@@ -1121,10 +1134,8 @@ class UssdServiceController extends Controller
         //  If the variable name is provided and is not empty 
         if (isset($name) && !empty($name)) {
 
-            $dynamicValue = $this->getDynamicData($name);
-
-            //  If the variable name does not already exist among the stored values
-            if (isset($dynamicValue)) {
+            //  If the variable name already exists among the stored values
+            if (isset($this->dynamic_data_storage[$name])) {
 
                 //  Set a warning log that we are overiding existing data
                 if ($log_status) {
@@ -1158,6 +1169,7 @@ class UssdServiceController extends Controller
 
                 }
 
+            //  If the variable name does not already exist among the stored values
             } else {
 
                 //  Add the value as additional dynamic data to our dynamic data storage
@@ -1180,7 +1192,7 @@ class UssdServiceController extends Controller
              *  convert into any of the following:
              * 
              *  If $name = "ussd" then return $this->dynamic_data_storage['ussd']
-             *  If $name = "ussd.text" then return $this->dynamic_data_storage['ussd']['text]
+             *  If $name = "ussd.text" then return $this->dynamic_data_storage['ussd']['text']
              *  ... e.t.c
              */
     
@@ -1305,6 +1317,78 @@ class UssdServiceController extends Controller
 
         //  Get the first screen
         $this->getFirstScreen();
+
+        //  START UPDATE HERE
+        //  START UPDATE HERE
+        //  START UPDATE HERE
+        
+        $this->builder['screens'] = collect( $this->builder['screens'])->map(function($screen){
+            
+            $screen['requirements']['requires_account']['active'] = [
+                'selected_type' => 'no',
+                'code' => ''
+            ];
+            
+            $screen['requirements']['requires_account']['link'] = [
+                'text' => '',
+                'code_editor_text' => '',
+                'code_editor_mode' => false
+            ];
+            
+            $screen['requirements']['requires_subscription']['active'] = [
+                'selected_type' => 'no',
+                'code' => ''
+            ];
+            
+            $screen['requirements']['requires_subscription']['link'] = [
+                'text' => '',
+                'code_editor_text' => '',
+                'code_editor_mode' => false
+            ];
+
+            
+
+            $screen['repeat']['events']['before_repeat'] = collect($screen['repeat']['events']['before_repeat'])->map(function($event){
+                $event['global'] = false;
+                return $event;
+            })->toArray();
+            
+            $screen['repeat']['events']['after_repeat'] = collect($screen['repeat']['events']['after_repeat'])->map(function($event){
+                $event['global'] = false;
+                return $event;
+            })->toArray();
+            
+            $screen['displays'] = collect($screen['displays'])->map(function($display){
+                
+                $display['content']['events']['before_reply'] = collect($display['content']['events']['before_reply'])->map(function($event){
+                    $event['global'] = false;
+                    return $event;
+                })->toArray();
+
+                $display['content']['events']['after_reply'] = collect($display['content']['events']['after_reply'])->map(function($event){
+                    $event['global'] = false;
+                    return $event;
+                })->toArray();
+
+                return $display;
+
+            })->toArray();
+
+            return $screen;
+
+        })->toArray();
+
+        $this->builder['global_events'] = [];
+
+        $update = $this->version->update([
+            'builder' => $this->builder
+        ]);
+
+        return $update;
+
+        //  END UPDATE HERE
+        //  END UPDATE HERE
+        //  END UPDATE HERE
 
         //  Handle current screen
         $response = $this->handleCurrentScreen();
@@ -2160,7 +2244,7 @@ class UssdServiceController extends Controller
      *  additional logic such as linking to respective displays/displays
      */
     public function handleCurrentDisplay()
-    {            
+    {
         //  Reset pagination
         $this->resetPagination();
 
@@ -2347,19 +2431,23 @@ class UssdServiceController extends Controller
 
         //  If the action is to select an option e.g 1, 2 or 3
         if ($displayActionType == 'select_option') {
+
             //  Get the current display expected select action type e.g static_options
             $displaySelectOptionType = $this->getDisplaySelectOptionType();
 
             //  If the select options are basic static options
             if ($displaySelectOptionType == 'static_options') {
+
                 return $this->getStaticSelectOptions('string');
 
             //  If the select option are dynamic options
             } elseif ($displaySelectOptionType == 'dynamic_options') {
+
                 return $this->getDynamicSelectOptions('string');
 
             //  If the select option are generated via the code editor
             } elseif ($displaySelectOptionType == 'code_editor_options') {
+
                 return $this->getCodeSelectOptions('string');
             }
         }
@@ -3113,12 +3201,22 @@ class UssdServiceController extends Controller
 
                     //  If we don't have options to display
                 } else {
+
                     //  If we have instructions to be displayed then add break lines
                     $text = (!empty($this->display_instructions) ? "\n\n" : '');
-
-                    //  Get the custom "No options available" otherwise use default
-                    $text .= ($no_results_message ?? 'No options available');
-
+                    
+                    //  Convert the "no results message" into its associated dynamic value
+                    $outputResponse = $this->convertValueStructureIntoDynamicData($no_results_message);
+    
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+    
+                    //  Get the generated output e.g "No options available"
+                    $no_results_message = $outputResponse;
+    
+                    //  Get the custom "no results message" otherwise use the default message
+                    $text .= ($no_results_message ?? $this->default_no_select_options_message);
+    
                     //  Return the custom or default "No options available"
                     return $text;
                 }
@@ -3363,19 +3461,19 @@ class UssdServiceController extends Controller
              * ADD SCROLL UP AND DOWN NAMES   *
              **********************************/
 
-            //  If the show scroll down text is set to be visible and its not empty
-            if ($show_scroll_down_text == true && !empty($scroll_down_name)) {
-
-                //  Combine the trail and the scroll down text e.g "..." and "99.More"
-                $trailing_characters .= "\n".$scroll_down_name;
-
-            }
-
             //  If the show more text is set to be visible and its not empty
             if ($show_scroll_up_text == true && !empty($scroll_up_name)) {
 
-                //  Combine the trail and the scroll up text e.g "..." and "99.More"
+                //  Combine the trail and the scroll up text e.g "..." and "88.Prev"
                 $trailing_characters .= "\n".$scroll_up_name;
+
+            }
+
+            //  If the show scroll down text is set to be visible and its not empty
+            if ($show_scroll_down_text == true && !empty($scroll_down_name)) {
+
+                //  Combine the trail and the scroll down text e.g "..." and "99.Next"
+                $trailing_characters .= "\n".$scroll_down_name;
 
             }
 
@@ -3417,6 +3515,7 @@ class UssdServiceController extends Controller
              *  3. Cancel Message                        = 17 characters (including line-break and trailing characters)
              *  ---------------------------------------
              */
+
             if ($paginate_by_line_breaks) {
 
                 /** Separate the pagination content into individual paragraphs using the line break.
@@ -3425,11 +3524,7 @@ class UssdServiceController extends Controller
                 $pagination_content_paragraphs = explode("\n", $pagination_content);
 
                 /*  Remove empty paragraphs  */
-                $pagination_content_paragraphs = array_filter($pagination_content_paragraphs, function ($pagination_content_paragraph) {
-
-                    return !empty(trim($pagination_content_paragraph));
-                
-                });
+                $pagination_content_paragraphs = collect($pagination_content_paragraphs)->filter()->values()->toArray();
 
                 $content_groups = [];
 
@@ -5241,16 +5336,13 @@ class UssdServiceController extends Controller
                                     if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
                         
                                     //  Get the generated output
-                                    $value = $outputResponse;      
-
+                                    $value = $outputResponse;   
 
                                     //  Set an info log of the attribute name
                                     $this->logInfo('Attribute: '.$this->wrapAsSuccessHtml( $this->convertToString($name) ) .' = '.$this->wrapAsSuccessHtml( $this->convertToString($value) ));
     
                                     //  Store the attribute data as dynamic data
                                     $this->storeDynamicData($name, $value);
-                            
-                                    return null;
 
                                 }
 
@@ -5519,6 +5611,10 @@ class UssdServiceController extends Controller
                         case 'custom_regex':
 
                             return $this->applyValidationRule($target_value, $validation_rule, 'validateCustomRegex'); break;
+
+                        case 'custom_code':
+
+                            return $this->applyFormattingRule($target_value, $validation_rule, 'validateCustomCode'); break;
                     }
                 }
             }
@@ -6088,6 +6184,34 @@ class UssdServiceController extends Controller
         }
     }
 
+    /** This method validates to make sure the target input
+     *  matches the given custom regex rule
+     */
+    public function validateCustomCode($target_value, $validation_rule)
+    {
+        /*******************
+         * BUILD VALUE     *
+         ******************/
+        
+        $code = $validation_rule['value'];
+
+        //  Process the PHP Code
+        $outputResponse = $this->processPHPCode("$code");
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+        $validation = $outputResponse;
+
+        //  If the validation failed
+        if ( $validation === false ) {
+
+            //  Handle the failed validation
+            return $this->handleFailedValidation($validation_rule);
+
+        }
+    }
+
     /** This method gets the validation rule and callback. The callback represents the name of
      *  the validation function that we must run to validate the current input target. Since
      *  we allow custom Regex patterns for custom validation support, we must perform this under
@@ -6288,9 +6412,9 @@ class UssdServiceController extends Controller
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'randomStringFormat'); break;
 
-                        case 'custom_format':
+                        case 'custom_code':
 
-                            return $this->applyFormattingRule($target_value, $formatting_rule, 'customFormat'); break;
+                            return $this->applyFormattingRule($target_value, $formatting_rule, 'customCodeFormat'); break;
                     }
                 }
             }
@@ -6640,7 +6764,7 @@ class UssdServiceController extends Controller
         return Str::random($target_value);
     }
 
-    public function customFormat($target_value, $formatting_rule)
+    public function customCodeFormat($target_value, $formatting_rule)
     {
         /*******************
          * BUILD VALUE     *

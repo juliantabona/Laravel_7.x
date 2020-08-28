@@ -78,7 +78,7 @@
                         :subscriptionOptions="subscriptionPlanForm.options"
                         :key="subscriptionPlanOption.name +'_'+ index"
                         :subscriptionOption="subscriptionPlanOption"
-                        :builder="builder"
+                        :version="version"
                         :index="index">
                     </singleSubscriptionOption>
 
@@ -102,7 +102,7 @@
         <template v-if="isOpenManageSubscriptionOptionModal">
 
             <manageSubscriptionOptionModal
-                :builder="builder"
+                :version="version"
                 :subscriptionOptions="subscriptionPlanForm.options"
                 @saveChanges="handleSavedSubscriptionOption($event)"
                 @visibility="isOpenManageSubscriptionOptionModal = $event">
@@ -134,7 +134,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default:() => {}
             },
@@ -155,7 +155,7 @@
                 const self = this;
 
                 //  Check if subscription plans with the same name exist
-                var similarNamesExist = this.builder.subscription_plans.filter( (subscriptionPlan, index) => {
+                var similarNamesExist = this.version.builder.subscription_plans.filter( (subscriptionPlan, index) => {
                     
                     //  If we are editing
                     if( this.isEditing ){
@@ -241,7 +241,7 @@
 
             },
             totalSubscriptionPlans(){
-                return this.builder.subscription_plans.length;
+                return this.version.builder.subscription_plans.length;
             }
         },
         methods: {
@@ -318,7 +318,7 @@
                 this.subscriptionPlanForm.id = this.generateSubscriptionPlanId();
 
                 //  Add the cloned subscription plan to the rest of the other subscription plans
-                this.builder.subscription_plans.push(this.subscriptionPlanForm);
+                this.version.builder.subscription_plans.push(this.subscriptionPlanForm);
 
                 this.$Message.success({
                     content: 'Subscription plan cloned!',
@@ -329,7 +329,7 @@
             handleAddNewSubscriptionPlan(){
 
                 //  Add the new subscription plan to the rest of the other subscription plans
-                this.builder.subscription_plans.push(this.subscriptionPlanForm);
+                this.version.builder.subscription_plans.push(this.subscriptionPlanForm);
 
                 this.$Message.success({
                     content: 'Subscription plan added!',

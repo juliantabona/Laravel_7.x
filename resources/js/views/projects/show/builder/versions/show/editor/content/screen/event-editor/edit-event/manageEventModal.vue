@@ -18,6 +18,8 @@
             <Alert v-if="isEditing" show-icon>Editing</Alert>
 
             <Alert v-else-if="isCloning" show-icon>Cloning</Alert>
+
+            <Checkbox v-if="!usingGlobalEventManager" v-model="eventForm.global">Global Event</Checkbox>
             
             <!-- Form -->
             <Form ref="eventForm" class="mb-4" :model="eventForm" :rules="eventFormRules">
@@ -106,7 +108,6 @@
     import editRedirectEvent from './redirect/main.vue';
     import editRevisitEvent from './revisit/main.vue';
     
-
     export default {
         mixins: [modalMixin],
         components: { 
@@ -134,7 +135,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },
@@ -149,6 +150,10 @@
             globalMarkers: {
                 type: Array,
                 default: () => []
+            },
+            usingGlobalEventManager: {
+                type: Boolean,
+                default: false
             }
         },
         data(){
@@ -197,8 +202,138 @@
         methods: {
             
             getEventForm(){
+
+                //  If this is a global event
+                if( this.event.global ){
+
+                    var globalEvents = this.version.builder.global_events.filter((globalEvent) => {
+                            //  Return Global Events that match the current event id
+                            return globalEvent.id == this.event.id;
+                    });
+
+                    //  If we have any matching Global Event
+                    if( globalEvents.length ){
+
+                        //  Get the first matched Global Event
+                        var globalEvent = globalEvents[0];
                 
+                        //  Copy and return the global event details
+                        return _.cloneDeep(globalEvent);
+
+                    }
+
+                }
+                
+                //  Copy and return the current event details
                 return _.cloneDeep(this.event);
+
+            },
+            updateGlobalEvent(){
+
+                var globalEventExists = false;
+
+                //  Foreach screen that matches this event, make updates
+                var updatedScreens = this.version.builder.screens.map((screen) => {
+
+                    //  Update the screen repeat events
+                    screen.repeat.events.before_repeat = screen.repeat.events.before_repeat.map((event) => {
+
+                        //  If the event ids match
+                        if( event.id == this.eventForm.id ){
+                            
+                            return this.eventForm; 
+                        }
+
+                        return event;
+
+                    });
+
+                    //  Update the screen repeat events
+                    screen.repeat.events.before_repeat = screen.repeat.events.before_repeat.map((event) => {
+
+                        //  If the event ids match
+                        if( event.id == this.eventForm.id ){
+                            
+                            return this.eventForm; 
+                        }
+
+                        return event;
+
+                    });
+
+                    //  Update the screen display events
+                    screen.displays = screen.displays.map((display) => {
+
+                        //  Update the screen display before reply events
+                        display.content.events.before_reply = display.content.events.before_reply.map((event) => {
+
+                            //  If the event ids match
+                            if( event.id == this.eventForm.id ){
+                                
+                                return this.eventForm; 
+
+                            }
+
+                            return event;
+
+                        });
+
+                        //  Update the screen display after reply events
+                        display.content.events.after_reply = display.content.events.after_reply.map((event) => {
+
+                            //  If the event ids match
+                            if( event.id == this.eventForm.id ){
+                                
+                                return this.eventForm; 
+
+                            }
+
+                            return event;
+
+                        });
+
+                        return display;
+
+                    });
+
+                    return screen;
+
+                });
+
+                //  Update the builder screens with the latest event details
+                this.$set(this.version.builder, 'screens', updatedScreens);
+
+                //  Go through each Global Event and update accordingly
+                var globalEvents = this.version.builder.global_events.map((globalEvent) => {
+                        
+                    //  If the Global Event matches the current event id
+                    if( globalEvent.id == this.eventForm.id ){
+
+                        globalEventExists = true;
+
+                        //  Update this Global Event
+                        globalEvent = this.eventForm;
+                    
+                    }
+
+                    //  Return the Global Event
+                    return globalEvent;
+
+                });
+
+                //  If this event already existed as a Global Event
+                if( globalEventExists ){
+
+                    //  Update the Global Events
+                    this.$set(this.version.builder, 'global_events', globalEvents);
+
+                //  If this event did not already exist as a Global Event
+                }else{
+
+                    //  Add the event to the list of Global Events
+                    this.version.builder.global_events.push(this.eventForm);
+                    
+                }
 
             },
             handleSubmit(){
@@ -219,6 +354,13 @@
 
                         }
 
+                        //  If we are turning this event into a Global event
+                        if( this.eventForm.global ){
+
+                            this.updateGlobalEvent();
+
+                        }
+
                         /** Note the closeModal() method is imported from the
                          *  modalMixin file. It handles the closing process 
                          *  of the modal
@@ -236,6 +378,26 @@
             },
             handleEditEvent(){
 
+                //  If this event was set to global before and now its not anymore
+                if( this.event.global == true && this.eventForm.global == false){
+
+                    //  Change the event id so that it does not sync with the other global events anymore
+                    this.eventForm.id = this.generateEventId();
+                    
+                }
+
+                //  If the event is set to global and its color its using a normal grey highlight color
+                if( this.eventForm.global && this.eventForm.hexColor == '#CECECE' ){
+                    //  Change the color to an orange highlight color
+                    this.eventForm.hexColor = '#FF9900';
+                }
+                
+                //  If the event is not set to global and its color its using the orange highlight color
+                if( !this.eventForm.global && this.eventForm.hexColor == '#FF9900' ){
+                    //  Change the color to an grey highlight color
+                    this.eventForm.hexColor = '#CECECE';
+                }
+
                 this.$set(this.events, this.index, this.eventForm);
 
                 this.$Message.success({
@@ -246,6 +408,9 @@
             },
             handleCloneEvent(){
 
+                //  Update the event id
+                this.eventForm.id = this.generateEventId();
+
                 //  Add the cloned event to the rest of the other events
                 this.events.push(this.eventForm);
 
@@ -254,6 +419,9 @@
                     duration: 6
                 });
 
+            },
+            generateEventId(){
+                return 'event_' + Date.now();
             }
         },
         created(){

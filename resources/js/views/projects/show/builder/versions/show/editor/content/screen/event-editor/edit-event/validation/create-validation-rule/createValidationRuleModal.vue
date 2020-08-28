@@ -218,6 +218,13 @@
                         type: 'custom_regex',
                         error_msg: 'Custom regex validation error',
                         comment: 'Makes sure that the target value matches the given Regex Expression e.g if the given pattern is "/[a-zA-Z0-9]+/" then this will only be valid for letters and numbers only.'
+                    },
+                    {
+                        value: '',
+                        name: 'Custom Code',
+                        type: 'custom_code',
+                        error_msg: 'Custom code validation error',
+                        comment: 'Validate based on custom code e.g return True if valid and False if invalid.'
                     }
                 ]
             }
@@ -232,9 +239,8 @@
 
                 //  Set the active state details
                 validation_rule['active'] = {
-                    text: true,
-                    code_editor_text: '',
-                    code_editor_mode: false
+                    selected_type: 'yes',
+                    code: ''
                 }
 
                 //  If we have the value property

@@ -132,7 +132,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },
@@ -215,7 +215,7 @@
                     if( this.event.event_data.revisit_type.screen_revisit.link.text ){
                             
                         //  If we have a matching screen return true otherwise false
-                        var screens = this.builder.screens.filter( (screen) => {
+                        var screens = this.version.builder.screens.filter( (screen) => {
                             
                             return ( screen.id == this.event.event_data.revisit_type.screen_revisit.link.text ) ? true : false;
 
@@ -254,7 +254,7 @@
             getLinkName(){
                     
                 //  If we have a matching screen return true otherwise false
-                var screens = this.builder.screens.filter( (screen) => {
+                var screens = this.version.builder.screens.filter( (screen) => {
                     
                     return ( screen.id == this.event.event_data.revisit_type.screen_revisit.link.text ) ? true : false;
 

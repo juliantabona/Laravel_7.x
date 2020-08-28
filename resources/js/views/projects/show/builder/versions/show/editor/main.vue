@@ -5,11 +5,12 @@
         <Col :span="7">
             
             <editorAside 
-                :screen="screen" :builder="builder"
+                :screen="screen" :version="version"
                 @showScreens="handleShowScreens()"
                 @selectedScreen="handleSelectedScreen($event)"
                 @showSubscriptions="handleShowSubscriptions()"
                 @showGlobalVariables="handleShowGlobalVariables()"
+                @showGlobalEvents="handleShowGlobalEvents()"
                 @showConditionalScreens="handleShowConditionalScreens()">
             </editorAside>
 
@@ -19,7 +20,9 @@
         
             <template v-if="activeView == 'Screens'">
 
-                <screenEditor v-if="builder.screens.length" :screen="screen" :builder="builder" :key="screenId"></screenEditor>
+                <screenEditor v-if="version.builder.screens.length" 
+                    :screen="screen" :version="version" :globalMarkers="globalMarkers" :key="screenId">
+                </screenEditor>
 
                 <template v-else>
                     <img src="/assets/images/Everyone.png" alt="Everyone" class="w-50">
@@ -29,19 +32,25 @@
 
             <template v-else-if="activeView == 'Global Variables'">
                 
-                <globalVariablesEditor :builder="builder"></globalVariablesEditor>
+                <globalVariablesEditor :version="version" ></globalVariablesEditor>
+
+            </template>
+
+            <template v-else-if="activeView == 'Global Events'">
+                
+                <globalEventsEditor :version="version" :globalMarkers="globalMarkers"></globalEventsEditor>
 
             </template>
 
             <template v-else-if="activeView == 'Subcription Plans'">
                 
-                <subscriptionPlanEditor :builder="builder"></subscriptionPlanEditor>
+                <subscriptionPlanEditor :version="version"></subscriptionPlanEditor>
 
             </template>
 
             <template v-else-if="activeView == 'Conditional Screens'">
                 
-                <conditionalScreensEditor :builder="builder"></conditionalScreensEditor>
+                <conditionalScreensEditor :version="version"></conditionalScreensEditor>
 
             </template>
 
@@ -56,11 +65,15 @@
     import editorAside from './aside/main.vue';
     import screenEditor from './content/screen/main.vue';
     import globalVariablesEditor from './content/global-variables/main.vue';
+    import globalEventsEditor from './content/global-events/main.vue';
     import subscriptionPlanEditor from './content/subscription-plans/main.vue';
     import conditionalScreensEditor from './content/conditional-screens/main.vue';
 
     export default {
-        components: { editorAside, screenEditor, globalVariablesEditor, subscriptionPlanEditor, conditionalScreensEditor },
+        components: { 
+            editorAside, screenEditor, globalVariablesEditor, globalEventsEditor, 
+            subscriptionPlanEditor, conditionalScreensEditor 
+        },
         props: {
             project: {
                 type: Object,
@@ -75,23 +88,62 @@
             return {
                 screen: null,
                 activeView: 'Screens',
-                builder: this.version.builder,
-                availableViews: ['Screens', 'Global Variables', 'Subcription Plans', 'Conditional Screens'],
+                availableViews: ['Screens', 'Global Variables', 'Global Events','Subcription Plans', 'Conditional Screens'],
             }
         },
         computed: {
             screenId(){
                 return (this.screen || {}).id
-            }
+            },
+            globalMarkers(){
+                
+                //  If we have screens
+                if( this.version.builder.screens.length ){
+
+                    //  Get the screen marked as the first screen
+                    var markers = this.version.builder.screens.map( (screen) => { 
+                            return screen.markers.map( (marker) => { 
+                                return {
+                                    text: marker.name
+                                }
+                            })
+                        }).flat(1);
+
+                    var uniqueMarkers = [];
+
+                    //  Only get unique markers (Remove duplicate markers if any)
+                    for (let x = 0; x < markers.length; x++) {
+
+                        //  Check if the marker has already been added
+                        for (let y = 0; y < uniqueMarkers.length; y++) {
+                            //  If it already has been added
+                            if( markers[x].text == uniqueMarkers[y].text ){
+                                //  Remove the older marker
+                                uniqueMarkers.splice(y, 1);
+                            }
+                        }
+
+                        //  Add the current marker
+                        uniqueMarkers.push(markers[x]);
+
+                    }
+
+                    //  Return the unique markers
+                    return uniqueMarkers;
+                }
+
+                return [];
+
+            },
         },
         methods: {
             getFirstScreenToShow(){
                 
                 //  If we have screens
-                if( this.builder.screens.length ){
+                if( this.version.builder.screens.length ){
 
                     //  Get the screen marked as the first screen
-                    var markedScreens = this.builder.screens.filter( (screen) => { 
+                    var markedScreens = this.version.builder.screens.filter( (screen) => { 
                         return screen.first_display_screen == true;
                     });
 
@@ -106,7 +158,7 @@
                     }
 
                     //  Otherwise get the first listed screen
-                    return this.builder.screens[0];
+                    return this.version.builder.screens[0];
 
                 }
 
@@ -124,7 +176,7 @@
                 }else{
 
                     //  Set the selected screen as the active screen
-                    this.screen = this.builder.screens[index];
+                    this.screen = this.version.builder.screens[index];
 
                 }
 
@@ -154,8 +206,14 @@
             },
             handleShowGlobalVariables(){
 
-                //  Set "Subcription Plans" as the active viewport
+                //  Set "Global Variables" as the active viewport
                 this.handleChangeView('Global Variables');
+
+            },
+            handleShowGlobalEvents(){
+
+                //  Set "Global Events" as the active viewport
+                this.handleChangeView('Global Events');
 
             },
             handleShowConditionalScreens(){

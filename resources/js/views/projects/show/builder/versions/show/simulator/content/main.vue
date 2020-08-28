@@ -107,7 +107,6 @@
         data(){
             return {
                 logTypes: ['All', 'Info', 'Warnings', 'Errors'],
-                builder: this.version.builder,
                 ussdSimulatorLoading: false,
                 ussdSimulatorResponse: null,
                 selectedLogType: 'All',

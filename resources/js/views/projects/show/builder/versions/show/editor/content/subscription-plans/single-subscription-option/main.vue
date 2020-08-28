@@ -105,7 +105,7 @@
                         :subscriptionOptions="localSubscriptionOption.options"
                         :key="subSubscriptionOption.name +'_'+ index"
                         :subscriptionOption="subSubscriptionOption"
-                        :builder="builder"
+                        :version="version"
                         :index="index">
                     </singleSubscriptionOption>
 
@@ -136,7 +136,7 @@
 
             <manageSubscriptionOptionModal
                 :index="index"
-                :builder="builder"
+                :version="version"
                 :isCloning="isCloning"
                 :isEditing="isEditing"
                 :subscriptionOptions="subscriptionOptions"
@@ -166,7 +166,7 @@
                 type: Number,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

@@ -104,7 +104,7 @@
                 return this.project ? true : false;
             },
             totalProjects(){
-                return this.builder.projects.length;
+                return this.version.builder.projects.length;
             }
         },
         methods: {

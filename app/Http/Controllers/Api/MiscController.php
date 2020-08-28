@@ -15,10 +15,10 @@ class MiscController extends Controller
         $this->user = auth('api')->user();
     }
 
-    public function getPaymentMehods()
+    public function getPaymentMethods()
     {
         //  Get the payment methods
-        $payment_methods = \App\PaymentMethod::all();
+        $payment_methods = \App\PaymentMethod::paginate(100);
 
         //  Check if the payment methods exists
         if ($payment_methods) {

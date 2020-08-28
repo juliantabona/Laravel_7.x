@@ -16,16 +16,16 @@
 
         <span class="d-block mt-4 mb-4">
             <span class="font-weight-bold mr-1">Active:</span>
-            <i-Switch v-model="builder.conditional_screens.active" />
+            <i-Switch v-model="version.builder.conditional_screens.active" />
         </span>
 
-        <template v-if="builder.conditional_screens.active">
+        <template v-if="version.builder.conditional_screens.active">
 
             <!-- Code Editor -->
             <customEditor
                 :useCodeEditor="true"
-                :codeContent="builder.conditional_screens.code"
-                @codeChange="builder.conditional_screens.code = $event"
+                :codeContent="version.builder.conditional_screens.code"
+                @codeChange="version.builder.conditional_screens.code = $event"
                 sampleCodeTemplate="ussd_service_instructions_sample_code">
             </customEditor>
 
@@ -42,7 +42,7 @@
     export default {
         components: { customEditor },
         props: {
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

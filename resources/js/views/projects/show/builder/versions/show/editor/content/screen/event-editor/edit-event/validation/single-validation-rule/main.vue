@@ -130,7 +130,7 @@
                 :index="index"
                 :screen="screen"
                 :display="display"
-                :builder="builder"
+                :version="version"
                 :isCloning="isCloning"
                 :isEditing="isEditing"
                 :validationRule="validationRule"
@@ -171,7 +171,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             }

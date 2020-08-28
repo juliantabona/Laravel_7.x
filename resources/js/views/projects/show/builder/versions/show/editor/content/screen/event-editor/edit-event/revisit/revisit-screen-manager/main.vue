@@ -3,7 +3,7 @@
     <!-- Select Screen Link -->
     <screenAndDisplaySelector 
         :link="event.event_data.revisit_type.screen_revisit.link"
-        :builder="builder" :screen="screen" :display="display" :showDisplays="false">
+        :version="version" :screen="screen" :display="display" :showDisplays="false">
     </screenAndDisplaySelector>
 
 </template>
@@ -30,7 +30,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },

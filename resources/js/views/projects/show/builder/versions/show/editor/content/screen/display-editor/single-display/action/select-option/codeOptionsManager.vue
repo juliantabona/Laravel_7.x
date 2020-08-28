@@ -27,7 +27,7 @@
                     <!-- Reference Name Input -->
                     <referenceNameInput 
                         v-model="display.content.action.select_option.code_editor_options.reference_name" class="w-100"
-                        :builder="builder" :screen="screen" :display="display">
+                        :version="version" :screen="screen" :display="display">
                     </referenceNameInput>
 
                 </div>
@@ -84,7 +84,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

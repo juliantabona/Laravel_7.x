@@ -67,9 +67,16 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
 
 });
 
-//  MISC
-Route::put('/payment-methods', 'MiscController@getPaymentMehods')->name('payment-methods');
+// Route: /api/
+Route::namespace('Api')->group(function () {
+    
+    Route::get('/payment-methods', 'MiscController@getPaymentMethods')->name('payment-methods');
 
+});
+
+// Route: /api/ussd/
 Route::prefix('ussd')->namespace('Api')->group(function () {
+
     Route::post('/builder', 'UssdServiceController@setup')->name('ussd-service-builder');
+
 });

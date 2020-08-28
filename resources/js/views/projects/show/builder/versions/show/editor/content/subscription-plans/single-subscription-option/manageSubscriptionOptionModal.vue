@@ -142,7 +142,7 @@
                 type: Boolean,
                 default: false
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

@@ -16,7 +16,7 @@
             <referenceNameInput 
                 class="mb-2"
                 v-model="event.event_data.reference_name"
-                :builder="builder" :screen="screen" :display="display"
+                :version="version" :screen="screen" :display="display"
                 title="Reference:" :inlineLayout="false" :isRequired="false">
             </referenceNameInput>
 
@@ -216,7 +216,7 @@
                 type: Object,
                 default:() => {}
             },
-            builder: {
+            version: {
                 type: Object,
                 default: () => {}
             },

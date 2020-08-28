@@ -82,7 +82,7 @@
                             title="Navigation Target:"
                             :link="navigationForm.custom.link" class="mt-2"
                             :disableCurrentScreen="false" :showDisplays="false"
-                            :builder="builder" :screen="screen" :display="display">
+                            :version="version" :screen="screen" :display="display">
                         </screenAndDisplaySelector>
 
                     </Col>   
@@ -115,7 +115,7 @@
                             title="Navigation Target:"
                             :link="navigationForm.regex.link" class="mt-2"
                             :disableCurrentScreen="false" :showDisplays="false"
-                            :builder="builder" :screen="screen" :display="display">
+                            :version="version" :screen="screen" :display="display">
                         </screenAndDisplaySelector>
 
                     </Col>
@@ -181,7 +181,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

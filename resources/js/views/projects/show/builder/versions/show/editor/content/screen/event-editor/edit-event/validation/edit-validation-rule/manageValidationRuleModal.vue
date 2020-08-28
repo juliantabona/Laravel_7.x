@@ -10,7 +10,7 @@
              functionality to enhance the experience. Refer to modalMixin.
         -->
         <Modal
-            width="600"
+            width="800"
             :title="modalTitle"
             v-model="modalVisible"
             @on-visible-change="detectClose">
@@ -69,6 +69,12 @@
                 :validationRule="validationRuleForm">
             </customRegexValidationRule>
             
+            <!-- Edit Custom Code Validation Rule --> 
+            <customCodeValidationRule 
+                v-if="validationRuleForm.type == 'custom_code'" 
+                :validationRule="validationRuleForm">
+            </customCodeValidationRule>
+            
             <!-- Edit Basic Validation Rule --> 
             <basicValidationRule 
                 v-else-if="validationRuleForm.value" 
@@ -102,6 +108,7 @@
 
     import activeStateSelector from './../../../../../../../editor/content/screen/activeStateSelector.vue';
     import customRegexValidationRule from './validationRuleTypes/customRegexValidationRule.vue';
+    import customCodeValidationRule from './validationRuleTypes/customCodeValidationRule.vue';
     import basicValidationRule from './validationRuleTypes/basicValidationRule.vue';
     import textOrCodeEditor from './../../../../textOrCodeEditor.vue';
     import commentInput from './../../../../commentInput.vue';
@@ -109,7 +116,8 @@
     export default {
         mixins: [modalMixin],
         components: { 
-            activeStateSelector, customRegexValidationRule, basicValidationRule, textOrCodeEditor, commentInput
+            activeStateSelector, customRegexValidationRule, customCodeValidationRule, 
+            basicValidationRule, textOrCodeEditor, commentInput
         },
         props: {
             index: {
@@ -132,7 +140,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

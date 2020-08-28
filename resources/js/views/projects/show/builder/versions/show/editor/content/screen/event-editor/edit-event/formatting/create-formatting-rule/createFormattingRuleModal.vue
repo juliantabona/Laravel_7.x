@@ -192,8 +192,8 @@
                     },
                     {
                         value: '',
-                        name: 'Custom Format',
-                        type: 'custom_format',
+                        name: 'Custom Code',
+                        type: 'custom_code',
                         comment: 'Formats the target value using custom code for increased flexibility'
                     }
                 ]
@@ -209,9 +209,8 @@
 
                 //  Set the active state details
                 formatting_rule['active'] = {
-                    text: true,
-                    code_editor_text: '',
-                    code_editor_mode: false
+                    selected_type: 'yes',
+                    code: ''
                 }
 
                 //  If we have the value property

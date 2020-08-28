@@ -300,6 +300,8 @@ body {
     min-height: 120px;
 }
 
+/*  Dynamic Content Highlighter () */
+
 .dynamic-content-label{
     width: auto;
     height: 20px;
@@ -414,8 +416,6 @@ body {
     position: inherit !important;
     line-height: 1.4em !important;
 }
-
-
 
 /*  Vue Input Tags Fixes / Overides */
 .vue-tags-input .ti-input {

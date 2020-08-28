@@ -99,7 +99,7 @@
                         <referenceNameInput
                             class="mb-2"
                             v-model="responseStatusHandle.reference_name"
-                            :builder="builder" :screen="screen" :display="display"
+                            :version="version" :screen="screen" :display="display"
                             title="Response reference name:" :inlineLayout="false">
                         </referenceNameInput>
 
@@ -133,7 +133,7 @@
                                         v-model="attribute.name"
                                         :isRequired="false"
                                         :display="display"
-                                        :builder="builder"
+                                        :version="version"
                                         :screen="screen"
                                         :index="index"
                                         size="small">
@@ -310,7 +310,7 @@
                 type: Object,
                 default: null
             },
-            builder: {
+            version: {
                 type: Object,
                 default: null
             },

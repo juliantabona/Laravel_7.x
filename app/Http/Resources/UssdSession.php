@@ -35,7 +35,7 @@ class UssdSession extends JsonResource
             '_links' => [
 
                 'curies' => [
-                    ['name' => 'oq', 'href' => 'https://oqcloud.co.bw/docs/rels/{rel}', 'templated' => true],
+                    ['name' => 'sce', 'href' => 'https://oqcloud.co.bw/docs/rels/{rel}', 'templated' => true],
                 ]
                 
             ]
