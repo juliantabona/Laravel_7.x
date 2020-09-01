@@ -17,7 +17,7 @@
         </Col>
 
         <Col :span="17">
-        
+
             <template v-if="activeView == 'Screens'">
 
                 <screenEditor v-if="version.builder.screens.length" 

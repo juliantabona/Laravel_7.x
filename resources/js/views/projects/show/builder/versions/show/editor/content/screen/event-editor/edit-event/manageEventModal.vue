@@ -18,32 +18,35 @@
             <Alert v-if="isEditing" show-icon>Editing</Alert>
 
             <Alert v-else-if="isCloning" show-icon>Cloning</Alert>
-
-            <Checkbox v-if="!usingGlobalEventManager" v-model="eventForm.global">Global Event</Checkbox>
             
             <!-- Form -->
-            <Form ref="eventForm" class="mb-4" :model="eventForm" :rules="eventFormRules">
+            <Form ref="eventForm" class="mb-2" :model="eventForm" :rules="eventFormRules">
 
                 <Row :gutter="12">
 
-                    <Col :span="24">
-                            
+                    <Col :span="firstRowSpan">
+
+                        <Checkbox v-if="!usingGlobalEventManager" v-model="eventForm.global">
+                            <span class="font-weight-bold">Global Event</span>
+                        </Checkbox>
+
+                    </Col>
+
+                    <Col :span="firstRowSpan">
+
                         <!-- Show active state checkbox (Marks if this is active / inactive) -->
                         <activeStateSelector v-model="eventForm.active" class="mb-2"></activeStateSelector>
-
-                        <!-- Enter Name -->
-                        <FormItem prop="name" class="mb-2">
-                            <Input  type="text" v-model="eventForm.name" placeholder="Event name" maxlength="50" show-word-limit>
-                                    <span slot="prepend">Name</span>
-                            </Input>
-                        </FormItem>
 
                     </Col>
 
                     <Col :span="24">
 
-                        <!-- Enter Comment -->
-                        <commentInput v-model="eventForm.comment" class="mt-2"></commentInput>
+                        <!-- Enter Name -->
+                        <FormItem prop="name" class="highlight-form-item-input mb-2">
+                            <Input  type="text" v-model="eventForm.name" placeholder="Event name" maxlength="50" show-word-limit>
+                                    <span slot="prepend">Name</span>
+                            </Input>
+                        </FormItem>
 
                     </Col>
 
@@ -66,13 +69,25 @@
             <!-- Edit Local Storage Event --> 
             <editLocalStorageEvent v-if="eventForm.type == 'Local Storage'" v-bind="$props" :event="eventForm"></editLocalStorageEvent>
 
+            <!-- Edit Custom Code Event --> 
+            <editCustomCodeEvent v-if="eventForm.type == 'Custom Code'" v-bind="$props" :event="eventForm"></editCustomCodeEvent>
+            
             <!-- Edit Revisit Event --> 
             <editRevisitEvent v-if="eventForm.type == 'Revisit'" v-bind="$props" :event="eventForm"></editRevisitEvent>
+
+            <!-- Edit Linking Event --> 
+            <editLinkingEvent v-if="eventForm.type == 'Linking'" v-bind="$props" :event="eventForm"></editLinkingEvent>
 
             <!-- Edit Redirect Event --> 
             <editRedirectEvent v-if="eventForm.type == 'Redirect'" v-bind="$props" :event="eventForm"></editRedirectEvent>
 
+            <!-- Edit Redirect Event --> 
+            <editCreateOrUpdateAccountEvent v-if="eventForm.type == 'Create/Update Account'" v-bind="$props" :event="eventForm"></editCreateOrUpdateAccountEvent>
+
             <div class="border-top pt-3 mt-3">
+
+                <!-- Enter Comment -->
+                <commentInput v-model="eventForm.comment" class="mb-2"></commentInput>
 
                 <!-- Highlighter -->
                 <span class="d-inline-block mr-2">
@@ -100,19 +115,23 @@
     import commentInput from './../../commentInput.vue';
 
     //  Get the Event components used to edit
+    import editCreateOrUpdateAccountEvent from './create-or-update-account/main.vue';
     import editLocalStorageEvent from './local-storage/main.vue';
     import editBillingApiEvent from './apis/billing-api/main.vue';
+    import editCustomCodeEvent from './custom-code/main.vue';
     import editCrudApiEvent from './apis/crud-api/main.vue';
     import editValidationEvent from './validation/main.vue';
     import editFormattingEvent from './formatting/main.vue';
     import editRedirectEvent from './redirect/main.vue';
     import editRevisitEvent from './revisit/main.vue';
+    import editLinkingEvent from './linking/main.vue';
     
     export default {
         mixins: [modalMixin],
         components: { 
             activeStateSelector, commentInput, editLocalStorageEvent, editBillingApiEvent, editCrudApiEvent, 
-            editValidationEvent, editFormattingEvent, editRedirectEvent, editRevisitEvent
+            editValidationEvent, editFormattingEvent, editRedirectEvent, editRevisitEvent, editLinkingEvent,
+            editCustomCodeEvent, editCreateOrUpdateAccountEvent
         },
         props: {
             index: {
@@ -169,6 +188,17 @@
             }
         },
         computed: {
+            firstRowSpan(){
+
+                if( this.eventForm.active.selected_type == 'conditional' ){
+
+                    return 24;
+
+                }
+
+                return 12;
+
+            },
             modalTitle(){
 
                 if( this.isEditing ){

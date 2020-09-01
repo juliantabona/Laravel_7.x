@@ -13,24 +13,8 @@
         </Col>
 
         <Col :span="17">
-        
-            <template v-if="activeView == 'Debugger'">
 
-                <simulatorDebugger :version="version" :project="project"></simulatorDebugger>
-
-            </template>
-
-            <template v-else-if="activeView == 'Subscriptions'">
-                
-                //  Subscription settings
-
-            </template>
-
-            <template v-else-if="activeView == 'Settings'">
-                
-                //  Subscription settings
-
-            </template>
+            <simulatorContent :version="version" :project="project" :activeView="activeView"></simulatorContent>
 
         </Col>
 
@@ -40,11 +24,11 @@
 
 <script>
 
-    import simulatorDebugger from './content/main.vue';
+    import simulatorContent from './content/main.vue';
     import simulatorAside from './aside/main.vue';
 
     export default {
-        components: { simulatorDebugger, simulatorAside },
+        components: { simulatorContent, simulatorAside },
         props: {
             project: {
                 type: Object,
@@ -70,14 +54,14 @@
             },
             handleShowSettings(){
 
-                //  Set "Subscriptions" as the active viewport
-                this.handleChangeView('Subscriptions');
+                //  Set "Settings" as the active viewport
+                this.handleChangeView('Settings');
 
             },
             handleShowSubscriptions(){
 
-                //  Set "Settings" as the active viewport
-                this.handleChangeView('Settings');
+                //  Set "Subscriptions" as the active viewport
+                this.handleChangeView('Subscriptions');
 
             },
             handleChangeView(name){

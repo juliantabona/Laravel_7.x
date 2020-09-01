@@ -17,8 +17,9 @@ class UssdSession extends Model
      * @var string
      */
     protected $casts = [
-        'metadata' => 'array',
+        'test' => 'boolean',  //  Return the following 1/0 as true/false
         'allow_timeout' => 'boolean', //  Return the following 1/0 as true/false
+        'metadata' => 'array',
     ];
 
     /**
@@ -38,8 +39,8 @@ class UssdSession extends Model
     protected $fillable = [
 
         /*  Session Details  */
-        'session_id', 'service_code', 'type', 'msisdn', 'request_type', 'text', 'status',
-        'allow_timeout', 'timeout_at',
+        'session_id', 'service_code', 'type', 'msisdn', 'request_type', 
+        'text', 'test', 'status', 'allow_timeout', 'timeout_at',
 
         /*  Meta Data  */
         'metadata',
@@ -121,6 +122,11 @@ class UssdSession extends Model
     public function getResourceTypeAttribute()
     {
         return strtolower(Str::snake(class_basename($this)));
+    }
+
+    public function setTestAttribute($value)
+    {
+        $this->attributes['test'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
     }
 
     public function setAllowTimeoutAttribute($value)

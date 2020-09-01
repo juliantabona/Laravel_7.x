@@ -35,6 +35,7 @@ class UssdServiceController extends Controller
     public $display_actions;
     public $display_content;
     public $existing_session;
+    public $user_account = null;
     public $chained_screens = [];
     public $pagination_index = 0;
     public $display_instructions;
@@ -229,6 +230,7 @@ class UssdServiceController extends Controller
                 'allow_timeout' => $allow_timeout,
                 'service_code' => $this->service_code,
                 'request_type' => $this->request_type,
+                'test' => $this->test_mode,
                 'created_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
                 'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
                 'timeout_at' => (\Carbon\Carbon::now())->addSeconds($timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
@@ -568,12 +570,12 @@ class UssdServiceController extends Controller
         $timeout_limit_in_seconds = $this->getTimeoutLimitInSeconds();
 
         //  Update the current session
-        $update = DB::table('ussd_sessions')->where('session_id', $this->session_id)->update([
-            'text' => $this->text,
-            'request_type' => $this->request_type,
-            'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
-            'timeout_at' => (\Carbon\Carbon::now())->addSeconds($timeout_limit_in_seconds)->format('Y-m-d H:i:s')
-        ]);
+        $update = $this->updateExistingSessionFromDatabase([
+                    'text' => $this->text,
+                    'request_type' => $this->request_type,
+                    'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+                    'timeout_at' => (\Carbon\Carbon::now())->addSeconds($timeout_limit_in_seconds)->format('Y-m-d H:i:s')
+                ]);
 
         //  If the existing session has timeout
         if ($this->existing_session->has_timed_out) {
@@ -597,14 +599,21 @@ class UssdServiceController extends Controller
         if( empty( $this->existing_session ) ){
 
             //  Get the session record that matches the given Session Id
-            return \App\UssdSession::where('session_id', $this->session_id)->first();
-
-        //  If we have an existing session already set
-        }else{
-
-            return $this->existing_session;
+            return \App\UssdSession::where('session_id', $this->session_id)->where('test', $this->test_mode)->first();
 
         }
+
+        //  If we have an existing session already set
+        return $this->existing_session;
+
+    }
+
+    /** Update the existing USSD session from the database
+     */
+    public function updateExistingSessionFromDatabase($data = [])
+    {      
+        //  Update the session record that matches the given Session Id
+        return \App\UssdSession::where('session_id', $this->session_id)->where('test', $this->test_mode)->update($data);
     }
 
     /** Set the timeout message and return the timeout screen.
@@ -704,6 +713,7 @@ class UssdServiceController extends Controller
                     '<div style="line-height:2.5em;margin:10px 0;">'.
                         $this->wrapAsDynamicDataHtml('{{ ussd.text }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.text') ). "<br>" .
                         $this->wrapAsDynamicDataHtml('{{ ussd.msisdn }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.msisdn', 'None') ). "<br>" .
+                        $this->wrapAsDynamicDataHtml('{{ ussd.user_account }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.user_account') ). "<br>" .
                         $this->wrapAsDynamicDataHtml('{{ ussd.request_type }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.request_type') ). "<br>" .
                         $this->wrapAsDynamicDataHtml('{{ ussd.service_code }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.service_code') ). "<br>" .
                         $this->wrapAsDynamicDataHtml('{{ ussd.user_response }}') .' = '.$this->wrapAsSuccessHtml( $this->getDynamicData('ussd.user_response') ). "<br>" .
@@ -905,6 +915,9 @@ class UssdServiceController extends Controller
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($doesNotExistResponse)) return $doesNotExistResponse;
 
+        //  Set the current session User Account (If Any)
+        $this->setUserAccount();
+
         //  Locally store the current session details within a dynamic variable
         $this->storeUssdSessionValues();
 
@@ -1016,18 +1029,51 @@ class UssdServiceController extends Controller
         }
     }
 
+    /*  Use the MSISDN number to get the User Account of the current session.
+     *  If this is a test session, then we must find a test account that matches
+     *  the MSISDN number, however if this is not a test session then we must
+     *  find a real account that matches the MSISDN number. If any account
+     *  is found, then set it as the current session User Account
+     */
+    public function setUserAccount()
+    {
+        //  Get the users mobile number
+        $mobile_number = $this->msisdn;
+
+        //  If we are on test mode
+        if( $this->test_mode ){
+
+            //  Get the User Test Account (Check if we have an account matching the mobile number)
+            $user_account = \App\UserAccount::where('mobile_number', $mobile_number)->testAccount()->first();
+
+        //  If we are not on test mode
+        }else{
+
+            //  Get the User Real Account (Check if we have an account matching the mobile number)
+            $user_account = \App\UserAccount::where('mobile_number', $mobile_number)->realAccount()->first();
+
+        }
+
+        if( $user_account ){
+
+            $this->user_account = $this->getUserAccountDetails($user_account);
+            
+        }
+    }
+
     /*  Set the public ussd property to the current session details. Also
      *  store this property information as dynamic data. This will ensure
      *  that the builder has access to the data when parsing dynamic
      *  variables into values.
      */
     public function storeUssdSessionValues()
-    {
+    {        
         //  Set the ussd property key/values
         $this->ussd = [
             'text' => $this->text,
             'msisdn' => $this->msisdn,
             'session_id' => $this->session_id,
+            'user_account' => $this->user_account,
             'request_type' => $this->request_type,
             'service_code' => $this->service_code,
             'user_responses' => $this->getUserResponses(),
@@ -1318,78 +1364,6 @@ class UssdServiceController extends Controller
         //  Get the first screen
         $this->getFirstScreen();
 
-        //  START UPDATE HERE
-        //  START UPDATE HERE
-        //  START UPDATE HERE
-        
-        $this->builder['screens'] = collect( $this->builder['screens'])->map(function($screen){
-            
-            $screen['requirements']['requires_account']['active'] = [
-                'selected_type' => 'no',
-                'code' => ''
-            ];
-            
-            $screen['requirements']['requires_account']['link'] = [
-                'text' => '',
-                'code_editor_text' => '',
-                'code_editor_mode' => false
-            ];
-            
-            $screen['requirements']['requires_subscription']['active'] = [
-                'selected_type' => 'no',
-                'code' => ''
-            ];
-            
-            $screen['requirements']['requires_subscription']['link'] = [
-                'text' => '',
-                'code_editor_text' => '',
-                'code_editor_mode' => false
-            ];
-
-            
-
-            $screen['repeat']['events']['before_repeat'] = collect($screen['repeat']['events']['before_repeat'])->map(function($event){
-                $event['global'] = false;
-                return $event;
-            })->toArray();
-            
-            $screen['repeat']['events']['after_repeat'] = collect($screen['repeat']['events']['after_repeat'])->map(function($event){
-                $event['global'] = false;
-                return $event;
-            })->toArray();
-            
-            $screen['displays'] = collect($screen['displays'])->map(function($display){
-                
-                $display['content']['events']['before_reply'] = collect($display['content']['events']['before_reply'])->map(function($event){
-                    $event['global'] = false;
-                    return $event;
-                })->toArray();
-
-                $display['content']['events']['after_reply'] = collect($display['content']['events']['after_reply'])->map(function($event){
-                    $event['global'] = false;
-                    return $event;
-                })->toArray();
-
-                return $display;
-
-            })->toArray();
-
-            return $screen;
-
-        })->toArray();
-
-        $this->builder['global_events'] = [];
-
-        $update = $this->version->update([
-            'builder' => $this->builder
-        ]);
-
-        return $update;
-
-        //  END UPDATE HERE
-        //  END UPDATE HERE
-        //  END UPDATE HERE
-
         //  Handle current screen
         $response = $this->handleCurrentScreen();
 
@@ -1531,6 +1505,20 @@ class UssdServiceController extends Controller
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($doesNotExistResponse)) return $doesNotExistResponse;
 
+        //  Manage the screen requirements e.g Does this screen require an Account or Subscription?
+        $manageScreenResponse = $this->manageScreenRequirements();
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($manageScreenResponse)) return $manageScreenResponse;
+
+        //  If we are required to change the screen
+        if( $manageScreenResponse == 'change_screen' ){
+
+            //  Handle the current screen that we have switched to
+            return $this->handleCurrentScreen();
+            
+        }
+
         $this->screen_repeats = $this->checkIfScreenRepeats();
 
         //  Check if the current screen repeats
@@ -1558,6 +1546,231 @@ class UssdServiceController extends Controller
 
             //  Start building the current screen displays
             return $this->startBuildingDisplays();
+
+        }
+    }
+
+    /** This method gets the current screen and checks if the screen has any
+     *  specific requirements such as "Does the screen require a subscriber
+     *  to have an account?" or "Does the screen require a subscriber to 
+     *  have a subscription?". After this we handle the screen 
+     *  requirement
+     */
+    public function manageScreenRequirements()
+    {
+        //  Set an info log that we are checking if the current screen has any requirements
+        $this->logInfo('Checking if '.$this->wrapAsPrimaryHtml( $this->screen['name'] ).' has any requirements');
+
+        $requires_account = $this->screen['requirements']['requires_account'];
+        $requires_subscription = $this->screen['requirements']['requires_subscription'];
+    
+        //  Get the active state value
+        $activeState = $this->processActiveState($requires_account['active']);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($activeState)) return $activeState;
+
+        //  If the screen "Requires Account"
+        if ( $activeState === true ) {
+
+            //  Set an info log that this screen requires the subscriber to have an account
+            $this->logInfo($this->wrapAsPrimaryHtml( $this->screen['name'] ).' requires the subscriber to have an account');
+
+            //  If we don't have a User Accoutn
+            if( $this->user_account ){
+                
+                //  Set an info log that this subscriber already has an account
+                $this->logInfo('The current subscriber already has a User Account');
+
+            }else{
+
+                //  Get the existing session record from the database
+                $this->existing_session = $this->getExistingSessionFromDatabase();
+
+                //  Get the existing session metadata
+                $metadata = $this->existing_session->metadata ?? [];
+
+                //  If we have the "revisit_text"
+                if( isset($metadata['revisit_text']) ){ 
+                    
+                    /** Get the "revisit_text" value. This is the actual initial "text" that was dialed to 
+                     *  start the USSD Service which we must revisit after creating the account e.g *321*2*3#. 
+                     * 
+                     *  Because we allow the user to visit the "Account Creation" screen in order to create their 
+                     *  account, we allow the user to add on the intial "text" e.g *321*2*3#" that was dialed. As 
+                     *  the user provides details such as their names, preferences, e.t.c we end up with something 
+                     *  like "*321*2*3*John*Doe*26*1#" as the user replies to create their account. 
+                     * 
+                     *  Now since we already have replies attached to "*321#" in the form of *321*2*3#, when trying 
+                     *  to create the account the replies "2" and "3" will be used as responses to the "Account Creation" 
+                     *  screen. This is not desirable. To avoid this we must store the initial text e.g "2*3#" within the 
+                     *  current session metadata as a vairable called "revisit_text". Each time the user responds to the 
+                     *  the "Create Account" screen get the "revisit_text" and eliminate the original text value from the 
+                     *  responses used on the "Create Account".
+                     * 
+                     *  E.g We start with *321*2*3# as the initial response for the subscriber to launch the service, 
+                     *  use "2" to select "Stores" and "3" to specify a specific store. While processing we realise the 
+                     *  "Welcome Screen" needs to create an account first so we load up the "Account Creation" screen. At 
+                     *  this moment we get the "$this->text" and store it as metadata information called "revisit_text".
+                     *  Then we set the "$this->text" to nothing since when we start the "Account Creation" we should not 
+                     *  have any replies. Now when the user replies to create their account we grab the "revisit_text" 
+                     *  from the session metadata stored in the database. We use this to cut out the initial replies to 
+                     *  leave only the account creation replies
+                     */
+
+                    /** Count the characters from the "revisit_text" e.g if we have 
+                     *  "*321*2*3#" then "$text_length" must be equal to "9"
+                     */
+                    $text_length = strlen($metadata['revisit_text']);
+
+
+                    /** Get only the text that is used for the "Account Creation" process 
+                     *  by getting the current text and removing the intial text from the
+                     *  "revisit_text" e.g 
+                     * 
+                     *  If we have "*321*2*3*John*Doe*26#" as the current text.
+                     *  and "*321*2*3#" as the "revisit_text". The we must only
+                     *  retrieve "John*Doe*26#" e.g
+                     *  
+                     *    $this->text           =  *321*2*3*John*Doe*26#
+                     *    revisit_text          =  *321*2*3#
+                     *                             ---------------------
+                     *    $this->text (updated) =           John*Doe*26#
+                     *                             ---------------------
+                     * 
+                     *  Note that "John*Doe*26#" must become the update $this->text value
+                     *  to use during the "Account Creation" process.
+                     */
+
+                    $this->text = substr($this->text, $text_length);
+
+                }else{
+
+                    /** Lets assume that the user dials "*321*2*3#". In this, we assume that
+                     *  *321# launches the USSD Service e.g: 
+                     * 
+                     *  Welcome Screen
+                     *  *****************************************************
+                     *  *   Welcome to our service                          *
+                     *  *   1) My Profile                                   *
+                     *  *   2) Stores                                       *
+                     *  *   3) T&Cs                                         *
+                     *  *****************************************************
+                     * 
+                     *  Then "2" and "3" are the USSD replies. Lets assume that "2" is used to 
+                     *  select an option called "stores" which then leads to a screen where 
+                     *  the user must specify the store to visit e.g 
+                     * 
+                     *  Stores Screen
+                     *  *****************************************************
+                     *  *   Select a store to visit                         *
+                     *  *   1) Store 1                                      *
+                     *  *   2) Store 2                                      *
+                     *  *   3) Store 3                                      *
+                     *  *****************************************************
+                     * 
+                     *  Then "3" is used to specify the store to visit "store 3". This leads the 
+                     *  user to the store home screen.
+                     * 
+                     *  Store Homepage Screen
+                     *  *****************************************************
+                     *  *   Welcome to our Store 3                          *
+                     *  *   1) Buy Groceries                                *
+                     *  *   2) View Order                                   *
+                     *  *   3) Contacts                                     *
+                     *  *****************************************************
+                     * 
+                     *  Now lets also assume that the first screen launched  i.e "Welcome Screen" 
+                     *  requires the user to have a user account. However we quickly also realise
+                     *  that upon finishing to create an account we need to redirect the user to
+                     *  their initial request which is to visit "Store 3". Then we must store the
+                     *  "revisit_text" as the initial "text" so that we can later attempt to run
+                     *  it again and try access "Store 3" but this time with an account.
+                     * 
+                     */
+
+                    //  Overide the existing session metadata
+                    $metadata = array_merge($metadata, [
+                        'revisit_text' => $this->text
+                    ]);
+    
+                    $this->logError('$metadata');
+                    $this->logError($metadata);
+    
+                    //  Update the current session
+                    $ussd_session = $this->updateExistingSessionFromDatabase([
+                        'metadata' => $metadata
+                    ]);
+                    
+                    //  Reset the text so that we don't have any responses for the "Account Creation" screen
+                    $this->text = '';
+
+                }
+
+
+
+
+                
+                //  Set an info log that this subscriber already has an account
+                $this->logInfo('The current subscriber does not have a User Account');
+
+                $link = $requires_account['link'];
+
+                //  Get the screen matching the given link and set it as the current screen
+                $screen = $this->getScreenById($link);
+
+                //  If the screen to link to was found
+                if ( $screen ) {
+
+                    $this->screen = $screen;
+
+                    //  Set an info log that we are redirecting
+                    $this->logInfo('Redirecting to '. $this->wrapAsPrimaryHtml($this->screen['name'] ).' to handle account creation' );
+                    
+                    //  Stop here
+                    return '';
+
+                }
+
+                //  Set an info log that we are redirecting
+                $this->logWarning($this->wrapAsPrimaryHtml($this->screen['name'] ).' could not link to account creation screen as it does not exist.');
+
+            }
+
+        }
+
+        //  Get the active state value
+        $activeState = $this->processActiveState($requires_subscription['active']);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($activeState)) return $activeState;
+
+        //  If the screen "Requires Subscription"
+        if ( $activeState === true ) {
+
+            //  Set an info log that this screen requires the subscriber to have an active subscription
+            $this->logInfo($this->wrapAsPrimaryHtml( $this->screen['name'] ).' requires the subscriber to have an active subscription');
+
+            $link = $requires_subscription['link'];
+
+            //  Get the screen matching the given link and set it as the current screen
+            $screen = $this->getScreenById($link);
+
+            //  If the screen to link to was found
+            if ( $screen ) {
+
+                $this->screen = $screen;
+
+                //  Set an info log that we are redirecting
+                $this->logInfo('Redirecting to '. $this->wrapAsPrimaryHtml($this->screen['name'] ).' to handle subscription' );
+                
+                //  Stop here
+                return '';
+
+            }
+
+            //  Set an info log that we are redirecting
+            $this->logWarning($this->wrapAsPrimaryHtml($this->screen['name'] ).' could not link to subscription screen as it does not exist.');
 
         }
     }
@@ -1946,10 +2159,12 @@ class UssdServiceController extends Controller
                                 $link = $repeat_data['after_last_loop']['link'];
 
                                 //  Get the screen matching the given link and set it as the current screen
-                                $this->screen = $this->getScreenById($link);
+                                $screen = $this->getScreenById($link);
 
                                 //  If the screen to link to was found
-                                if ( $this->screen ) {
+                                if ( $screen ) {
+
+                                    $this->screen = $screen;
 
                                     $this->logInfo($this->wrapAsPrimaryHtml( $current_screen_name ).' is linking to '.$this->wrapAsPrimaryHtml( $this->screen['name'] ));
 
@@ -2084,10 +2299,12 @@ class UssdServiceController extends Controller
                     $link = $repeat_data['on_no_loop']['link'];
 
                     //  Get the screen matching the given link and set it as the current screen
-                    $this->screen = $this->getScreenById($link);
+                    $screen = $this->getScreenById($link);
 
                     //  If the screen to link to was found
-                    if ( $this->screen ) {
+                    if ( $screen ) {
+
+                        $this->screen = $screen;
 
                         $this->logInfo($this->wrapAsPrimaryHtml( $current_screen_name ).' is linking to '.$this->wrapAsPrimaryHtml( $this->screen['name'] ));
 
@@ -4736,6 +4953,8 @@ class UssdServiceController extends Controller
                 return $this->handle_Revisit_Event();
             } elseif ($event['type'] == 'Redirect') {
                 return $this->handle_Redirect_Event();
+            } elseif ($event['type'] == 'Create/Update Account') {
+                return $this->handle_Create_Or_Update_Account_Event();
             }
 
         } else {
@@ -4931,6 +5150,12 @@ class UssdServiceController extends Controller
 
             //  Set a warning log that the Api call failed
             $this->logWarning('Api call to '.$this->wrapAsSuccessHtml($url).' failed.');
+
+            if ($e->getMessage()) {
+                
+                $this->logWarning($this->wrapAsErrorHtml($e->getMessage()));
+
+            }
 
             /*
              * Here we actually catch the instance of GuzzleHttp\Psr7\Response
@@ -6935,7 +7160,7 @@ class UssdServiceController extends Controller
             //  If we have a screen to show return the response otherwise continue
             if ($this->shouldDisplayScreen($outputResponse)){
                 
-                $outputResponse = $this->handleLocalStorageEmptyValue($reference_name, $array_value);
+                $outputResponse = $this->setEmptyKeyValueWithDefaultValue($reference_name, $array_value);
 
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
@@ -6980,7 +7205,7 @@ class UssdServiceController extends Controller
             //  If we have a screen to show return the response otherwise continue
             if ($this->shouldDisplayScreen($outputResponse)){
                 
-                $outputResponse = $this->handleLocalStorageEmptyValue($reference_name, $array_key_value);
+                $outputResponse = $this->setEmptyKeyValueWithDefaultValue($reference_name, $array_key_value);
 
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
@@ -6999,75 +7224,64 @@ class UssdServiceController extends Controller
         $this->handleProcessedValueStorage($reference_name, $processed_values, $mode);
     }
 
-    public function handleLocalStorageEmptyValue($name, $value = null)
+    public function setEmptyKeyValueWithDefaultValue($name, $value = null)
     {
-        $this->logWarning('Local Storage value for '.$this->wrapAsSuccessHtml($name).' is empty, attempting to use default value');
+        $this->logWarning('Value for '.$this->wrapAsSuccessHtml($name).' could not be set, attempting to use default value');
 
-        if( $value ){
+        //  Get selected default type e.g "text_input", "number_input", "true", "false", "null", 'empty_array'
+        $default_type = $value['on_empty_value']['default']['selected_type'];
 
-            //  Get selected default type e.g "text_input", "number_input", "true", "false", "null", 'empty_array'
-            $default_type = $value['on_empty_value']['default']['selected_type'];
-    
-            if ($default_type == 'true') {
-    
-                //  Set the storage value to "True"
-                $storage_value = true;
-    
-                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('True'));
-    
-            } elseif ($default_type == 'false') {
-    
-                //  Set the storage value to "False"
-                $storage_value = false;
-    
-                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('False'));
-    
-            } elseif ($default_type == 'null') {
-    
-                //  Set the storage value to "Null"
-                $storage_value = null;
-    
-                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('Null'));
-    
-            } elseif ($default_type == 'empty_array') {
-    
-                //  Set the storage value to an "Empty Array"
-                $storage_value = [];
-    
-                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to an '.$this->wrapAsSuccessHtml('empty array []'));
-    
-            }else{
-    
-                //  Get the default value
-                $value = $value['on_empty_value']['default']['custom'];
-                    
-                /******************
-                 * BUILD VALUE    *
-                 ******************/
-    
-                //  Convert the "default value" into its associated dynamic value
-                $outputResponse = $this->convertValueStructureIntoDynamicData($value);
-    
-                //  If we have a screen to show return the response otherwise continue
-                if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
-    
-                //  Get the generated output
-                $storage_value = $outputResponse;
-    
-                //  Get the storage_value type wrapped in html tags
-                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($storage_value) );
-    
-                $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to ['.$dataType.']');
-    
-            }
+        if ($default_type == 'true') {
 
-        }else{
+            //  Set the storage value to "True"
+            $storage_value = true;
+
+            $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('True'));
+
+        } elseif ($default_type == 'false') {
+
+            //  Set the storage value to "False"
+            $storage_value = false;
+
+            $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('False'));
+
+        } elseif ($default_type == 'null') {
 
             //  Set the storage value to "Null"
             $storage_value = null;
 
-            $this->logInfo('The value for '.$this->wrapAsSuccessHtml($name).' is not set therefore we are defaulting the value to '.$this->wrapAsSuccessHtml('Null'));
-    
+            $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to '.$this->wrapAsSuccessHtml('Null'));
+
+        } elseif ($default_type == 'empty_array') {
+
+            //  Set the storage value to an "Empty Array"
+            $storage_value = [];
+
+            $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to an '.$this->wrapAsSuccessHtml('empty array []'));
+
+        }else{
+
+            //  Get the default value
+            $value = $value['on_empty_value']['default']['custom'];
+                
+            /******************
+             * BUILD VALUE    *
+             ******************/
+
+            //  Convert the "default value" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($value);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            //  Get the generated output
+            $storage_value = $outputResponse;
+
+            //  Get the storage_value type wrapped in html tags
+            $dataType = $this->wrapAsSuccessHtml( $this->getDataType($storage_value) );
+
+            $this->logInfo('Setting value of '.$this->wrapAsSuccessHtml($name).' to ['.$dataType.']');
+
         }
 
         return $storage_value;
@@ -7375,7 +7589,7 @@ class UssdServiceController extends Controller
     
                     $this->logInfo('The given '.$this->wrapAsSuccessHtml('Additional Responses').' must return data of type ['.$this->wrapAsSuccessHtml('String').'], however we received data of type ['.$dataType.']');
     
-                    //  Empty the valuE
+                    //  Empty the value
                     $automatic_replies_text = '';
 
                 }
@@ -7450,6 +7664,259 @@ class UssdServiceController extends Controller
         return $service_code;
     }
 
+    /******************************************
+     *  REDIRECT EVENT METHODS                *
+     *****************************************/
+
+    /** This method  gets the user information to create a new user account or
+     *  update an existing user account. User accounts are updated if an account
+     *  with a matching mobile number is found.
+     */
+    public function handle_Create_Or_Update_Account_Event()
+    {
+        if ($this->event) {
+
+            //  Get the users first name
+            $first_name = $this->event['event_data']['first_name'];
+
+            //  Get the users last name
+            $last_name = $this->event['event_data']['last_name'];
+
+            //  Get the users mobile number
+            $mobile_number = $this->event['event_data']['mobile_number'];
+
+            /*********************
+             * BUILD FIRST NAME  *
+             *********************/
+
+            //  Convert the "first_name" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($first_name);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            //  Get the generated output - Convert to [String]
+            $first_name = $this->convertToString($outputResponse);
+
+            //  If the "first_name" is not a type of [String]
+            if ( !is_string($first_name) ) {
+            
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($first_name) );
+
+                $this->logInfo('The given '.$this->wrapAsSuccessHtml('first name').' of the user account must return data of type ['.$this->wrapAsSuccessHtml('String').'], however we received data of type ['.$dataType.']');
+
+            }
+
+            /*********************
+             * BUILD LAST NAME  *
+             *********************/
+
+            //  Convert the "last_name" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($last_name);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            //  Get the generated output - Convert to [String]
+            $last_name = $this->convertToString($outputResponse);
+
+            //  If the "last_name" is not a type of [String]
+            if ( !is_string($last_name) ) {
+            
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($last_name) );
+
+                $this->logInfo('The given '.$this->wrapAsSuccessHtml('last name').' of the user account must return data of type ['.$this->wrapAsSuccessHtml('String').'], however we received data of type ['.$dataType.']');
+
+            }
+
+            /************************
+             * BUILD MOBILE NUMBER  *
+             ***********************/
+
+            //  Convert the "mobile_number" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($mobile_number);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+            //  Get the generated output - Convert to [String]
+            $mobile_number = $this->convertToString($outputResponse);
+
+            //  If the "mobile_number" is not a type of [String] or [Integer]
+            if ( !( is_string($mobile_number) || is_integer($mobile_number) ) ) {
+            
+                $dataType = $this->wrapAsSuccessHtml( $this->getDataType($mobile_number) );
+
+                $this->logInfo('The given '.$this->wrapAsSuccessHtml('moible number').' of the user account must return data of type ['.$this->wrapAsSuccessHtml('String').'] or ['.$this->wrapAsSuccessHtml('Integer').'], however we received data of type ['.$dataType.']');
+
+            }
+
+            /****************************
+             * BUILD ADDITIONAL VALUES  *
+             ***************************/
+
+            $processed_fields = [];
+
+            //  Get the additional fields dataset
+            $additional_fields = $this->event['event_data']['additional_fields'];
+
+            //  Foreach dataset value
+            foreach ($additional_fields as $key => $field) {
+
+                /******************
+                 * BUILD VALUE    *
+                 ******************/
+
+                $reference_name = $field['key'];
+
+                //  Convert the "field value" into its associated dynamic value
+                $outputResponse = $this->convertValueStructureIntoDynamicData($field['value']);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)){
+                    
+                    $outputResponse = $this->setEmptyKeyValueWithDefaultValue($reference_name, $field);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) return $outputResponse;
+
+                }
+                
+                //  Set the value to the received array value
+                $value = $outputResponse;
+
+                //  Add current processed value to the the processed values array
+                $processed_fields[$field['key']] = $value;
+                
+            }
+                            
+            $user_account_data = [
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'mobile_number' => $mobile_number,
+                'project_id' =>  $this->project->id
+            ];
+
+            //  If we are on test mode
+            if( $this->test_mode ){
+    
+                //  Get the User Fake Account (Check if we have an account matching the mobile number)
+                $user_account = \App\UserAccount::where('mobile_number', $mobile_number)->testAccount()->first();
+    
+                //  Set the User Account as a test account
+                $user_account_data['test'] = true;
+    
+            //  If we are not on test mode
+            }else{
+    
+                //  Get the User Fake Account (Check if we have an account matching the mobile number)
+                $user_account = \App\UserAccount::where('mobile_number', $mobile_number)->realAccount()->first();
+    
+                //  Set the User Account as a real account
+                $user_account_data['test'] = false;
+    
+            }
+
+            //  If the user account already exists
+            if( $user_account ){
+
+                $this->logInfo('Found existing user account matching the mobile number '.$this->wrapAsSuccessHtml($mobile_number));
+
+                $this->logInfo('Attempting to update user account using the mobile number '.$this->wrapAsSuccessHtml($mobile_number));
+                    
+                //  Get the existing user account metadata
+                $metadata = $user_account->metadata ?? [];
+
+                //  If we have processed additional fields
+                if( count($processed_fields) ){
+                   
+                    //  Overide the existing user account metadata
+                    $metadata = array_merge($metadata, $processed_fields);
+
+                }
+
+                //  Update the user account metadata
+                $user_account_data['metadata'] = $metadata;
+
+                //  Update existing user account
+                $user_account_updated = \App\UserAccount::where('mobile_number', $mobile_number)
+                                                        ->where('test', $user_account_data['test'])
+                                                        ->update($user_account_data);
+
+                if( $user_account_updated ){
+                    
+                    $this->logInfo('User account updated successfully');
+
+                    $this->user_account = $this->getUserAccountDetails($user_account->fresh());
+
+                    $this->logInfo($this->wrapAsSuccessHtml( $this->user_account ));
+
+                }else{
+
+                    $this->logError('Sorry, account update failed');
+
+                }
+
+            //  If the user account does not already exist
+            }else{
+
+                $this->logInfo('User account matching the mobile number '.$this->wrapAsSuccessHtml($mobile_number).' does not exist');
+
+                $this->logInfo('Attempting to create a new user account using the mobile number '.$this->wrapAsSuccessHtml($mobile_number));
+
+                //  Update the user account metadata
+                $user_account_data['metadata'] = $processed_fields;
+
+                //  Create new user account
+                $user_account = \App\UserAccount::create($user_account_data);
+
+                if( $user_account ){
+
+                    $this->logInfo('User account created successfully');
+
+                    $this->user_account = $this->getUserAccountDetails($user_account);
+
+                    $this->logInfo($this->wrapAsSuccessHtml( $this->user_account ));
+
+                }else{
+                    
+                    $this->logError('Sorry, account creation failed');
+
+                }
+
+            }
+
+            //  Update the ussd data
+            $this->ussd['user_account'] = $this->user_account;
+    
+            //  Store the ussd data using the given item reference name
+            $this->storeDynamicData('ussd', $this->ussd, false);
+
+            //  Get the existing session metadata "revisit_text"
+            $revisit_text = $this->existing_session->metadata['revisit_text'] ?? null;
+
+            /** If we have the "revisit_text" which represents the destination that
+             *  the subscriber was trying to access before they were prompted to 
+             *  create an account, then we should revisit that destination. 
+             */
+            if( $revisit_text ){ 
+
+                /** We can use the "revisit_text" to make a "Home Revisit" request
+                 *  to implement our initial journey.
+                 */
+                return $this->handleHomeRevisit($revisit_text);
+
+            }
+
+            return null;
+
+        }
+    }
+
+    public function getUserAccountDetails($user_account)
+    {
+        return collect($user_account)->only(['first_name', 'last_name', 'mobile_number', 'metadata']);
+    }
 
 
 

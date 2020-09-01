@@ -54,7 +54,7 @@ trait VersionTraits
                     ], 
                 "settings" => [
                     "allow_timeouts" => true, 
-                    "timeout_limit_in_seconds" => "120", 
+                    "timeout_limit_in_seconds" => 120, 
                     "timeout_message" => "TIMEOUT: You have exceeded your time limit." 
                 ] 
             ] 

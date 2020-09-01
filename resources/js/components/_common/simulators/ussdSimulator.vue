@@ -22,6 +22,12 @@
                             
                             <!-- Version Number -->
                             <small>Version: {{ versionNumber }}</small>
+                                
+                            <!-- Initial Replies Input -->
+                            <Input v-model="initialReplies" type="text" class="w-100 my-2" size="small">
+                                <span slot="prepend">{{ primaryShortCode.substring(0, primaryShortCode.length - 1) }}*</span>
+                                <span slot="append">#</span>
+                            </Input>
 
                         </Card>
 
@@ -35,16 +41,23 @@
                             <span class="font-weight-bold d-block border-bottom-dashed mb-2 pb-2">App Simulator</span>
 
                             <p class="mt-2">
-                                <span class="d-block">
+                                <span class="d-block mb-1">
                                     Inform your customers to Dial 
                                     <span v-if="dedicatedShortCode" class="font-weight-bold text-primary">{{ dedicatedShortCode }}</span> 
                                     <span v-if="dedicatedShortCode && sharedShortCode"> or </span> 
                                     <span v-if="sharedShortCode" class="font-weight-bold text-primary">{{ sharedShortCode }}</span> 
                                      to visit the <span class="font-weight-bold text-primary">{{ applicationName }}</span>
-                                     app on their mobile phones. Click <span class="font-weight-bold text-primary">Launch Simulator</span> 
-                                     to see how your customers view your store.
+                                     App on their mobile phones.
+                                </span>
+                                <span class="d-block border-bottom-dashed pb-2">
+                                     Click <span class="font-weight-bold text-primary">Launch Simulator</span> 
+                                     to experience your application.
                                 </span>
                             </p>
+
+                            <span class="border-bottom-dashed d-block font-weight-bold p-1 text-primary text-truncate">
+                                Dial: {{ modifiedServiceCode }}
+                            </span>
 
                             <!-- Launch Simulator button -->
                             <div class="clearfix mt-2">
@@ -176,13 +189,13 @@
         data(){
             return {
                 ussd: {
-                    msg: this.defaultUssdReply,
+                    msg: null,
                     serviceCode: null,
                     sessionId: null,
-                    requestType: 1,
-                    msisdn: null
+                    requestType: 1
                 },
                 ussdResponse: '',
+                initialReplies: '',
                 showUssdContentModal: false,
                 isSendingUssdResponse: false,
                 //  phoneNumber: '+26700000000',
@@ -214,19 +227,47 @@
             primaryShortCode(){
                 return this.dedicatedShortCode || this.sharedShortCode;
             },
+            modifiedServiceCode(){
+
+                //  Replace all matches with nothing (An empty string)
+                function replaceWithNothing(match, offset, string){
+                    
+                    return '';
+
+                }
+
+                /** This pattern searches any character that is not a Digit, Alphabet, Space or an Asterix symbol,
+                 *  or any starting or ending Asterix symbol e.g
+                 * 
+                 *  convert "1*#*3" to "1*3"
+                 *  convert "1*?*3" to "1*3"
+                 *  convert "***1*2*3" to "1*2*3"
+                 *  convert "1*2*3***" to "1*2*3"
+                 */
+                var pattern = /[^0-9a-zA-Z\s*]|^[*]+|[*]+$/g;
+                
+                //  Replace all invalid characters with nothing
+                var replies = this.initialReplies.replace(pattern, replaceWithNothing);
+
+                if( replies ){
+                    
+                    /** If "this.initialReplies" is "4*5*6" and "this.ussd.msg" 
+                     *  is "*321#" the combine to form "*321*4*5*6#"
+                     */
+                    return this.primaryShortCode.substring(0, this.primaryShortCode.length - 1)+'*'+replies+'#';
+
+                }else{
+                    
+                    return this.primaryShortCode;
+
+                }
+
+            },
             versionNumber(){
                 return this.version.number;
             },
         },
         methods: {
-            updateServiceCode(){
-
-                //  If we have the dedicated or shared short code then use it as the service code
-                if( this.primaryShortCode ){
-                    this.ussd.serviceCode = this.primaryShortCode;
-                }
-
-            },
             showUssdPopup(){
                 this.showUssdContentModal = true;
                 this.focusOnReplyInput();
@@ -247,7 +288,6 @@
                 this.ussd.msg = this.defaultUssdReply;
                 this.ussd.sessionId = null;
                 this.ussd.requestType = 1;
-                this.updateServiceCode();
                 this.emptyInput();
             },
             redirectUssdSimulator( serviceCode ){
@@ -277,7 +317,7 @@
                 });
 
 
-            },
+            },            
             callUssdEndpoint() {  
 
                 var self = this;
@@ -285,7 +325,7 @@
                 //  If this is the first request then embbed the service code within the message
                 if( this.ussd.requestType == 1 ){
 
-                    this.ussd.msg = this.ussd.serviceCode;
+                    this.ussd.msg = this.modifiedServiceCode;
 
                 }
 
@@ -294,9 +334,9 @@
                     
                     testMode: true,
                     msg: this.ussd.msg,
-                    msisdn: this.ussd.msisdn,
                     sessionId: this.ussd.sessionId,
                     requestType: this.ussd.requestType,
+                    msisdn: this.version.builder.simulator.subscriber.phone_number,
                     
                 };
 
@@ -364,9 +404,7 @@
 
         },
         created() {
-
-            //  Get and assign the ussd code
-            this.updateServiceCode();
+            
 
         },
 

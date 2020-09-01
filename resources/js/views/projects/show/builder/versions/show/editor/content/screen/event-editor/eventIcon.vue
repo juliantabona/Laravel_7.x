@@ -84,21 +84,11 @@
 
                     type = 'ios-arrow-round-forward';
                     
-                }else if( this.eventType == 'Account Management' ){
+                }else if( this.eventType == 'Create/Update Account' ){
 
                     type = 'ios-people-outline';
                     
-                }else if( this.eventType == 'Create Account' ){
-
-                    type = 'ios-person-add-outline';
-                    
-                }else if( this.eventType == 'Update Account' ){
-
-                    type = 'ios-person-outline';
-                    
                 }
-
-                
 
                 return type;
             }

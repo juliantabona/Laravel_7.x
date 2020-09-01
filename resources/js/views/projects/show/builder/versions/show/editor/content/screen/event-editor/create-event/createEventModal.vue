@@ -146,15 +146,7 @@
                         type: "Redirect"
                     },
                     {
-                        type: "Account Management",
-                        children: [
-                            {
-                                type: "Create Account",
-                            },
-                            {
-                                type: "Update Account",
-                            }
-                        ]
+                        type: "Create/Update Account"
                     }
                 ],
                 displayEvents: []
@@ -284,9 +276,9 @@
 
                     event = this.get_Redirect_Event();
                     
-                }else if( eventType == 'Create Account' ){
+                }else if( eventType == 'Create/Update Account' ){
 
-                    event = this.get_Create_Account_Event();
+                    event = this.get_Create_Or_Update_Account_Event();
                     
                 }
 
@@ -560,7 +552,7 @@
                 return {
                     name: 'Custom Code',
                     event_data: {
-
+                        code: ''
                     }
                 }
 
@@ -654,14 +646,26 @@
                 }
 
             },
-            get_Create_Account_Event(){
+            get_Create_Or_Update_Account_Event(){
                 
                 return {
-                    name: 'Create Account',
+                    name: 'Create/Update Account',
                     event_data: {
-                        first_name: '',
-                        last_name: '',
-                        mobile_number: '{{ ussd.msisdn }}',
+                        first_name: {
+                            text: '',
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
+                        last_name: {
+                            text: '',
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
+                        mobile_number: {
+                            text: '{{ ussd.msisdn }}',
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
                         additional_fields: [],
                         after_success: {
                             type: 'link',   //  link, revisit

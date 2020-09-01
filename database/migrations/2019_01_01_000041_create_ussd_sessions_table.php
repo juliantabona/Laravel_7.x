@@ -23,6 +23,7 @@ class CreateUssdSessionsTable extends Migration
             $table->string('request_type')->default(1);
             $table->string('text')->nullable();
             $table->string('status')->nullable();
+            $table->boolean('test')->nullable()->default(false);
             $table->boolean('allow_timeout')->nullable()->default(0);
             $table->timestampTz('timeout_at')->nullable();
 

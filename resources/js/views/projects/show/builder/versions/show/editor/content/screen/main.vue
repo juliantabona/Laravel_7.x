@@ -35,13 +35,13 @@
             <Col :span="12">
             
                 <div class="clearfix mb-2">
-                    <div class="float-right d-flex">
+                    <div class="d-flex">
                         <span class="font-weight-bold d-block mt-1 mr-2">Screen ID:</span>
                         <ButtonGroup class="mr-2"
                             v-clipboard="localScreen.id"
                             v-clipboard:error="copyIdFail"
                             v-clipboard:success="copyIdSuccess">
-                            <Button disabled>
+                            <Button disabled :style="{ width: '170px' }">
                                 <span>{{ localScreen.id }}</span>
                             </Button>
                             <Button>

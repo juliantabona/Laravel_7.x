@@ -30,6 +30,8 @@ body {
 .builder-main-tabs > .ivu-tabs-bar {
     background: #ffffff;
     padding: 10px 10px 0 40px;
+    border: none;
+    margin: 0;
 }
 
 .builder-main-tabs .ivu-tabs-tab {
@@ -258,6 +260,11 @@ body {
     text-align: justify !important;
     align-items: start !important;
     padding: 0 !important;
+}
+
+.highlight-form-item-input .ivu-input-group-prepend {
+    color: #fff !important;
+    background-color: #6cb2eb !important;
 }
 
 /*  Editable Div Field (WYSIWYG) */
