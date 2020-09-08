@@ -681,6 +681,47 @@ function ussd_service_select_option_incorrect_option_selected_msg_sample_code()
 ?>`
 };
 
+function ussd_service_custom_code_event_sample_code()
+{
+
+    return `<?php
+
+    /** Set Property
+     * 
+     *  Set a dynamic property that you can later access
+     *  using standard PHP syntax or mustache tag syntax.
+     * 
+     *  Example:
+     * 
+     *  We set a dynamic variable called "first_name" and
+     *  equate it to "John". We can later access this value
+     *  using "$first_name" or {{ first_name }}
+     */
+
+    //  $this->setProperty('first_name', 'John');
+
+    /** Log Message
+     * 
+     *  Log messages as info, warnings or errors using simple
+     *  methods. Every logging method that you execute will 
+     *  appear as a message on your debugger when ever you 
+     *  run your application simulator'. You can also pass
+     *  on dynamic properties.
+     * 
+     *  Example:
+     */
+
+    //  $dynamic_value = ' - This is awesome';
+
+    //  $this->logInfo('This is an info log' . $dynamic_value);
+
+    //  $this->logWarning('This is a warning log' . $dynamic_value);
+
+    //  $this->logError('This is an error log' . $dynamic_value);
+
+?>`
+};
+
 export default {
     'ussd_service_instructions_sample_code': ussd_service_instructions_sample_code(),
     'ussd_service_custom_formatting_sample_code': ussd_service_custom_formatting_sample_code(),
@@ -700,6 +741,10 @@ export default {
     'ussd_service_select_option_input_sample_code': ussd_service_select_option_input_sample_code(),
     'ussd_service_select_option_top_separator_sample_code': ussd_service_select_option_top_separator_sample_code(),
     'ussd_service_select_option_bottom_separator_sample_code': ussd_service_select_option_bottom_separator_sample_code(),
+
+    'ussd_service_custom_code_event_sample_code': ussd_service_custom_code_event_sample_code(),
+
+    
 
 
     

@@ -59,6 +59,9 @@
             
             <!-- Edit BILLING API Event --> 
             <editBillingApiEvent v-if="eventForm.type == 'Billing API'" v-bind="$props" :event="eventForm"></editBillingApiEvent>
+            
+            <!-- Edit Notification Event --> 
+            <editNotificationEvent v-if="eventForm.type == 'Notification'" v-bind="$props" :event="eventForm"></editNotificationEvent>
 
             <!-- Edit Validation Event --> 
             <editValidationEvent v-if="eventForm.type == 'Validation'" v-bind="$props" :event="eventForm"></editValidationEvent>
@@ -75,13 +78,16 @@
             <!-- Edit Revisit Event --> 
             <editRevisitEvent v-if="eventForm.type == 'Revisit'" v-bind="$props" :event="eventForm"></editRevisitEvent>
 
-            <!-- Edit Linking Event --> 
-            <editLinkingEvent v-if="eventForm.type == 'Linking'" v-bind="$props" :event="eventForm"></editLinkingEvent>
+            <!-- Edit Auto Link Event --> 
+            <editAutoLinkEvent v-if="eventForm.type == 'Auto Link'" v-bind="$props" :event="eventForm"></editAutoLinkEvent>
+
+            <!-- Edit Auto Reply Event --> 
+            <editAutoReplyEvent v-if="eventForm.type == 'Auto Reply'" v-bind="$props" :event="eventForm"></editAutoReplyEvent>
 
             <!-- Edit Redirect Event --> 
             <editRedirectEvent v-if="eventForm.type == 'Redirect'" v-bind="$props" :event="eventForm"></editRedirectEvent>
 
-            <!-- Edit Redirect Event --> 
+            <!-- Edit Create/Update Account Event --> 
             <editCreateOrUpdateAccountEvent v-if="eventForm.type == 'Create/Update Account'" v-bind="$props" :event="eventForm"></editCreateOrUpdateAccountEvent>
 
             <div class="border-top pt-3 mt-3">
@@ -118,20 +124,22 @@
     import editCreateOrUpdateAccountEvent from './create-or-update-account/main.vue';
     import editLocalStorageEvent from './local-storage/main.vue';
     import editBillingApiEvent from './apis/billing-api/main.vue';
+    import editNotificationEvent from './notification/main.vue';
     import editCustomCodeEvent from './custom-code/main.vue';
     import editCrudApiEvent from './apis/crud-api/main.vue';
     import editValidationEvent from './validation/main.vue';
     import editFormattingEvent from './formatting/main.vue';
+    import editAutoReplyEvent from './auto-reply/main.vue';
+    import editAutoLinkEvent from './auto-link/main.vue';
     import editRedirectEvent from './redirect/main.vue';
     import editRevisitEvent from './revisit/main.vue';
-    import editLinkingEvent from './linking/main.vue';
     
     export default {
         mixins: [modalMixin],
         components: { 
-            activeStateSelector, commentInput, editLocalStorageEvent, editBillingApiEvent, editCrudApiEvent, 
-            editValidationEvent, editFormattingEvent, editRedirectEvent, editRevisitEvent, editLinkingEvent,
-            editCustomCodeEvent, editCreateOrUpdateAccountEvent
+            activeStateSelector, commentInput, editLocalStorageEvent, editBillingApiEvent, editNotificationEvent, editCrudApiEvent, 
+            editValidationEvent, editFormattingEvent, editRedirectEvent, editRevisitEvent, editAutoLinkEvent,
+            editAutoReplyEvent, editCustomCodeEvent, editCreateOrUpdateAccountEvent
         },
         props: {
             index: {
@@ -265,7 +273,7 @@
                 //  Foreach screen that matches this event, make updates
                 var updatedScreens = this.version.builder.screens.map((screen) => {
 
-                    //  Update the screen repeat events
+                    //  Update the screen before repeat events
                     screen.repeat.events.before_repeat = screen.repeat.events.before_repeat.map((event) => {
 
                         //  If the event ids match
@@ -278,8 +286,8 @@
 
                     });
 
-                    //  Update the screen repeat events
-                    screen.repeat.events.before_repeat = screen.repeat.events.before_repeat.map((event) => {
+                    //  Update the screen after repeat events
+                    screen.repeat.events.after_repeat = screen.repeat.events.after_repeat.map((event) => {
 
                         //  If the event ids match
                         if( event.id == this.eventForm.id ){

@@ -19,6 +19,7 @@ class UssdSession extends Model
     protected $casts = [
         'test' => 'boolean',  //  Return the following 1/0 as true/false
         'allow_timeout' => 'boolean', //  Return the following 1/0 as true/false
+        'reply_records' => 'array',
         'metadata' => 'array',
     ];
 
@@ -40,7 +41,7 @@ class UssdSession extends Model
 
         /*  Session Details  */
         'session_id', 'service_code', 'type', 'msisdn', 'request_type', 
-        'text', 'test', 'status', 'allow_timeout', 'timeout_at',
+        'text', 'reply_records', 'test', 'status', 'allow_timeout', 'timeout_at',
 
         /*  Meta Data  */
         'metadata',

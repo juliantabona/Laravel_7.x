@@ -137,13 +137,19 @@
                         type: "Custom Code"
                     },
                     {
-                        type: "Linking"
+                        type: "Auto Link"
+                    },
+                    {
+                        type: "Auto Reply"
                     },
                     {
                         type: "Revisit"
                     },
                     {
                         type: "Redirect"
+                    },
+                    {
+                        type: "Notification"
                     },
                     {
                         type: "Create/Update Account"
@@ -264,9 +270,13 @@
 
                     event = this.get_Custom_Code_Event();
 
-                }else if( eventType == 'Linking' ){
+                }else if( eventType == 'Auto Link' ){
 
-                    event = this.get_Linking_Event();
+                    event = this.get_Auto_Link_Event();
+
+                }else if( eventType == 'Auto Reply' ){
+
+                    event = this.get_Auto_Reply_Event();
 
                 }else if( eventType == 'Revisit' ){
 
@@ -279,6 +289,10 @@
                 }else if( eventType == 'Create/Update Account' ){
 
                     event = this.get_Create_Or_Update_Account_Event();
+                    
+                }else if( eventType == 'Notification' ){
+
+                    event = this.get_Notification_Event();
                     
                 }
 
@@ -557,10 +571,10 @@
                 }
 
             },
-            get_Linking_Event(){
+            get_Auto_Link_Event(){
                 
                 return {
-                    name: 'Linking',
+                    name: 'Auto Link',
                     event_data: {
                         trigger: {
                             selected_type: 'automatic',     //  automatic, manual
@@ -573,6 +587,20 @@
                             }
                         },
                         link: {
+                            text: '',
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        }
+                    }
+                }
+
+            },
+            get_Auto_Reply_Event(){
+                
+                return {
+                    name: 'Auto Reply',
+                    event_data: {
+                        automatic_replies: {
                             text: '',
                             code_editor_text: '',
                             code_editor_mode: false
@@ -673,6 +701,48 @@
                                 text: '',
                                 code_editor_text: '',
                                 code_editor_mode: false
+                            }
+                        }
+                    }
+                }
+
+            },
+            get_Notification_Event(){
+                
+                return {
+                    name: 'Notification',
+                    event_data: {
+                        selected_type: 'instant_notification',    //  instant_notification, cross_session_notification
+                        instant_notification: {
+                            message: {
+                                text: '',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            },
+                            continue_text: {
+                                text: '1. Continue',
+                                code_editor_text: '',
+                                code_editor_mode: false
+                            }
+                        },
+                        cross_session_notification: {
+                            selected_type: 'set',    //  set, get
+                            set: {
+                                name: '',
+                                message: {
+                                    text: '',
+                                    code_editor_text: '',
+                                    code_editor_mode: false
+                                },
+                                continue_text: {
+                                    text: '1. Continue',
+                                    code_editor_text: '',
+                                    code_editor_mode: false
+                                }
+                            },
+                            get: {
+                                name: '',
+                                allow_get_on_same_session: false
                             }
                         }
                     }

@@ -13,7 +13,7 @@
             :useCodeEditor="true"
             :codeContent="event.event_data.code"
             @codeChange="event.event_data.code = $event"
-            sampleCodeTemplate="ussd_service_instructions_sample_code">
+            sampleCodeTemplate="ussd_service_custom_code_event_sample_code">
         </customEditor>
 
     </div>

@@ -134,7 +134,7 @@
 
                 return [];
 
-            },
+            }
         },
         methods: {
             getFirstScreenToShow(){

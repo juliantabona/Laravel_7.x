@@ -72,9 +72,13 @@
 
                     type = 'ios-code-working';
                     
-                }else if( this.eventType == 'Linking' ){
+                }else if( this.eventType == 'Auto Link' ){
 
-                    type = 'ios-link';
+                    type = 'ios-link-outline';
+
+                }else if( this.eventType == 'Auto Reply' ){
+
+                    type = 'ios-git-network';
 
                 }else if( this.eventType == 'Revisit' ){
 
@@ -88,8 +92,12 @@
 
                     type = 'ios-people-outline';
                     
-                }
+                }else if( this.eventType == 'Notification' ){
 
+                    type = 'ios-notifications-outline';
+                    
+                }
+                
                 return type;
             }
         }

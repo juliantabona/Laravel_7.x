@@ -22,6 +22,7 @@ class CreateUssdSessionsTable extends Migration
             $table->string('msisdn')->nullable();
             $table->string('request_type')->default(1);
             $table->string('text')->nullable();
+            $table->text('reply_records')->nullable();
             $table->string('status')->nullable();
             $table->boolean('test')->nullable()->default(false);
             $table->boolean('allow_timeout')->nullable()->default(0);
