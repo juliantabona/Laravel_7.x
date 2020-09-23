@@ -50,6 +50,18 @@ class Project extends JsonResource
                     'total' => $this->versions()->count()
                 ],
 
+                //  Link to the project user accounts
+                'sce:user-accounts' => [
+                    'href' => route('user-accounts', ['project_id' => $this->id]),
+                    'title' => 'The user accounts that belong to this project',
+                ],
+
+                //  Link to the project test user accounts
+                'sce:test-user-accounts' => [
+                    'href' => route('test-user-accounts', ['project_id' => $this->id]),
+                    'title' => 'The test user accounts that belong to this project',
+                ],
+
                 //  Link to the ussd service builder
                 'sce:ussd_service_builder' => [
                     'href' => route('ussd-service-builder'),

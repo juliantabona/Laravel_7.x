@@ -7,7 +7,7 @@
             <simulatorAside 
                 @showDebugger="handleShowDebugger()"
                 @showSettings="handleShowSettings()"
-                @handleShowSubscriptions="handlehandleShowSubscriptions()">
+                @showUserAccounts="handleShowUserAccounts()">
             </simulatorAside>
 
         </Col>
@@ -42,7 +42,7 @@
         data(){
             return {
                 activeView: 'Debugger',
-                availableViews: ['Debugger', 'Subscriptions', 'Settings'],
+                availableViews: ['Debugger', 'User Accounts', 'Settings'],
             }
         },
         methods: {
@@ -58,10 +58,10 @@
                 this.handleChangeView('Settings');
 
             },
-            handleShowSubscriptions(){
+            handleShowUserAccounts(){
 
-                //  Set "Subscriptions" as the active viewport
-                this.handleChangeView('Subscriptions');
+                //  Set "User Accounts" as the active viewport
+                this.handleChangeView('User Accounts');
 
             },
             handleChangeView(name){

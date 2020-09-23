@@ -54,6 +54,17 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
         //  Single project versions  /projects/{project_id}/versions
         Route::get('/{project_id}/versions', 'ProjectController@getProjectVersions')->name('project-versions')->where('project_id', '[0-9]+');
 
+        //  Single project user accounts  /projects/{project_id}/
+        Route::prefix('{project_id}/user-accounts')->group(function () {
+
+            //  Get real user accounts  /projects/{project_id}/user-accounts
+            Route::get('/', 'ProjectController@getProjectUserAccounts')->name('user-accounts');
+
+            //  Get test user accounts  /projects/{project_id}/user-accounts/test
+            Route::get('?test=true', 'ProjectController@getProjectUserAccounts')->name('test-user-accounts');
+
+        });
+
     });
 
     //  Version Resource Routes
@@ -62,6 +73,15 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
         //  Single version  /versions/{version_id}
         Route::get('/{version_id}', 'VersionController@getVersion')->name('version')->where('version_id', '[0-9]+');
         Route::put('/{version_id}', 'VersionController@updateVersion')->name('version-update')->where('version_id', '[0-9]+');
+
+    });
+
+    //  User Accounts Resource Routes
+    Route::prefix('user-accounts')->group(function () {
+
+        //  Single user account  /user-accounts/{user_account_id}
+        Route::get('/{user_account_id}', 'UserAccountController@getUserAccount')->name('user-account')->where('user_account_id', '[0-9]+');
+        Route::put('/{user_account_id}', 'UserAccountController@updateUserAccount')->name('user-account-update')->where('user_account_id', '[0-9]+');
 
     });
 

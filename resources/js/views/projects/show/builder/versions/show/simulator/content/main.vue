@@ -2,20 +2,22 @@
 
     <Row :gutter="10">
 
-        <Col :span="12">
+        <Col :span="activeView == 'Debugger' ? 12 : 24">
 
             <Card>
                 
                 <debuggerWidget v-if="activeView == 'Debugger'"  v-bind="$props" :ussdSimulatorLoading="ussdSimulatorLoading" :ussdSimulatorResponse="ussdSimulatorResponse"></debuggerWidget>
                 
-                <settingsWidget v-if="activeView == 'Settings'"  v-bind="$props" :ussdSimulatorLoading="ussdSimulatorLoading" :ussdSimulatorResponse="ussdSimulatorResponse"></settingsWidget>
+                <userAccountsWidget v-if="activeView == 'User Accounts'"  v-bind="$props" :ussdSimulatorLoading="ussdSimulatorLoading"></userAccountsWidget>
+                
+                <settingsWidget v-if="activeView == 'Settings'"  v-bind="$props"></settingsWidget>
                 
             </Card>
 
         </Col>
 
         <!-- USSD Simulator -->
-        <Col :span="12">
+        <Col v-show="activeView == 'Debugger'" :span="12">
         
             <ussdSimulator 
                 :project="project"
@@ -33,11 +35,12 @@
 <script>
 
     import ussdSimulator from './../../../../../../../../components/_common/simulators/ussdSimulator.vue';
-    import debuggerWidget from './debugger.vue';
-    import settingsWidget from './settings.vue';
+    import userAccountsWidget from './user-accounts/main.vue';
+    import debuggerWidget from './debugger/main.vue';    
+    import settingsWidget from './settings/main.vue';
 
     export default {
-        components: { ussdSimulator, debuggerWidget, settingsWidget },
+        components: { ussdSimulator, userAccountsWidget, debuggerWidget, settingsWidget },
         props: {
             project: {
                 type: Object,

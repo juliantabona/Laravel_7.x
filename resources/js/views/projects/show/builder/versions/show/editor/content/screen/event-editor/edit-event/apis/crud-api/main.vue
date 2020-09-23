@@ -8,24 +8,24 @@
             <Tabs v-model="activeNavTab" type="card" style="overflow: visible;" :animated="false" name="crud-api-event-tabs">
 
                 <!-- Screen Settings Navigation Tabs -->
-                <TabPane v-for="(currentTabName, key) in navTabs" :key="key" :label="currentTabName" :name="currentTabName"></TabPane>
+                <TabPane v-for="(currentTabName, key) in navTabs" :key="key" :label="currentTabName.name" :name="currentTabName.value"></TabPane>
 
             </Tabs>
 
             <!-- Request Url -->
-            <requestUrl v-show="activeNavTab == 'Request Url'" v-bind="$props"></requestUrl>
+            <requestUrl v-show="activeNavTab == '1'" v-bind="$props"></requestUrl>
 
             <!-- Query Params -->
-            <requestQueryParams v-show="activeNavTab == 'Query Params'" v-bind="$props"></requestQueryParams>
+            <requestQueryParams v-show="activeNavTab == '2'" v-bind="$props"></requestQueryParams>
 
             <!-- Form Data -->
-            <requestFormData v-show="activeNavTab == 'Form Data'" v-bind="$props"></requestFormData>
+            <requestFormData v-show="activeNavTab == '3'" v-bind="$props"></requestFormData>
                 
             <!-- Headers -->
-            <requestHeaders v-show="activeNavTab == 'Headers'" v-bind="$props"></requestHeaders>
+            <requestHeaders v-show="activeNavTab == '4'" v-bind="$props"></requestHeaders>
                 
             <!-- Responses -->
-            <requestResponses v-show="activeNavTab == 'Responses'" v-bind="$props"></requestResponses>
+            <requestResponses v-show="activeNavTab == '5'" v-bind="$props"></requestResponses>
 
         </div>
     </div>
@@ -89,15 +89,52 @@
         },
         data(){
             return{
+                activeNavTab: '1',
                 localEvent: this.event,
-                activeNavTab: 'Request Url'
             }
         }, 
         computed: {
-            navTabs(){
-                var tabs = ['Request Url', 'Query Params', 'Form Data', 'Headers', 'Responses'];
+            queryParamsTabName(){
+                
+                 var tabName = 'Query Params';
+                 var total = this.event.event_data.query_params.length;
 
-                return tabs;
+                if( total ){
+                    tabName += ' ('+total+')';
+                }
+
+                return tabName;
+            },
+            formDataTabName(){
+                
+                 var tabName = 'Form Data';
+                 var total = this.event.event_data.form_data.params.length;
+
+                if( !this.event.event_data.form_data.use_custom_code && total ){
+                    tabName += ' ('+total+')';
+                }
+
+                return tabName;
+            },
+            headersTabName(){
+                
+                 var tabName = 'Headers';
+                 var total = this.event.event_data.headers.length;
+
+                if( total ){
+                    tabName += ' ('+total+')';
+                }
+
+                return tabName;
+            },
+            navTabs(){
+                return [
+                    { name: 'Request Url', value: '1' },
+                    { name: this.queryParamsTabName, value: '2' },
+                    { name: this.formDataTabName, value: '3' },
+                    { name: this.headersTabName, value: '4' },
+                    { name: 'Responses', value: '5' }
+                ];
             }
         },
         created(){

@@ -112,7 +112,7 @@
                 index: null,
                 variable: null,
                 isOpenEditVariableModal: false,
-                dataTypes: ['String', 'Integer', 'Boolean', 'Custom'],
+                dataTypes: ['String', 'Integer', 'Boolean', 'Null' ,'Custom'],
                 booleanTypes: [
                     {
                         name: 'True',

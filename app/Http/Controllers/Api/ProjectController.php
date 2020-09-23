@@ -138,6 +138,48 @@ class ProjectController extends Controller
         }
     }
 
+    public function getProjectUserAccounts(Request $request, $project_id)
+    {
+        //  Get the project
+        $project = \App\Project::where('id', $project_id)->first() ?? null;
+
+        //  If we should get fake user accounts
+        if( $request->input('test') == 'true' ){
+
+            //  Get the project fake user accounts
+            $user_accounts = $project->fakeUserAccounts()->paginate() ?? null;
+
+        }else{
+            
+            //  Get the project user accounts
+            $user_accounts = $project->userAccounts()->paginate() ?? null;
+
+        }
+
+        //  Check if the project user accounts exist
+        if ($user_accounts) {
+
+            //  Check if the current auth user is authourized to view the project user accounts resource
+            if ($this->user->can('view', $project)) {
+                
+                //  Return an API Readable Format of the UserAccount Instance
+                return ( new \App\UserAccount() )->convertToApiFormat($user_accounts);
+
+            } else {
+
+                //  Not Authourized
+                return help_not_authorized();
+
+            }
+            
+        } else {
+
+            //  Not Found
+            return help_resource_not_fonud();
+
+        }
+    }
+
     public function deleteProject( Request $request, $project_id )
     {
         //  Get the project

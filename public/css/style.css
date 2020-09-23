@@ -451,6 +451,16 @@ body {
     background-color: #ed4014 !important;
 }
 
+/*  Allow poptips to have full width so that embedded
+ *  elements can stretch to full width as well e.g
+ *  select tags. Must include the "poptip-w-100"
+ *  within the class="" to make this work
+ */
+.poptip-w-100,
+.poptip-w-100 .ivu-poptip-rel{
+    width:100% !important;
+}
+
 /** USSD SIMULATOR CSS
  *  
  */

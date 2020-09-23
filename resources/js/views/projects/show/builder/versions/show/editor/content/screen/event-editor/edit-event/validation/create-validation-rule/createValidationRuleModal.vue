@@ -127,24 +127,6 @@
                         comment: 'Makes sure that the target value contains the exact specified number of characters e.g "3" exactly 3 characters must be provided. This means "a", "ab" and "abcd" are valid while "abc" is valid. Remember that we also count whitespaces e.g "a b" is also 3 characters.'
                     },
                     {
-                        name: 'Validate Email',
-                        type: 'validate_email',
-                        error_msg: 'Please provide a valid email address e.g example@gmail.com',
-                        comment: 'Makes sure that the target value contains a valid email address e.g joe@gmail.com or sarah@example.com.'
-                    },
-                    {
-                        name: 'Validate Mobile Number',
-                        type: 'validate_mobile_number',
-                        error_msg: 'Please provide a valid Botswana phone number e.g 71234567',
-                        comment: 'Makes sure that the target value contains a valid phone number e.g 71234567.'
-                    },
-                    {
-                        name: 'Validate Date Format (DD/MM/YYYY)',
-                        type: 'valiate_date_format',
-                        error_msg: 'Please enter a valid date (DD/MM/YYYY) e.g 02/08/2020',
-                        comment: 'Makes sure that the target value contains a valid date format (DD/MM/YYYY) e.g e.g 02/08/2020.'
-                    },
-                    {
                         value: '3',
                         name: 'Equal To (=)',
                         type: 'equal_to',
@@ -201,6 +183,30 @@
                         type: 'in_between_excluding',
                         error_msg: 'Please enter numbers between 1 and 10 (excluding 1 and 10)',
                         comment: 'Makes sure that the target value is a number that is in-between and not equal to any of the given minimum and maximum values e.g min="3" and max="5" means that the value provided must only be "4" to be valid.'
+                    },
+                    {
+                        name: 'Validate Email',
+                        type: 'validate_email',
+                        error_msg: 'Please provide a valid email address e.g example@gmail.com',
+                        comment: 'Makes sure that the target value contains a valid email address e.g "joe@gmail.com" or "sarah@example.com".'
+                    },
+                    {
+                        name: 'Validate Mobile Number',
+                        type: 'validate_mobile_number',
+                        error_msg: 'Please provide a valid Botswana phone number e.g "71234567"',
+                        comment: 'Makes sure that the target value contains a valid phone number e.g "71234567".'
+                    },
+                    {
+                        name: 'Validate Money',
+                        type: 'validate_money',
+                        error_msg: 'Please provide a valid money format e.g "35", "35.5" or "35.50"',
+                        comment: 'Makes sure that the target value contains a valid money format e.g "35", "35.5" or "35.50" are valid while "P35", "3,500", "35 .5" and "35. 5" are invalid'
+                    },
+                    {
+                        name: 'Validate Date Format (DD/MM/YYYY)',
+                        type: 'valiate_date_format',
+                        error_msg: 'Please enter a valid date (DD/MM/YYYY) e.g 02/08/2020',
+                        comment: 'Makes sure that the target value contains a valid date format (DD/MM/YYYY) e.g e.g 02/08/2020.'
                     },
                     {
                         name: 'No Spaces',

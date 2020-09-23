@@ -71,6 +71,22 @@ class Project extends Model
         return $this->belongsTo('App\Version', 'active_version_id');
     }
 
+    /*
+     *  Returns user accounts that belong to this project
+     */
+    public function userAccounts()
+    {
+        return $this->hasMany('App\UserAccount', 'project_id')->where('test', 0);
+    }
+
+    /*
+     *  Returns user accounts that belong to this project
+     */
+    public function fakeUserAccounts()
+    {
+        return $this->hasMany('App\UserAccount', 'project_id')->where('test', 1);
+    }
+
     /** ATTRIBUTES
      * 
      *  Note that the "resource_type" is defined within CommonTraits

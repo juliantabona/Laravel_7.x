@@ -17,10 +17,12 @@ class UssdSession extends Model
      * @var string
      */
     protected $casts = [
-        'test' => 'boolean',  //  Return the following 1/0 as true/false
-        'allow_timeout' => 'boolean', //  Return the following 1/0 as true/false
+        'allow_timeout' => 'boolean',       //  Return the following 1/0 as true/false
+        'fatal_error' => 'boolean',
         'reply_records' => 'array',
         'metadata' => 'array',
+        'test' => 'boolean',                //  Return the following 1/0 as true/false
+        'logs' => 'array',
     ];
 
     /**
@@ -41,7 +43,8 @@ class UssdSession extends Model
 
         /*  Session Details  */
         'session_id', 'service_code', 'type', 'msisdn', 'request_type', 
-        'text', 'reply_records', 'test', 'status', 'allow_timeout', 'timeout_at',
+        'text', 'reply_records', 'logs', 'test', 'status', 'fatal_error', 
+        'fatal_error_msg', 'allow_timeout', 'timeout_at',
 
         /*  Meta Data  */
         'metadata',
@@ -135,4 +138,8 @@ class UssdSession extends Model
         $this->attributes['allow_timeout'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
     }
 
+    public function setFatalErrorAttribute($value)
+    {
+        $this->attributes['fatal_error'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
+    }
 }

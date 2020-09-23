@@ -22,6 +22,7 @@ class CreateUserAccountsTable extends Migration
             $table->json('metadata')->nullable();
 
             /*  Ownership Information  */
+            $table->unsignedInteger('user_id')->nullable();
             $table->unsignedInteger('project_id')->nullable();
             
             $table->timestamps();

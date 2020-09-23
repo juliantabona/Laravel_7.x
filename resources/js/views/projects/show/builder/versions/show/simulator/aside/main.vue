@@ -8,9 +8,9 @@
             <span>Debugger</span>
         </MenuItem>
         
-        <MenuItem name="subscriptions" @click.native="$emit('showSubscriptions')">
-            <Icon type="ios-contact-outline" :size="20"/>
-            <span>Subscriber</span>
+        <MenuItem name="subscriptions" @click.native="$emit('showUserAccounts')">
+            <Icon type="ios-contacts-outline" :size="20"/>
+            <span>User Accounts</span>
         </MenuItem>
         
         <MenuItem name="settings" @click.native="$emit('showSettings')">

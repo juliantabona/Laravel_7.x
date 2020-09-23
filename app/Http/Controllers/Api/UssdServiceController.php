@@ -20,9 +20,9 @@ class UssdServiceController extends Controller
     public $display;
     public $screens;
     public $request;
-    public $log = [];
     public $app_name;
     public $response;
+    public $logs = [];
     public $level = 1;
     public $test_mode;
     public $session_id;
@@ -36,11 +36,13 @@ class UssdServiceController extends Controller
     public $display_content;
     public $existing_session;
     public $reply_records = [];
+    public $fatal_error = false;
     public $user_account = null;
     public $chained_screens = [];
     public $pagination_index = 0;
     public $display_instructions;
     public $current_user_response;
+    public $fatal_error_msg = null;
     public $screen_repeats = false;
     public $ussd_service_code_type;
     public $navigation_step_number;
@@ -190,7 +192,7 @@ class UssdServiceController extends Controller
      */
     public function handleNewSession()
     {
-        /** When the "Request Type" is "1", the "Sevice Code" comes embedded
+        /* When the "Request Type" is "1", the "Sevice Code" comes embedded
          *  within the "Message" value. When the "Request Type" is "2" the
          *  "Message" contains data from the user.
          */
@@ -211,12 +213,19 @@ class UssdServiceController extends Controller
         }
 
         //  Handle the current session
-        $response = $this->handleSession();
+        $sessionResponse = $this->handleSession();
 
-        //  Create new session
-        $this->createNewSession();
+        /** This will render as: $this->createNewSession()
+         *  while being called within a try/catch handler.
+         */
+        $createResponse = $this->tryCatch('createNewSession');
 
-        return $response;
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($createResponse)) {
+            return $createResponse;
+        }
+
+        return $sessionResponse;
     }
 
     /** Get the USSD service code embedded within the USSD message
@@ -225,7 +234,7 @@ class UssdServiceController extends Controller
     {
         /** Get the "Service Code" embbeded within the "Message" value
          *
-         *  e.g *321*3*4*5#
+         *  e.g *321*3*4*5#.
          *
          *  Depending on the scenerio the first value may be a Shared Ussd
          *  Code or a Dedicated Ussd Code.
@@ -353,17 +362,15 @@ class UssdServiceController extends Controller
         }
 
         foreach ($values as $key => $user_reply) {
-            
             /***********************************************
              *  SAVE THE USER REPLY TO THE REPLY RECORDS   *
              ***********************************************/
-    
-            /** Add of the remaining values as a reply record.
-             *  This reply will be recorded to originate from the user 
+
+            /* Add of the remaining values as a reply record.
+             *  This reply will be recorded to originate from the user
              *  and is a removable reply (Can be deleted by the user)
              */
             $this->addReplyRecord($user_reply, 'user', true);
-            
         }
 
         //  Use the rest of the values as the message e.g 3*4*5
@@ -446,6 +453,9 @@ class UssdServiceController extends Controller
             //  Redirect session
         }
 
+        //  Build and return the final response
+        $this->response = $this->buildResponse($this->response);
+
         //  If we are on test mode
         if ($this->test_mode) {
             //  Return the response payload as json
@@ -468,7 +478,7 @@ class UssdServiceController extends Controller
 
     /** Continue existing USSD session
      */
-    public function handleExistingSession($buildResponse = true)
+    public function handleExistingSession()
     {
         //  Get the existing session record from the database
         $this->existing_session = $this->getExistingSessionFromDatabase();
@@ -481,39 +491,33 @@ class UssdServiceController extends Controller
 
         //  Get the USSD Builder for the given "Service Code"
         $this->getUssdBuilder();
-            
+
         //  Foreach existing session reply record
         foreach ($this->existing_session->reply_records as $key => $reply_record) {
-            
             /*************************************
              *  CAPTURE EXISTING REPLY RECORDS   *
              ************************************/
-    
-            /** Get the existing session reply record and save it locally.
+
+            /* Get the existing session reply record and save it locally.
              *  This reply record will maintain its existing information
              */
             $this->addReplyRecord($reply_record['value'], $reply_record['origin'], $reply_record['removable']);
-            
         }
 
         //  If we are on TEST MODE and the existing session has timed out
         if ($this->test_mode && $this->existing_session->has_timed_out) {
-
             //  Prepare for timeout
             $this->request_type = '4';
-
-        }else{
-                    
+        } else {
             /*************************************
              *  CAPTURE THE CURRENT USER REPLY   *
              *************************************/
 
-            /** Get the current user reply record and save it locally.
-             *  This reply will be recorded to originate from the user 
+            /* Get the current user reply record and save it locally.
+             *  This reply will be recorded to originate from the user
              *  and is a removable reply (Can be deleted by the user)
              */
             $this->addReplyRecord($this->msg, 'user', true);
-
         }
 
         //  Get the timeout limit in seconds e.g "120" to mean "timeout after 120 seconds"
@@ -521,57 +525,63 @@ class UssdServiceController extends Controller
 
         //  If the existing session has timeout
         if ($this->existing_session->has_timed_out) {
-
             //  Handle timeout
             $response = $this->handleTimeout();
-            
         } else {
-
             //  Handle the current session
-            $response = $this->handleSession($buildResponse);
-            
+            $response = $this->handleSession();
         }
 
         //  If we have "revisit_reply_records"
-        if( count($this->revisit_reply_records) ){
-
+        if (count($this->revisit_reply_records)) {
             //  Add the "revisit_reply_records" to the "reply_records"
             $this->reply_records = array_merge(
-                collect($this->revisit_reply_records)->toArray(), 
+                collect($this->revisit_reply_records)->toArray(),
                 collect($this->reply_records)->toArray()
             );
 
             //  Get the text which represents responses from the user
             $this->text = $this->extractUserResponsesAsText();
-
         }
 
-        //  Update the current existing session
-        $this->updateExistingSessionDatabaseRecord([
+        $update_data = [
+            'logs' => $this->logs,
             'text' => $this->text,
             'request_type' => $this->request_type,
+            'fatal_error' => $this->fatal_error,
+            'fatal_error_msg' => $this->fatal_error_msg,
             'reply_records' => json_encode($this->reply_records),
             'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
             'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        /** This will render as: $this->updateExistingSessionDatabaseRecord($update_data)
+         *  while being called within a try/catch handler.
+         */
+        $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord', [$update_data]);
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($updateResponse)) {
+            return $updateResponse;
+        }
 
         return $response;
     }
 
     /** Create a new USSD session
      */
-    public function createNewSession($overide_data = []){
-
-        if( !$this->new_session ){
-
+    public function createNewSession($overide_data = [])
+    {
+        if (!$this->new_session) {
             //  Determine if we allow timeouts
             $allow_timeout = $this->builder['simulator']['settings']['allow_timeouts'];
-    
+
             //  Get the timeout limit in seconds e.g "120" to mean "timeout after 120 seconds"
             $this->timeout_limit_in_seconds = $this->getTimeoutLimitInSeconds();
 
             $data = [
                 'text' => $this->text,
+                'logs' => json_encode($this->logs),
                 'reply_records' => json_encode($this->reply_records),
                 'type' => $this->ussd_service_code_type,
                 'msisdn' => $this->msisdn,
@@ -580,6 +590,8 @@ class UssdServiceController extends Controller
                 'service_code' => $this->service_code,
                 'request_type' => $this->request_type,
                 'test' => $this->test_mode,
+                'fatal_error' => $this->fatal_error,
+                'fatal_error_msg' => $this->fatal_error_msg,
                 'created_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
                 'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
                 'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
@@ -588,8 +600,11 @@ class UssdServiceController extends Controller
             //  Overide the default details with any custom data
             $data = array_merge($data, $overide_data);
 
+            //  Create the new session record
             $this->new_session = DB::table('ussd_sessions')->insert($data);
 
+            //  Return the new session record
+            return $this->new_session;
         }
     }
 
@@ -606,11 +621,9 @@ class UssdServiceController extends Controller
     public function getExistingSessionFromDatabase($force = false)
     {
         //  If we don't have an existing session already set or we are forced to refetch the session
-        if (empty($this->existing_session) || $force) {
-
+        if (empty($this->existing_session) || $force == true) {
             //  Get the session record that matches the given Session Id
             return \App\UssdSession::where('session_id', $this->session_id)->where('test', $this->test_mode)->first();
-
         }
 
         //  If we have an existing session already set
@@ -628,13 +641,11 @@ class UssdServiceController extends Controller
 
         //  If the timeout message was not provided
         if (empty($this->msg)) {
-
             //  Get the default timeout message found in "UssdSessionTraits" within "UssdSession"
             $default_timeout_msg = (new \App\UssdSession())->default_timeout_message;
 
             //  Set the timeout message
             $this->msg = $default_timeout_msg;
-
         }
 
         //  Get the session timeout date and time
@@ -646,7 +657,7 @@ class UssdServiceController extends Controller
         $response = $this->showTimeoutScreen($this->msg);
 
         //  Build and return the final response
-        return $this->buildResponse($response);
+        return $response;
     }
 
     /** Determine the response type and build the response
@@ -704,6 +715,7 @@ class UssdServiceController extends Controller
                     '<div style="line-height:2.5em;margin:10px 0;">'.
                         $this->wrapAsDynamicDataHtml('{{ ussd.text }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.text')).'<br>'.
                         $this->wrapAsDynamicDataHtml('{{ ussd.msisdn }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.msisdn', 'None')).'<br>'.
+                        $this->wrapAsDynamicDataHtml('{{ ussd.has_account }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.has_account')).'<br>'.
                         $this->wrapAsDynamicDataHtml('{{ ussd.user_account }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.user_account')).'<br>'.
                         $this->wrapAsDynamicDataHtml('{{ ussd.request_type }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.request_type')).'<br>'.
                         $this->wrapAsDynamicDataHtml('{{ ussd.service_code }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.service_code')).'<br>'.
@@ -714,7 +726,7 @@ class UssdServiceController extends Controller
                 );
 
                 //  Set the logs on the response payload
-                $response['logs'] = $this->log;
+                $response['logs'] = $this->logs;
             }
         }
 
@@ -749,19 +761,12 @@ class UssdServiceController extends Controller
      *  payload including the USSD properties and the final
      *  response message.
      */
-    public function handleSession($buildResponse = true)
+    public function handleSession()
     {
         $this->manageGoBackRequests();
-        
-        //  Start the process of building the USSD Application
-        $response = $this->startBuildingUssd();
 
-        if ($buildResponse == true) {
-            //  Build and return the final response
-            return $this->buildResponse($response);
-        } else {
-            return $response;
-        }
+        //  Start the process of building the USSD Application
+        return $this->startBuildingUssd();
     }
 
     /*  Scan and remove any responses the user indicated to omit. This is to help
@@ -778,29 +783,25 @@ class UssdServiceController extends Controller
         $count = 0;
 
         foreach ($this->reply_records as $reply_record) {
-
             /** Example Structure:
-             * 
+             *
              *  $reply_record = [
              *      'value' => 'John',
              *      'origin' => 'user',
              *      'removable' => true
-             *  ];
-             * 
+             *  ];.
+             *
              *  or
-             * 
+             *
              *  $reply_record = [
              *      'value' => '0',
              *      'origin' => 'user',
              *      'removable' => true
              *  ];
-             * 
              */
             if ($reply_record['value'] == '0') {
-
                 //  Count the number of occurences of the value "0"
                 $count = ++$count;
-
             }
         }
 
@@ -853,48 +854,36 @@ class UssdServiceController extends Controller
          */
         for ($x = 0; $x < $count; ++$x) {
             for ($y = 0; $y < count($this->reply_records); ++$y) {
-
                 //  If the reply record value is equal to zero (0)
                 if ($this->reply_records[$y]['value'] == '0') {
-
                     //  Remove the reply record that is equal to zero (0)
                     unset($this->reply_records[$y]);
 
                     //  If we have a reply record before this current reply record
-                    if( isset($this->reply_records[$y - 1]) ){
-
+                    if (isset($this->reply_records[$y - 1])) {
                         //  Get the previous reply record
                         $previous_record = $this->reply_records[$y - 1];
 
                         //  If the previous reply record is removable
-                        if( $previous_record['removable'] ){
-
+                        if ($previous_record['removable']) {
                             //  Remove the previous reply record
                             unset($this->reply_records[$y - 1]);
 
                             //  If this is a reply produced by the "Auto Link" or "Auto Reply" events
-                            if( $previous_record['origin']  == 'auto_link' || $previous_record['origin']  == 'auto_reply'){
-                               
+                            if ($previous_record['origin'] == 'auto_link' || $previous_record['origin'] == 'auto_reply') {
                                 //  If we have a reply record before this previous reply record
-                                if( isset($this->reply_records[$y - 2]) ){
-
+                                if (isset($this->reply_records[$y - 2])) {
                                     //  Get the previous reply record
                                     $second_previous_record = $this->reply_records[$y - 2];
 
                                     //  If the second previous reply record is removable
-                                    if( $second_previous_record['removable'] ){
-
+                                    if ($second_previous_record['removable']) {
                                         //  Remove the second previous reply record as well
                                         unset($this->reply_records[$y - 2]);
-
                                     }
-
                                 }
-
                             }
-
                         }
-
                     }
 
                     $this->reply_records = array_values($this->reply_records);
@@ -906,7 +895,6 @@ class UssdServiceController extends Controller
 
         //  Get the text which represents responses from the user
         $this->text = $this->extractUserResponsesAsText();
-        
     }
 
     /*  Validate the existence of the builder and start the process of using
@@ -997,6 +985,8 @@ class UssdServiceController extends Controller
                     } elseif ($value == 'false') {
                         $value = false;
                     }
+                } elseif ($type == 'Null') {
+                    $value = null;
                 } elseif ($type == 'Custom') {
                     $code = $value['code'];
 
@@ -1047,12 +1037,18 @@ class UssdServiceController extends Controller
         //  If we are on test mode
         if ($this->test_mode) {
             //  Get the User Test Account (Check if we have an account matching the mobile number)
-            $user_account = \App\UserAccount::where('mobile_number', $mobile_number)->testAccount()->first();
-
+            $user_account = \App\UserAccount::where('mobile_number', $mobile_number)
+                                              ->where('user_id', auth('api')->user()->id)
+                                              ->where('project_id', $this->project->id)
+                                              ->testAccount()
+                                              ->first();
         //  If we are not on test mode
         } else {
             //  Get the User Real Account (Check if we have an account matching the mobile number)
-            $user_account = \App\UserAccount::where('mobile_number', $mobile_number)->realAccount()->first();
+            $user_account = \App\UserAccount::where('mobile_number', $mobile_number)
+                                              ->where('project_id', $this->project->id)
+                                              ->realAccount()
+                                              ->first();
         }
 
         if ($user_account) {
@@ -1072,6 +1068,7 @@ class UssdServiceController extends Controller
             'text' => $this->text,
             'msisdn' => $this->msisdn,
             'session_id' => $this->session_id,
+            'has_account' => $this->user_account ? true : false,
             'user_account' => $this->user_account,
             'request_type' => $this->request_type,
             'service_code' => $this->service_code,
@@ -1099,10 +1096,8 @@ class UssdServiceController extends Controller
     public function addReplyRecord($input = null, $origin = 'user', $removable = true)
     {
         //  If the input received is not null or empty
-        if( !is_null( $input ) && $input != '' ){
-
+        if (!is_null($input) && $input != '') {
             $data = [
-                
                 'value' => $input,          //  Get the actual input provided e.g "1" or "John"
                 'origin' => $origin,        //  Get the origin of the input e.g "user", "auto_link", or "auto_reply"
                 'removable' => $removable,  //  Determine if the input is removable e.g true/false
@@ -1110,7 +1105,6 @@ class UssdServiceController extends Controller
 
             //  Push this information to join the rest of the reply records
             array_push($this->reply_records, $data);
-
         }
 
         //  Get the text which represents responses from the user
@@ -1118,7 +1112,7 @@ class UssdServiceController extends Controller
     }
 
     /** This method will empty the reply records and set the text value
-     *  to an empty string
+     *  to an empty string.
      */
     public function emptyReplyRecords()
     {
@@ -1131,40 +1125,36 @@ class UssdServiceController extends Controller
 
     /** Get the responses values from the reply records and
      *  convert them into a long chain of text responses.
-     *  e.g "1*2*4*john*doe*36*1"
+     *  e.g "1*2*4*john*doe*36*1".
      */
     public function extractUserResponsesAsText($reply_records = null)
     {
         //  Get the provided reply records otherwise default to the general reply records
         $reply_records = $reply_records ?? $this->reply_records;
 
-        $responses = collect($reply_records)->map(function($reply_record){
-
+        $responses = collect($reply_records)->map(function ($reply_record) {
             /** Example Structure:
-             * 
+             *
              *  $reply_record = [
              *      'value' => 'John',
              *      'origin' => 'user',
              *      'removable' => true
-             *  ];
-             * 
+             *  ];.
              */
 
             // If the value is not empty
-            if( !empty( $reply_record['value'] ) ){
-
-                /** Use urldecode() to convert all encoded values to their decoded counterparts e.g
+            if (!empty($reply_record['value'])) {
+                /* Use urldecode() to convert all encoded values to their decoded counterparts e.g
                  *
                  *  "%23" is an encoded value representing "#"
                  */
                 return urldecode($reply_record['value']);
-
             }
 
             //  Return an empty reply
             return '';
 
-        //  Filter to remove empty replies and convert to Array
+            //  Filter to remove empty replies and convert to Array
         })->filter()->toArray();
 
         //  Example "1*2*4*john*doe*36*1"
@@ -1174,14 +1164,14 @@ class UssdServiceController extends Controller
         return $text;
     }
 
-    /** Return an Array of all the user responses of the current session 
+    /** Return an Array of all the user responses of the current session
      *  e.g ['1', '2', '4', 'john', 'doe', '36', '1'].
      */
     public function getUserResponses($text = null)
     {
         /** Get the user responses from the reply records as a long chain of text responses.
-         *  The "extractUserResponsesAsText()" returns responses separated using the "*" sybmbol. 
-         *  We need to explode the given responses to have access to each and every response e.g
+         *  The "extractUserResponsesAsText()" returns responses separated using the "*" sybmbol.
+         *  We need to explode the given responses to have access to each and every response e.g.
          *
          *  $text = "1*2*4*john*doe*36*1"
          *
@@ -1191,7 +1181,7 @@ class UssdServiceController extends Controller
          *
          *  $responses[0] = Response from screen 1 (Landing Screen / First Screen)
          *  $responses[1] = Response from screen 2 (Second Screen)
-         * 
+         *
          *  e.t.c
          */
         $text = $text ?? $this->extractUserResponsesAsText();
@@ -1202,7 +1192,7 @@ class UssdServiceController extends Controller
     }
 
     /** Return the user response of a given Level. Assuming we have 3 responses:
-     *  $responses = ['Johnathan', 'Miller', '25']. Then
+     *  $responses = ['Johnathan', 'Miller', '25']. Then.
      *
      *  Level 1 response = 'Johnathan'   (Response to Screen 1)
      *  Level 2 response = 'Miller'   (Response to Screen 2)
@@ -1212,17 +1202,15 @@ class UssdServiceController extends Controller
     {
         //  If we have a level number provided
         if ($levelNumber) {
-
             //  Get all the user responses
             $user_responses = $this->getUserResponses();
 
-            /** We want to say if we have "levelNumber = 1" we should get the landing screen response
+            /* We want to say if we have "levelNumber = 1" we should get the landing screen response
              *  (since thats level 1) but technically "$user_responses[0] = landing screen response".
              *  This means to get the response for the level we want we must decrement by one unit.
              */
 
             return isset($user_responses[$levelNumber - 1]) ? $user_responses[$levelNumber - 1] : null;
-
         }
     }
 
@@ -1234,13 +1222,11 @@ class UssdServiceController extends Controller
     {
         //  If we have a level number provided
         if ($levelNumber) {
-
             //  Check if we have a response for this level number
             $level = $this->getResponseFromLevel($levelNumber);
 
             //  If the level specified is completed (Has a response from the user)
             return isset($level) && $level != '';
-
         }
     }
 
@@ -1633,12 +1619,11 @@ class UssdServiceController extends Controller
 
             //  If we don't have a User Account
             } else {
-
-                /** Get the existing session record from the database. If this is
+                /* Get the existing session record from the database. If this is
                  *  the first request that launches the USSD service, this value
                  *  will not exist since its a new session intirely. This is why
                  *  we must default the $metadata value to an empty array for
-                 *  when "$this->existing_session" does not exist yet. 
+                 *  when "$this->existing_session" does not exist yet.
                  */
                 $this->existing_session = $this->getExistingSessionFromDatabase();
 
@@ -1649,38 +1634,37 @@ class UssdServiceController extends Controller
                 $this->revisit_reply_records = $this->existing_session->metadata['revisit_reply_records'] ?? [];
 
                 //  If we have the "revisit_reply_records" set
-                if ( isset( $metadata['revisit_reply_records'] ) ) {
-
-                    /** Get the "revisit_reply_records" value. This is the actual initial "reply_records" that were 
-                     *  dialed to start the USSD Service which we must revisit after creating the account 
+                if (isset($metadata['revisit_reply_records'])) {
+                    /* Get the "revisit_reply_records" value. This is the actual initial "reply_records" that were
+                     *  dialed to start the USSD Service which we must revisit after creating the account
                      *  e.g *321*2*3#.
                      *
                      *  Because we allow the user to visit the "Account Creation" screen in order to create their
                      *  account, we therefore also allow the user to provide additional responses on-top of their
                      *  original request e.g They had dialed "*321*2*3#" but now since they have to create an
-                     *  account, they provided additional values such as their names, preferences, e.t.c and 
-                     *  we end up with something like "*321*2*3*John*Doe*26*1#" as the user continues to 
+                     *  account, they provided additional values such as their names, preferences, e.t.c and
+                     *  we end up with something like "*321*2*3*John*Doe*26*1#" as the user continues to
                      *  reply in order to create their account.
                      *
                      *  Now since we already have replies attached to "*321#" in the form of *321*2*3#, when trying
                      *  to create the account the replies "2" and "3" will be used as responses to the "Account Creation"
-                     *  screen. This is not desirable. To avoid this we must store the initial "reply_records" of "2*3#" 
-                     *  within the current session metadata as a vairable called "revisit_reply_records". Each time the 
-                     *  user responds to the "Create Account" screen, we can then get the current "reply_records" and 
-                     *  eliminate the original "revisit_reply_records" value from the responses used on the 
+                     *  screen. This is not desirable. To avoid this we must store the initial "reply_records" of "2*3#"
+                     *  within the current session metadata as a vairable called "revisit_reply_records". Each time the
+                     *  user responds to the "Create Account" screen, we can then get the current "reply_records" and
+                     *  eliminate the original "revisit_reply_records" value from the responses used on the
                      *  "Create Account".
                      *
                      *  E.g We start with *321*2*3# as the initial response for the subscriber to launch the service,
                      *  use "2" to select "Stores" and "3" to specify a specific store. While processing we realise the
                      *  "Welcome Screen" needs to create an account first so we load up the "Account Creation" screen. At
-                     *  this moment we get the "reply_records" and store them as metadata information called 
-                     *  "revisit_reply_records". Then we set the "reply_records" to nothing since when we start the 
-                     *  "Account Creation" we should not have any replies. Now when the user replies to create their 
-                     *  account we grab the "revisit_reply_records" from the session metadata stored in the database. 
+                     *  this moment we get the "reply_records" and store them as metadata information called
+                     *  "revisit_reply_records". Then we set the "reply_records" to nothing since when we start the
+                     *  "Account Creation" we should not have any replies. Now when the user replies to create their
+                     *  account we grab the "revisit_reply_records" from the session metadata stored in the database.
                      *  We use this to cut out the initial replies to leave only the account creation replies
                      */
 
-                    /** Get only the text that is used for the "Account Creation" process
+                    /* Get only the text that is used for the "Account Creation" process
                      *  by getting the current text and removing the intial text from the
                      *  "revisit_text" e.g
                      *
@@ -1699,29 +1683,25 @@ class UssdServiceController extends Controller
                      */
 
                     $this->reply_records = collect($this->reply_records)->filter(function ($reply_record, $key) {
-                        
-                        /** If the current "reply_record" exists as a previous "revisit_reply_record", then 
-                         *  do not return this "reply_record" otherwise if the current "reply_record" 
-                         *  does not exist as a previous "revisit_reply_record" then return this 
+                        /* If the current "reply_record" exists as a previous "revisit_reply_record", then
+                         *  do not return this "reply_record" otherwise if the current "reply_record"
+                         *  does not exist as a previous "revisit_reply_record" then return this
                          *  "reply_record"
                          */
-                        if( isset($this->revisit_reply_records[$key]) ){
+                        if (isset($this->revisit_reply_records[$key])) {
                             return false;
-                        }else{
+                        } else {
                             return true;
                         }
-
                     });
 
                     //  Get the text which represents responses from the user
                     $this->text = $this->extractUserResponsesAsText();
-                    
                 } else {
-
                     //  Set an info log that this subscriber already has an account
                     $this->logInfo('The current subscriber does not have a User Account');
 
-                    /** Lets assume that the user dials "*321*2*3#". In this, we assume that
+                    /* Lets assume that the user dials "*321*2*3#". In this, we assume that
                      *  *321# launches the USSD Service e.g:.
                      *
                      *  Welcome Screen
@@ -1759,15 +1739,15 @@ class UssdServiceController extends Controller
                      *  requires the user to have a user account. However we quickly also realise
                      *  that upon finishing to create an account we need to redirect the user to
                      *  their initial request which is to visit "Store 3". Then we must store the
-                     *  "reply_records" within a metadata variable called "revisit_reply_records" 
-                     *  so that we can later attempt to run it again and try access "Store 3" 
+                     *  "reply_records" within a metadata variable called "revisit_reply_records"
+                     *  so that we can later attempt to run it again and try access "Store 3"
                      *  but this time with an account.
                      */
 
-                    /** Overide the existing session metadata. Store the current "reply_records" so that
+                    /* Overide the existing session metadata. Store the current "reply_records" so that
                      *  we can use these records to revisit the destination that the user intended
                      *  to go to before the account creation process.
-                     */  
+                     */
 
                     $this->revisit_reply_records = $this->reply_records;
 
@@ -1775,31 +1755,40 @@ class UssdServiceController extends Controller
                         'revisit_reply_records' => $this->revisit_reply_records,
                     ]);
 
-                    /** Get the existing session record from the database. If this is
+                    /* Get the existing session record from the database. If this is
                      *  the first request that launches the USSD service, this value
-                     *  will not exist since its a new session intirely. 
+                     *  will not exist since its a new session intirely.
                      */
-                    if( $this->existing_session ){
+                    if ($this->existing_session) {
+                        $data = ['metadata' => $metadata];
 
-                        //  Update the current session with metadata
-                        $this->updateExistingSessionDatabaseRecord([
-                            'metadata' => $metadata,
-                        ]);
+                        /** This will render as: $this->updateExistingSessionDatabaseRecord($data)
+                         *  while being called within a try/catch handler.
+                         */
+                        $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord', [$data]);
 
-                    }else{
-                        
-                        //  Create new session with metadata
-                        $this->createNewSession([
-                            'metadata' => json_encode($metadata),
-                        ]);
+                        //  If we have a screen to show return the response otherwise continue
+                        if ($this->shouldDisplayScreen($updateResponse)) {
+                            return $updateResponse;
+                        }
+                    } else {
+                        $data = ['metadata' => json_encode($metadata)];
 
+                        /** This will render as: $this->createNewSession($data)
+                         *  while being called within a try/catch handler.
+                         */
+                        $createResponse = $this->tryCatch('createNewSession', [$data]);
+
+                        //  If we have a screen to show return the response otherwise continue
+                        if ($this->shouldDisplayScreen($createResponse)) {
+                            return $createResponse;
+                        }
                     }
 
-                    /** Reset the "reply_records" and "text" so that we don't have any responses 
-                     *  for the "Account Creation" screen 
+                    /* Reset the "reply_records" and "text" so that we don't have any responses
+                     *  for the "Account Creation" screen
                      */
                     $this->emptyReplyRecords();
-                    
                 }
 
                 $link = $requires_account['link'];
@@ -1809,7 +1798,6 @@ class UssdServiceController extends Controller
 
                 //  If the screen to link to was found
                 if ($screen) {
-
                     $this->screen = $screen;
 
                     //  Set an info log that we are redirecting
@@ -1817,7 +1805,6 @@ class UssdServiceController extends Controller
 
                     //  Stop here
                     return null;
-                    
                 }
 
                 //  Set an info log that we are redirecting
@@ -1835,7 +1822,6 @@ class UssdServiceController extends Controller
 
         //  If the screen "Requires Subscription"
         if ($activeState === true) {
-            
             //  Set an info log that this screen requires the subscriber to have an active subscription
             $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' requires the subscriber to have an active subscription');
 
@@ -2520,9 +2506,7 @@ class UssdServiceController extends Controller
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($handleLinkingResponse)) {
-
             return $handleLinkingResponse;
-
         }
 
         /************************
@@ -2534,7 +2518,6 @@ class UssdServiceController extends Controller
 
         //  Check if the user has already responded to the current display screen
         if ($this->completedLevel($this->level)) {
-            
             //  Get the user response (Input provided by the user) for the current display screen
             $this->getCurrentScreenUserResponse();
 
@@ -4045,7 +4028,7 @@ class UssdServiceController extends Controller
     public function getCurrentScreenUserResponse()
     {
         $this->current_user_response = $this->getResponseFromLevel($this->level) ?? '';   //  John Doe
-        
+
         //  Update the ussd data
         $this->ussd['user_response'] = $this->current_user_response;
 
@@ -4647,8 +4630,7 @@ class UssdServiceController extends Controller
     public function handleLinkingDisplay()
     {
         //  Check if the current display must link to another display or screen
-        if ($this->checkIfDisplayMustLink()) 
-        {
+        if ($this->checkIfDisplayMustLink()) {
             /* Increment the current level so that we target the next screen or display
              * (This means we are targeting the linked screen)
              */
@@ -4707,7 +4689,6 @@ class UssdServiceController extends Controller
     {
         //  Check if the screen has before repeat events
         if (count($this->screen['repeat']['events']['before_repeat'])) {
-
             $this->event_type = 'before_repeat';
 
             //  Get the events to handle
@@ -4730,7 +4711,6 @@ class UssdServiceController extends Controller
     {
         //  Check if the screen has after repeat events
         if (count($this->screen['repeat']['events']['after_repeat'])) {
-
             $this->event_type = 'after_repeat';
 
             //  Get the events to handle
@@ -4757,7 +4737,6 @@ class UssdServiceController extends Controller
     {
         //  Check if the display has before user response events
         if (count($this->display['content']['events']['before_reply'])) {
-
             $this->event_type = 'before_reply';
 
             //  Get the events to handle
@@ -4780,7 +4759,6 @@ class UssdServiceController extends Controller
     {
         //  Check if the display has after user response events
         if (count($this->display['content']['events']['after_reply'])) {
-
             $this->event_type = 'after_reply';
 
             //  Get the events to handle
@@ -4791,7 +4769,6 @@ class UssdServiceController extends Controller
 
             //  Start handling the given events
             return $this->handleEvents($events);
-
         } else {
             //  Set an info log that the current display does not have after user response events
             $this->logInfo('Display '.$this->wrapAsPrimaryHtml($this->display['name']).' does not have after user response events.');
@@ -5421,20 +5398,27 @@ class UssdServiceController extends Controller
                                     // Convert the mustache tag into dynamic data
                                     $outputResponse = $this->convertMustacheTagIntoDynamicData($mustache_tag);
 
-                                    //  If we have a screen to show return the response otherwise continue
-                                    if ($this->shouldDisplayScreen($outputResponse)) {
-                                        return $outputResponse;
-                                    }
+                                //  If the provided value is not a valid mustache tag
+                                } else {
+                                    $text = $value;
 
-                                    //  Get the generated output
-                                    $value = $outputResponse;
-
-                                    //  Set an info log of the attribute name
-                                    $this->logInfo('Attribute: '.$this->wrapAsSuccessHtml($this->convertToString($name)).' = '.$this->wrapAsSuccessHtml($this->convertToString($value)));
-
-                                    //  Store the attribute data as dynamic data
-                                    $this->setProperty($name, $value);
+                                    //  Process dynamic content embedded within the value
+                                    $outputResponse = $this->handleEmbeddedDynamicContentConversion($text);
                                 }
+
+                                //  If we have a screen to show return the response otherwise continue
+                                if ($this->shouldDisplayScreen($outputResponse)) {
+                                    return $outputResponse;
+                                }
+
+                                //  Get the generated output
+                                $value = $outputResponse;
+
+                                //  Set an info log of the attribute name
+                                $this->logInfo('Attribute: '.$this->wrapAsSuccessHtml($this->convertToString($name)).' = '.$this->wrapAsSuccessHtml($this->convertToString($value)));
+
+                                //  Store the attribute data as dynamic data
+                                $this->setProperty($name, $value);
                             }
                         }
                     }
@@ -5472,7 +5456,6 @@ class UssdServiceController extends Controller
 
                         //  Return the processed custom message display
                         return $this->showCustomScreen($custom_message);
-
                     } elseif ($on_handle_type == 'do_nothing') {
                         //  Return nothing
                         return null;
@@ -5631,6 +5614,10 @@ class UssdServiceController extends Controller
                         case 'validate_mobile_number':
 
                             return $this->applyValidationRule($target_value, $validation_rule, 'validateMobileNumber'); break;
+
+                        case 'validate_money':
+
+                            return $this->applyValidationRule($target_value, $validation_rule, 'validateMoney'); break;
 
                         case 'valiate_date_format':
 
@@ -5866,6 +5853,26 @@ class UssdServiceController extends Controller
     {
         //  Regex pattern
         $pattern = '/^[7]{1}[1234567]{1}[0-9]{6}$/';
+
+        //  Convert to [String]
+        $target_value = $this->convertToString($target_value);
+
+        //  If the pattern was not matched exactly i.e validation failed
+        if (empty($target_value) || !preg_match($pattern, $target_value)) {
+            //  Handle the failed validation
+            return $this->handleFailedValidation($validation_rule);
+        }
+    }
+
+    /** This method validates to make sure the target input
+     *  is a valid money format e.g "35", "35.5" or "35.50"
+     *  are valid while "P35", "3,500", "35 .5" and "35. 5" 
+     *  are invalid
+     */
+    public function validateMoney($target_value, $validation_rule)
+    {
+        //  Regex pattern
+        $pattern = '/^[0-9]+(?:\.[0-9]{1,2}){0,1}/';
 
         //  Convert to [String]
         $target_value = $this->convertToString($target_value);
@@ -7253,7 +7260,7 @@ class UssdServiceController extends Controller
         }
     }
 
-        /******************************************
+    /******************************************
      *  AUTO REPLY EVENT METHODS              *
      *****************************************/
 
@@ -7262,14 +7269,11 @@ class UssdServiceController extends Controller
     public function handle_Custom_Code_Event()
     {
         if ($this->event) {
-            
             $code = $this->event['event_data']['code'];
 
             //  Process the PHP Code
             $this->processPHPCode("$code");
-
         }
-
     }
 
     /******************************************
@@ -7283,7 +7287,6 @@ class UssdServiceController extends Controller
     public function handle_Auto_Reply_Event()
     {
         if ($this->event) {
-
             //  Get the additional responses
             $automatic_replies = $this->event['event_data']['automatic_replies'];
 
@@ -7304,26 +7307,22 @@ class UssdServiceController extends Controller
 
             //  If the text is not a type of [String] or [Integer]
             if (!(is_string($automatic_replies_text) || is_integer($automatic_replies_text))) {
-                
                 $dataType = $this->wrapAsSuccessHtml($this->getDataType($automatic_replies_text));
 
                 $this->logWarning('The given '.$this->wrapAsSuccessHtml('Automatic Replies').' must return data of type ['.$this->wrapAsSuccessHtml('String').'], however we received data of type ['.$dataType.']');
 
                 //  Empty the value
                 $automatic_replies_text = '';
-
             }
 
             if ($automatic_replies_text != '') {
-
                 $this->logInfo('Performing automatic reply: '.$this->wrapAsSuccessHtml($automatic_replies_text));
 
                 $automatic_replies = explode('*', $automatic_replies_text);
 
                 //  Foreach existing session reply record
                 foreach ($automatic_replies as $key => $automatic_reply) {
-                    
-                    /** We need to make sure that this event does not keep getting fired everytime we
+                    /* We need to make sure that this event does not keep getting fired everytime we
                      *  make a USSD reply. Remember that each time we reply we have to run the before
                      *  and after events of each screen and display. This can be bad in this case since
                      *  we will be running this "Auto Reply" event over and over again. This will make
@@ -7331,112 +7330,100 @@ class UssdServiceController extends Controller
                      *  automatic reply after our own user reply. Remember that every automatic reply
                      *  is actually then saved to the existing session record within the "reply_records"
                      *  column.
-                     * 
+                     *
                      *  Example:
-                     * 
+                     *
                      *  We launch the application and the "reply_records" column is empty as we don't have
-                     *  responses yet. 
-                     * 
+                     *  responses yet.
+                     *
                      *  reply_records = []
-                     * 
+                     *
                      *  Then we make our first response, which means we add a normal user reply. This becomes
                      *  the first response on the "reply_records". This is saved to the database.
-                     * 
+                     *
                      *  reply_records = [ { user_record ... } ]
-                     * 
+                     *
                      *  Now after we reply the home screens links normally to the next screen, lets call
                      *  it "Screen 2". Now "Screen 2" fires an "Auto Reply" event which forces a new reply
-                     *  to the "reply_records". This is saved to the database. This means that we link 
+                     *  to the "reply_records". This is saved to the database. This means that we link
                      *  normally to the next screen "Screen 3".
-                     * 
+                     *
                      *  reply_records = [ { user_record ... }, { auto_reply_record ... } ]
-                     * 
+                     *
                      *  Now after we reply to "Screen 3", we link normally to the next screen "Screen 4".
                      *  This becomes the third response on the "reply_records". This is saved to the database.
-                     * 
+                     *
                      *  reply_records = [ { user_record ... }, { auto_reply_record ... }, { user_record ... } ]
-                     * 
+                     *
                      *  However we have an issue! Since we run every event on every screen, this means that we
                      *  will also run the "Auto Reply" event on "Screen 2" again. This forces a new reply to
                      *  the "reply_records". This is saved to the database.
-                     * 
+                     *
                      *  reply_records = [ { user_record ... }, { auto_reply_record ... }, { user_record ... }, { auto_reply_record ... }]
-                     * 
-                     *  Now we have a serious problem, each time we reply, this event is also triggered an then 
+                     *
+                     *  Now we have a serious problem, each time we reply, this event is also triggered an then
                      *  two replies instead of one are recorded and saved to the database. To avoid this messy
-                     *  situation, we need to keep checking if the "Auto Reply" reply record already exists 
+                     *  situation, we need to keep checking if the "Auto Reply" reply record already exists
                      *  within the "reply_records". This means that we only ever run it once for each unique
                      *  instance of a display and never more than once.
-                     * 
+                     *
                      */
 
-                    /** If this event was triggered after the user replied to the display. Then we know that
+                    /* If this event was triggered after the user replied to the display. Then we know that
                      *  the user's response will be added first to the "reply_records". Now we need to offset
                      *  to target any replies after this user reply. That is, we need to check whether this
                      *  event added "Auto Replies" after the user responded. If no, lets add a reply, one
                      *  after another to follow-up on the users initial response.
                      */
-                     if( $this->event_type == 'after_reply' ){
-                        
-                        /** Lets think! 
-                         * 
-                         *  $this->completedLevel($this->level) - checks if the user responded to the current display
-                         * 
+                    if ($this->event_type == 'after_reply') {
+                        /** Lets think!
+                         *
+                         *  $this->completedLevel($this->level) - checks if the user responded to the current display.
+                         *
                          *  We need to check for "Auto Replies" after this user response. THis means we can take
                          *  advantage of the $key value which always starts at "0". We need to first increment
                          *  the value so that we can use it to target any replies after this user response.
-                         * 
-                        */
+                         */
                         $level = $this->level + ($key + 1);
 
                         //  Check if we have any "Auto Replies" after the users initial response
-                        if( $this->completedLevel($level) == false ) {
-
+                        if ($this->completedLevel($level) == false) {
                             /*************************************
                              *  CAPTURE AUTOMATIC REPLY RECORD   *
                              ************************************/
-                    
-                            /** Get the "Auto Reply" record and save it locally.
-                             *  This reply will be recorded to originate from the "Auto Reply" event 
+
+                            /* Get the "Auto Reply" record and save it locally.
+                             *  This reply will be recorded to originate from the "Auto Reply" event
                              *  and is a removable reply (Can be deleted by the user) depending on
                              *  the given event settings
                              */
                             $this->addReplyRecord($automatic_reply, 'auto_reply', true);
-
                         }
-
-                    }else{
-                        
-                        /** Lets think! 
-                         * 
+                    } else {
+                        /** Lets think!
+                         *
                          *  $this->completedLevel($this->level) - checks if we already have an "Auto Reply"
-                         *  to the current display. We need to take dvantage of the $key value which always 
+                         *  to the current display. We need to take dvantage of the $key value which always
                          *  starts at "0". We need to use it to target any "Auto Replies" that have been
-                         *  executed already
-                         * 
+                         *  executed already.
                          */
                         $level = $this->level + $key;
 
                         //  Check if we have any "Auto Replies" after the users initial response
-                        if( $this->completedLevel($level) == false ) {
-
+                        if ($this->completedLevel($level) == false) {
                             /*************************************
                              *  CAPTURE AUTOMATIC REPLY RECORD   *
                              ************************************/
-                    
-                            /** Get the "Auto Reply" record and save it locally.
-                             *  This reply will be recorded to originate from the "Auto Reply" event 
+
+                            /* Get the "Auto Reply" record and save it locally.
+                             *  This reply will be recorded to originate from the "Auto Reply" event
                              *  and is a removable reply (Can be deleted by the user) depending on
                              *  the given event settings
                              */
                             $this->addReplyRecord($automatic_reply, 'auto_reply', true);
-
                         }
-
                     }
-                    
                 }
-
             }
         }
     }
@@ -7499,41 +7486,35 @@ class UssdServiceController extends Controller
                 //  Trigger the event automatically to redirect
                 $is_triggered = true;
             }
-            
+
             //  If the event has been triggered
             if ($is_triggered) {
-
                 //  Get the screen matching the given link and set it as the current screen
                 $screen = $this->getScreenById($link);
 
-                if( $screen ){
-                    
+                if ($screen) {
                     $this->logInfo('Linking to '.$this->wrapAsPrimaryHtml($screen['name']));
-                
-                    $this->linked_screen = $screen;
-                    
-                    if( !$this->completedLevel( $this->level ) ){
 
+                    $this->linked_screen = $screen;
+
+                    if (!$this->completedLevel($this->level)) {
                         //  Set an automatic reply for this "Auto Link" event
                         $auto_link_reply = 'A_L';
- 
-                        $this->text = $this->text . '*' . $auto_link_reply;
+
+                        $this->text = $this->text.'*'.$auto_link_reply;
 
                         /**************************************************
                          *  SAVE THE AUTO LINK REPLIES AS REPLY RECORDS   *
                          *************************************************/
 
-                        /** Add the auto link reply as a reply record.
-                         *  This reply will be recorded to originate from the "auto link" event 
+                        /* Add the auto link reply as a reply record.
+                         *  This reply will be recorded to originate from the "auto link" event
                          *  and is a removable reply (Can be deleted by the user) depending on the
                          *  given event settings
                          */
                         $this->addReplyRecord($auto_link_reply, 'auto_link', true);
-
                     }
-
                 }
-
             }
         }
     }
@@ -7639,20 +7620,19 @@ class UssdServiceController extends Controller
         }
     }
 
-
     /***********************************************************
-     *  
-     * 
-     * 
-     * 
+     *
+     *
+     *
+     *
      *  REMOVE THE $this->text completely
-     * 
+     *
      *  ONLY USE IT TO SAVE A RECORD IN DB
-     * 
+     *
      *  OTHERWISE IT IS GOING TO CONFUSE US IN THE FUTURE!!!!
-     * 
-     * 
-     * 
+     *
+     *
+     *
      ***********************************************************/
 
     public function handleHomeRevisit($automatic_replies_text = '')
@@ -7664,34 +7644,26 @@ class UssdServiceController extends Controller
         $automatic_replies = $this->getUserResponses($automatic_replies_text);
 
         //  If we have any automatic replies
-        if( count($automatic_replies) ){
-
+        if (count($automatic_replies)) {
             //  Add the new automatic reply records
             foreach ($automatic_replies as $key => $automatic_reply) {
-
                 /*************************************
                  *  CAPTURE AUTOMATIC REPLY RECORD   *
                  ************************************/
-        
-                /** Get the "Automatic Reply" record and save it locally.
-                 *  This reply will be recorded to originate from the "Revisit" event 
+
+                /* Get the "Automatic Reply" record and save it locally.
+                 *  This reply will be recorded to originate from the "Revisit" event
                  *  and is a removable reply (Can be deleted by the user) depending on
                  *  the given event settings
                  */
                 $this->addReplyRecord($automatic_reply, 'revisit_event', true);
-                
             }
-
         }
 
         if (!empty($this->text)) {
-
             $service_code = substr($this->service_code, 0, -1).'*'.$this->text.'#';
-
         } else {
-
             $service_code = $this->service_code;
-
         }
 
         $this->logInfo('Revisiting Home: '.$this->wrapAsSuccessHtml($service_code));
@@ -7716,17 +7688,17 @@ class UssdServiceController extends Controller
         //  Update the current existing session
         $updated = $this->updateExistingSessionDatabaseRecord([
             'text' => $this->text,
-            'reply_records' => json_encode($this->reply_records)
+            'reply_records' => json_encode($this->reply_records),
         ]);
-        
+
         //  Empty the existing reply records (Again)
         $this->emptyReplyRecords();
 
         //  Fetch the existing session record from the database by force
-        $this->existing_session = $this->getExistingSessionFromDatabase( $force = true );
+        $this->existing_session = $this->getExistingSessionFromDatabase($force = true);
 
         //  Handle existing session - Re-run the handleExistingSession()
-        return $this->handleExistingSession(false);
+        return $this->handleExistingSession();
     }
 
     public function handleScreenRevisit($automatic_replies = [])
@@ -7870,10 +7842,15 @@ class UssdServiceController extends Controller
             }
 
             $user_account_data = [
-                'first_name' => $first_name,
-                'last_name' => $last_name,
+                'first_name' => ucwords($first_name),
+                'last_name' => ucwords($last_name),
                 'mobile_number' => $mobile_number,
                 'project_id' => $this->project->id,
+
+                /* Provide the user_id if this is test mode and we have the "id"
+                 *  of the authenticated user otherwise default to null.
+                 */
+                'user_id' => auth('api')->user()->id ?? null,
             ];
 
             //  If we are on test mode
@@ -7911,19 +7888,14 @@ class UssdServiceController extends Controller
                 //  Update the user account metadata
                 $user_account_data['metadata'] = $metadata;
 
-                //  Update existing user account
-                $user_account_updated = \App\UserAccount::where('mobile_number', $mobile_number)
-                                                        ->where('test', $user_account_data['test'])
-                                                        ->update($user_account_data);
+                /** This will render as: $this->updateUserAccount($mobile_number, $user_account_data['test'], $data)
+                 *  while being called within a try/catch handler.
+                 */
+                $outputResponse = $this->tryCatch('updateUserAccount', [$user_account, $mobile_number, $user_account_data['test'], $user_account_data]);
 
-                if ($user_account_updated) {
-                    $this->logInfo('User account updated successfully');
-
-                    $this->user_account = $this->getUserAccountDetails($user_account->fresh());
-
-                    $this->logInfo($this->wrapAsSuccessHtml($this->user_account));
-                } else {
-                    $this->logError('Sorry, account update failed');
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
                 }
 
                 //  If the user account does not already exist
@@ -7935,45 +7907,74 @@ class UssdServiceController extends Controller
                 //  Update the user account metadata
                 $user_account_data['metadata'] = $processed_fields;
 
-                //  Create new user account
-                $user_account = \App\UserAccount::create($user_account_data);
+                /** This will render as: $this->createUserAccount($user_account_data)
+                 *  while being called within a try/catch handler.
+                 */
+                $outputResponse = $this->tryCatch('createUserAccount', [$user_account_data]);
 
-                if ($user_account) {
-                    $this->logInfo('User account created successfully');
-
-                    $this->user_account = $this->getUserAccountDetails($user_account);
-
-                    $this->logInfo($this->wrapAsSuccessHtml($this->user_account));
-                } else {
-                    $this->logError('Sorry, account creation failed');
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
                 }
             }
 
             //  Update the ussd data
             $this->ussd['user_account'] = $this->user_account;
+            $this->ussd['has_account'] = $this->user_account ? true : false;
 
             //  Store the ussd data using the given item reference name
             $this->setProperty('ussd', $this->ussd, false);
 
-            /** If we have the "revisit_reply_records" which represents the responses that will guide
-             *  us to the initial destination that the subscriber was trying to access before they were 
+            /* If we have the "revisit_reply_records" which represents the responses that will guide
+             *  us to the initial destination that the subscriber was trying to access before they were
              *  prompted to create an account, then we should revisit that destination.
              */
-            if ( count($this->revisit_reply_records) ) {
-
+            if (count($this->revisit_reply_records)) {
                 //  Get the "revisit text" from the "revisit reply records"
                 $revisit_text = $this->extractUserResponsesAsText($this->revisit_reply_records);
 
-                //  Reset the "revisit_reply_records" 
+                //  Reset the "revisit_reply_records"
                 $this->revisit_reply_records = [];
-                
-                /** We can use the "revisit_text" to make a "Home Revisit" request
+
+                /* We can use the "revisit_text" to make a "Home Revisit" request
                  *  to implement our initial journey.
                  */
                 return $this->handleHomeRevisit($revisit_text);
             }
 
             return null;
+        }
+    }
+
+    public function createUserAccount($user_account_data)
+    {
+        //  Create new user account
+        $user_account = \App\UserAccount::create($user_account_data);
+
+        if ($user_account) {
+            $this->logInfo('User account created successfully');
+
+            $this->user_account = $this->getUserAccountDetails($user_account);
+
+            $this->logInfo($this->wrapAsSuccessHtml($this->user_account));
+        } else {
+            $this->logWarning('Sorry, account creation failed');
+        }
+    }
+
+    public function updateUserAccount($user_account, $mobile_number, $test, $user_account_data)
+    {
+        //  Update existing user account
+        $user_account_updated = \App\UserAccount::where('mobile_number', $mobile_number)->where('test', $test)->update($user_account_data);
+
+        if ($user_account_updated) {
+            $this->logInfo('User account updated successfully');
+
+            $this->user_account = $this->getUserAccountDetails($user_account->fresh());
+
+            $this->logInfo($this->wrapAsSuccessHtml($this->user_account));
+        } else {
+            $this->logWarning('Sorry, account update failed');
         }
     }
 
@@ -8402,32 +8403,22 @@ class UssdServiceController extends Controller
         if ($active_state) {
             //  If the active status is set to yes
             if ($active_state['selected_type'] == 'yes') {
-
                 //  Return true to indicate that the state is active
                 return true;
-
             } elseif ($active_state['selected_type'] == 'no') {
-
                 //  Return false to indicate that the state is not active
                 return false;
-
             } elseif ($active_state['selected_type'] == 'conditional') {
-
                 $code = $active_state['code'];
 
                 //  Process the PHP Code
                 $result = $this->processPHPCode("$code");
-                
-                if( $result === true ){
 
+                if ($result === true) {
                     return true;
-
-                }else{
-
+                } else {
                     return false;
-
                 }
-
             }
         }
     }
@@ -8586,7 +8577,7 @@ class UssdServiceController extends Controller
     public function tryCatch($callback, $callback_params = [])
     {
         try {
-            /* Run the custom function here.
+            /*  Run the custom function here.
              *
              *  The $callback is the method/function that we must run to e.g
              *
@@ -8621,6 +8612,12 @@ class UssdServiceController extends Controller
      */
     public function handleTryCatchError($error, $load_display = true)
     {
+        //  Record fatal error
+        $this->fatal_error = true;
+
+        //  Record fatal message
+        $this->fatal_error_msg = $error->getMessage();
+
         //  Set an error log
         $this->logError('Error:  '.$error->getMessage());
 
@@ -8668,7 +8665,7 @@ class UssdServiceController extends Controller
         $data['display'] = $this->display['id'] ?? null;
 
         //  Push the latest log update
-        array_push($this->log, $data);
+        array_push($this->logs, $data);
     }
 
     /*******************************

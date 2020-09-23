@@ -4,11 +4,12 @@ namespace App;
 
 use DB;
 use App\Traits\CommonTraits;
+use App\Traits\UserAccountTraits;
 use Illuminate\Database\Eloquent\Model;
 
 class UserAccount extends Model
 {
-    use CommonTraits;
+    use UserAccountTraits, CommonTraits;
 
     /**
      * The table associated with the model.
@@ -26,7 +27,7 @@ class UserAccount extends Model
      * @var array
      */
     protected $fillable = [
-        'first_name', 'last_name', 'mobile_number', 'test', 'metadata'
+        'first_name', 'last_name', 'mobile_number', 'test', 'metadata', 'user_id', 'project_id'
     ];
 
     /*
