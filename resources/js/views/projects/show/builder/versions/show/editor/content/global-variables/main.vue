@@ -68,7 +68,6 @@
             <!-- Property Action -->
             <template slot-scope="{ row, index }" slot="action">
                 <Button type="primary" size="small" class="mr-1"
-                        :disabled="!['String', 'Custom'].includes(row.type)" 
                         @click="handleOpenEditVariableModal(version.builder.global_variables[index])">Edit</Button>
                 <Button type="error" size="small" @click="handleConfirmRemoveVariable(index)">Delete</Button>
             </template>
@@ -174,6 +173,8 @@
                         boolean: null,
                         code: null
                     },
+                    is_global: false,
+                    is_constant: false
                 });
 
                 this.$Message.success({

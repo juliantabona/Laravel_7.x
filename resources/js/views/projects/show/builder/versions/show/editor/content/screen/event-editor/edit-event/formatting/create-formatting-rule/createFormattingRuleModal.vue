@@ -121,20 +121,25 @@
                         name: 'Convert To Money',
                         type: 'convert_to_money',
                         value: 'P',
+                        value_name: 'Currency Symbol',
                         comment: 'Convert a given number to represent money format e.g "25" into "P25.00"'
                     },
                     {
                         name: 'Limit',
                         type: 'limit',
                         value: '10',
+                        value_name: 'Limit',
                         value_2: '...',
+                        value_2_name: 'Trailing characters',
                         comment: 'Limit the number of characters of the target value'
                     },
                     {
                         name: 'Substr',
                         type: 'substr',
                         value: '5',
+                        value_name: 'Start',
                         value_2: '10',
+                        value_2_name: 'Length',
                         comment: 'Returns the portion of the target value specified by the start and length parameters'
                     },
                     {
@@ -160,21 +165,27 @@
                     {
                         name: 'Replace With',
                         value: 'That',
+                        value_name: 'Search',
                         value_2: 'This',
+                        value_2_name: 'Replace',
                         type: 'replace_with',
                         comment: 'Replace every occurence of a value with another value within the target value e.g replace "that" with "this" in the sentence "We love to play with that"'
                     },
                     {
                         name: 'Replace First With',
                         value: 'That',
+                        value_name: 'Search',
                         value_2: 'This',
+                        value_2_name: 'Replace',
                         type: 'replace_first_with',
                         comment: 'Replace the first occurence of a value with another value within the target value e.g replace "that" with "this" in the sentence "We love to play with that"'
                     },
                     {
                         name: 'Replace Last With',
                         value: 'That',
+                        value_name: 'Search',
                         value_2: 'This',
+                        value_2_name: 'Replace',
                         type: 'replace_last_with',
                         comment: 'Replace the last occurence of a value with another value within the target value e.g replace "that" with "this" in the sentence "We love to play with that"'
                     },
@@ -182,12 +193,14 @@
                         name: 'Plural Or Singular',
                         type: 'plural_or_singular',
                         value: 'child',
+                        value_name: 'Number',
                         comment: 'Convert a string to its plural or singular form based on the target value e.g return "child" if the target value is "1" and "children" if the target value is greater than "1"'
                     },
                     {
                         name: 'Random String',
                         type: 'random_string',
                         value: '40',
+                        value_name: 'Number of random characters',
                         comment: 'Generate a random string of the specified length e.g "40" will return a random 40 character string'
                     },
                     {

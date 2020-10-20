@@ -7,8 +7,8 @@
             <textOrCodeEditor
                 size="small"
                 :placeholder="'3'"
-                :title="valueTitle"
                 :value="formattingRule.value"
+                :title="formattingRule.value_name"
                 sampleCodeTemplate="ussd_service_select_option_no_options_found_msg_sample_code">
             </textOrCodeEditor>
 
@@ -19,8 +19,8 @@
             <textOrCodeEditor
                 size="small"
                 :placeholder="'3'"
-                :title="value2Title"
                 :value="formattingRule.value_2"
+                :title="formattingRule.value_2_name"
                 sampleCodeTemplate="ussd_service_select_option_no_options_found_msg_sample_code">
             </textOrCodeEditor>
 
@@ -47,32 +47,6 @@
             }
         },
         computed: {
-            valueTitle(){
-                switch (this.formattingRule.type) {
-                    case 'in_between_including':
-                        return 'Min';
-                        break;
-                    case 'in_between_excluding':
-                        return 'Min';
-                        break;
-                    default:
-                        return this.formattingRule.name;
-                        break;
-                }
-            },
-            value2Title(){
-                switch (this.formattingRule.type) {
-                    case 'in_between_including':
-                        return 'Max';
-                        break;
-                    case 'in_between_excluding':
-                        return 'Max';
-                        break;
-                    default:
-                        return this.formattingRule.name;
-                        break;
-                }
-            },
             fullWidthLayout(){
                 //  If we are using code editor on the first or second value, then display full width layout
                 return (this.formattingRule.value.code_editor_mode || (this.formattingRule.value_2 || {}).code_editor_mode);

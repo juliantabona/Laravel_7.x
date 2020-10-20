@@ -19,19 +19,65 @@
                 </Input>
             </FormItem>
             
+            <div v-if="hasMatchingGlobalVariable" class="bg-white p-3">
+                <span class="font-weight-bold">Note: </span>
+                <span class="text-info">{{ referenceForm.name }} </span>
+                <span>is a Global Variable</span>
+
+                <div>
+                    <span>* </span>
+                    <span v-if="matchingGlobalVariable.is_global">This variable will be saved for the next session (Unique foreach MSISDN)</span>
+                    <span v-else>This variable will not be saved for the next session</span>
+                </div>
+
+                <div>
+                    <span>* </span>
+                    <span v-if="matchingGlobalVariable.is_constant">This is a <span class="font-italic">constant</span> variable (It's value cannot be changed)</span>
+                    <span v-else>This is a <span class="font-italic">non-constant</span> variable (It's value can be changed)</span>
+
+                </div>
+
+                <div class="clearfix">
+
+                    <Button type="default" class="float-right"
+                            @click="handleOpenEditVariableModal()">
+                            Edit Global Variable
+                    </Button>
+                    
+                </div>
+
+            </div>
+
         </Form>
         
+        <!-- 
+            MODAL TO EDIT GLOBAL VARIABLE
+        -->
+        <template v-if="isOpenEditVariableModal">
+
+            <editVariableModal
+                :version="version"
+                :variable="matchingGlobalVariable"
+                :index="matchingGlobalVariableIndex"
+                @visibility="isOpenEditVariableModal = $event">
+            </editVariableModal>
+
+        </template>
+
     </div>
 
 </template>
 
 <script>
 
+    import editVariableModal from './../global-variables/editVariableModal.vue';
+
     //  Get the custom mixin file
     var customMixin = require('./../../../../../../../../../mixin.js').default;
 
     export default {
         mixins: [customMixin],
+        components: { editVariableModal },
         props: {
             referenceNames: {
                 type: Array,
@@ -114,7 +160,47 @@
                         { validator: uniqueNameValidator, trigger: 'change' },
                         { validator: this.getValidVariableNameValidator(), trigger: 'change' }
                     ],
+                },
+                matchingGlobalVariableIndex: null,
+                isOpenEditVariableModal: false
+            }
+        },
+        computed: {
+            matchingGlobalVariable(){
+
+                //  Check if we have any Global Variable that matches the given reference name
+                var matchingGlobalVariables = this.version.builder.global_variables.filter((global_variable, index) => {
+                    
+                    if( global_variable['name'] == this.referenceForm.name ){
+                        
+                        this.matchingGlobalVariableIndex = index;
+
+                        return true;
+
+                    }
+                    
+                    return false;
+
+                });
+
+                if( matchingGlobalVariables.length ){
+                    
+                    return matchingGlobalVariables[0];
+
                 }
+
+                return null;
+
+            },
+            hasMatchingGlobalVariable(){
+
+                if( this.matchingGlobalVariable != null ){
+
+                    return true;
+
+                }
+
+                return false;
             }
         },
         methods: {
@@ -124,6 +210,9 @@
                     //  this.value exists since we are using v-model on the parent component
                     name: this.value
                 }
+            },
+            handleOpenEditVariableModal() {
+                this.isOpenEditVariableModal = true;
             },
             handleSubmit(){
                 //  Validate the reference name form

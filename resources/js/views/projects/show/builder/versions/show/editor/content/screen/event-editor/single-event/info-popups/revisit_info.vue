@@ -213,32 +213,8 @@
 
                     //  If the link is provided
                     if( this.event.event_data.revisit_type.screen_revisit.link.text ){
-                            
-                        //  If we have a matching screen return true otherwise false
-                        var screens = this.version.builder.screens.filter( (screen) => {
-                            
-                            return ( screen.id == this.event.event_data.revisit_type.screen_revisit.link.text ) ? true : false;
 
-                        });
-
-                        if( screens.length ){
-                            
-                            //  If the screen we are linking to is not the current screen
-                            if( this.screen.id != screens[0]['id'] ){
-
-                                return true;
-
-                            }else{
-
-                                return false;
-
-                            }
-
-                        }else{
-
-                            return false;
-
-                        }
+                        return true;
 
                     }else{
                         

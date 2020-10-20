@@ -18,6 +18,34 @@
 
         </Col>
 
+        <Col :span="24">
+
+            <div :style="{ overflow: 'scroll' }" class="d-flex py-5">
+
+                <div :style="{ width: '350px' }" class="border-right mx-1 px-1">
+
+                    <div :style="{ width: '300px' }" class="bg-white border m-auto pb-3 px-4">
+                    
+<p style="white-space: pre-wrap;">
+Neo Boutique
+1. General
+2. Orders (0)
+3. Products (1)
+4. Customers (0)
+5. Coupons (0)
+6. Staff (0)
+7. Reviews (0)
+0. Back
+</p>
+                    
+                    </div>
+
+                </div>
+
+            </div>
+
+        </Col>
+
     </Row>
 
 </template>

@@ -18,24 +18,49 @@
             <!-- Heading -->
             <Divider orientation="left" class="font-weight-bold">Variable Details</Divider>
 
-            <Alert show-icon>Editing "<span class="font-weight-bold">{{ variable.name }}</span>"</Alert>
+            <Alert show-icon>Editing "<span class="font-weight-bold">{{ globalVariableForm.name }}</span>"</Alert>
 
             <!-- Edit String Value -->
-            <template v-if="variable.type == 'String'">
+            <template v-if="globalVariableForm.type == 'String'">
                 <span class="font-weight-bold text-dark">Variable Value:</span>
-                <Input type="textarea" v-model="variable.value.string" v-focus="'input'"
+                <Input type="textarea" v-model="globalVariableForm.value.string" v-focus="'input'"
                         @keyup.enter.native="handleSubmit()" placeholder="Variable text...">
                 </Input>
             </template>
 
-            <!-- Edit Custom Code Value -->
-            <customEditor 
-                v-else
-                :useCodeEditor="true"
-                :codeContent="variable.value.code"
-                @codeChange="variable.value.code = $event"
-                sampleCodeTemplate="ussd_service_global_variable_custom_code_sample">
-            </customEditor>
+            <template v-if="globalVariableForm.type == 'Custom'">
+
+                <!-- Edit Custom Code Value -->
+                <customEditor 
+                    :useCodeEditor="true"
+                    :codeContent="globalVariableForm.value.code"
+                    @codeChange="globalVariableForm.value.code = $event"
+                    sampleCodeTemplate="ussd_service_global_variable_custom_code_sample">
+                </customEditor>
+            
+            </template>
+
+            <div class="mt-2">
+
+                <Poptip trigger="hover" placement="top" word-wrap width="250" 
+                        content="The value will be saved to the database and made available for future sessions">
+
+                    <Checkbox v-model="globalVariableForm.is_global" class="mb-2">
+                        <span class="font-weight-bold">Save to database</span>
+                    </Checkbox>
+
+                </Poptip>
+
+                <Poptip trigger="hover" placement="top" word-wrap width="250" 
+                        content="The value cannot be overiden once it is set (It is a constant)">
+
+                    <Checkbox v-model="globalVariableForm.is_constant" class="mb-2">
+                        <span class="font-weight-bold">Make constant</span>
+                    </Checkbox>
+                    
+                </Poptip>
+
+            </div>
 
             <!-- Footer -->
             <template v-slot:footer>
@@ -63,6 +88,10 @@
         mixins: [modalMixin, customMixin],
         components: { customEditor },
         props: {
+            index: {
+                type: Number,
+                default: null 
+            },
             variable: {
                 type: Object,
                 default: () => {}
@@ -74,16 +103,24 @@
         },
         data(){
             return {
-                
+                globalVariableForm: null
             }
         },
         methods: {
+            getGlobalVariableForm(){
+                
+                var globalVariable = Object.assign({}, this.variable);
 
+                return _.cloneDeep( globalVariable );
+
+            },
             /** Note the closeModal() method is imported from the
              *  modalMixin file. It handles the closing process 
              *  of the modal
              */
             handleSubmit(){
+
+                this.$set(this.version.builder.global_variables, this.index, this.globalVariableForm);
                 
                 this.closeModal();
 
@@ -93,6 +130,9 @@
                 });
 
             }
+        },
+        created(){
+            this.globalVariableForm = this.getGlobalVariableForm();
         }
     }
 </script>

@@ -48,18 +48,50 @@
                     </span>
                 </div>
 
-                <Timeline style="max-height:200px; overflow-y:auto;" class="py-3 pl-1">
+                <Timeline :style="{ minHeight: '200px', maxHeight:'400px', overflowY: 'auto' }" class="py-3 pl-1">
 
                     <TimelineItem v-for="(log, index) in selectedLogsToDisplay" :key="index"
                         :color="getLogDotColor(log.type)">
 
-                        <!-- Show bug icon on error log -->
-                        <Icon v-if="log.type == 'error'" type="ios-bug-outline" slot="dot" :size="20" />
+                        <div class="d-flex">
+                            
+                            <!-- Show bug icon on error log -->
+                            <Icon v-if="log.type == 'error'" type="ios-bug-outline" slot="dot" :size="20" />
 
-                        <span 
-                            v-html="log.description"
-                            :class="log.type == 'error' ? 'text-danger' : ''">
-                        </span>
+                            <!-- Searching for first screen/display icon -->
+                            <Icon v-if="['searching_first_screen', 'searching_first_display'].includes(log.data_type)" type="ios-search" class="text-success" :size="20" /> 
+
+                            <!-- Selected screen/display icon -->
+                            <Icon v-if="['selected_screen', 'selected_display'].includes(log.data_type)" type="ios-pin-outline" class="text-success" :size="20" /> 
+
+                            <span 
+                                v-html="log.description"
+                                :class="log.type == 'error' ? 'text-danger' : ''">
+                            </span>
+
+                            <template v-if="log.data_type == 'dynamic_variables'">
+
+                                <Poptip trigger="hover" word-wrap width="300">
+
+                                    <div slot="content" class="py-2" :style="{ lineHeight: 'normal' }">
+                                        <p v-for="(dynamic_variable, index) in log.data.dynamic_variables" :key="index">
+                                            <span class="font-weight-bold">{{ dynamic_variable.name }}: </span> 
+                                            <span v-html="dynamic_variable.data_type"></span>
+
+                                            <Poptip trigger="hover" :content="dynamic_variable.value" 
+                                                    placement="right" word-wrap width="300">
+                                                <Icon type="ios-information-circle-outline" :size="20" /> 
+                                            </Poptip>
+                                        </p>
+                                    </div>
+
+                                    <Icon type="ios-information-circle-outline" :size="20" /> 
+
+                                </Poptip>
+                                
+                            </template>
+
+                        </div>
 
                     </TimelineItem>
 

@@ -96,7 +96,7 @@
 
                         <!-- Ussd response goes here -->
                         <div>
-                            <p v-html="ussdResponse" style="white-space: pre-wrap;"></p>
+                            <p v-html="ussdResponse.msg" style="white-space: pre-wrap;"></p>
                         </div>
 
                         <!-- Ussd reply button -->
@@ -135,14 +135,44 @@
                     </div>
 
                 </Card>
+                
+                <div class="clearfix">
 
-                <div v-if="isSendingUssdResponse" class="clearfix mt-1" :style="{ position: 'relative', zIndex: 2 }">
+                    <div class="clearfix mt-1" :style="{ position: 'relative', zIndex: 2 }">
 
-                    <!-- Stop Simulator Button -->
-                    <Button type="error" size="small" class="float-right"
-                            @click.native="closeUssdSimulator()">
-                            Stop Simulator
-                    </Button>
+                        <!-- Stop Simulator Button -->
+                        <Button v-if="isSendingUssdResponse" type="error" size="small" class="float-right"
+                                @click.native="closeUssdSimulator()">
+                                Stop Simulator
+                        </Button>
+
+                        <template v-if="!isSendingUssdResponse && ussdResponse.msg">
+
+                            <Poptip trigger="hover" content="Re-run the last request" class="float-right" 
+                                    placement="bottom" word-wrap width="200">
+
+                                <!-- Re-run Simulator Button -->
+                                <Button type="primary" size="small"
+                                        @click.native="runLastRequest()">
+                                        Re-run
+                                </Button>
+
+                            </Poptip>
+
+                            <Poptip trigger="hover" content="Restart the USSD application" class="float-right" 
+                                    placement="bottom" word-wrap width="250">
+
+                                <!-- Re-run Simulator Button -->
+                                <Button type="primary" size="small" class="mr-2"
+                                        @click.native="launchUssdServiceSimulator()">
+                                        Restart
+                                </Button>
+
+                            </Poptip>
+                            
+                        </template>
+
+                    </div>
 
                 </div>
 
@@ -194,7 +224,7 @@
                     sessionId: null,
                     requestType: 1
                 },
-                ussdResponse: '',
+                ussdResponse: {},
                 initialReplies: '',
                 showUssdContentModal: false,
                 isSendingUssdResponse: false,
@@ -276,18 +306,32 @@
                 this.showUssdContentModal = false;
             },
             launchUssdServiceSimulator(){
-                this.resetUssdSimulator();
+                this.resetUssdSimulator(this.defaultUssdReply);
                 this.callUssdEndpoint();
                 this.showUssdPopup();
+            },
+            runLastRequest(){
+    
+                //  Update the request type to "2" which means continue existing session 
+                var requestType = 2;
+
+                //  Update the session id with the last request sesison id
+                var sessionId = this.ussdResponse.session_id;
+
+                //  Reset the simulator with these details
+                this.resetUssdSimulator(null, sessionId, requestType);
+
+                //  Recall the Ussd end point
+                this.callUssdEndpoint();
             },
             closeUssdSimulator(){
                 this.resetUssdSimulator();
                 this.hideUssdPopup();
             },
-            resetUssdSimulator(){
-                this.ussd.msg = this.defaultUssdReply;
-                this.ussd.sessionId = null;
-                this.ussd.requestType = 1;
+            resetUssdSimulator(msg = null, sessionId = null, requestType = 1){
+                this.ussd.msg = msg;
+                this.ussd.requestType = requestType;
+                this.ussd.sessionId = sessionId;
                 this.emptyInput();
             },
             redirectUssdSimulator( serviceCode ){
@@ -353,7 +397,7 @@
                         self.isSendingUssdResponse = false;
 
                         //  Update Ussd Response Message
-                        self.ussdResponse = (data || {}).msg;
+                        self.ussdResponse = (data || {});
                         
                         //  Update Ussd Response Type
                         self.ussd.requestType = (data || {}).request_type;
@@ -381,7 +425,7 @@
                         }else if( self.ussd.requestType == 5 ){
 
                             //  Note: self.ussdResponse contains the new "Ussd Service Code" that we must redirect to
-                            self.redirectUssdSimulator( self.ussdResponse );
+                            self.redirectUssdSimulator( self.ussdResponse.msg );
 
                             //  Focus on the reply input
                             self.focusOnReplyInput();

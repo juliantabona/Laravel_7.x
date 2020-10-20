@@ -3,7 +3,8 @@
     <!-- Select Screen Link -->
     <screenAndDisplaySelector 
         :link="event.event_data.revisit_type.screen_revisit.link"
-        :version="version" :screen="screen" :display="display" :showDisplays="false">
+        :version="version" :screen="screen" :display="display" 
+        :disableCurrentScreen="false" :showDisplays="true">
     </screenAndDisplaySelector>
 
 </template>

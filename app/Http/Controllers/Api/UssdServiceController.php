@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class UssdServiceController extends Controller
@@ -42,6 +43,7 @@ class UssdServiceController extends Controller
     public $pagination_index = 0;
     public $display_instructions;
     public $current_user_response;
+    public $url_query_params = [];
     public $fatal_error_msg = null;
     public $screen_repeats = false;
     public $ussd_service_code_type;
@@ -51,6 +53,8 @@ class UssdServiceController extends Controller
     public $dynamic_data_storage = [];
     public $revisit_reply_records = [];
     public $navigation_target_screen_id;
+    public $global_variables_to_save = [];
+    public $chained_screen_metadata = ['text' => ''];
     public $allow_dynamic_content_highlighting = true;
     public $default_no_select_options_message = 'No options available';
     public $default_technical_difficulties_message = 'Sorry, we are experiencing technical difficulties';
@@ -61,6 +65,21 @@ class UssdServiceController extends Controller
         //  Set the request
         $this->request = $request;
     }
+
+    /***********************************************************
+     *
+     *
+     *
+     *
+     *  REMOVE THE $this->text completely
+     *
+     *  ONLY USE IT TO SAVE A RECORD IN DB
+     *
+     *  OTHERWISE IT IS GOING TO CONFUSE US IN THE FUTURE!!!!
+     *
+     *
+     *
+     ***********************************************************/
 
     /** Start setting up the USSD configurations,
      *  session and build process.
@@ -133,11 +152,22 @@ class UssdServiceController extends Controller
 
         /*  HANDLE REQUEST   */
 
+        //  Get the time before processing the request
+        $start_request_time = time();
+
         //  Store the Ussd Gateway values
         $this->storeUssdGatewayValues();
 
         //  Handle the Ussd Session request
         $this->handleSessionRequest();
+
+        //  Get the time after processing the request
+        $end_request_time = time();
+
+        //  Get the difference in seconds between the start and end request time
+        $request_time_in_seconds = ($end_request_time - $start_request_time);
+
+        $this->logInfo('Request execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
 
         //  Handle the Ussd Session response
         return $this->handleSessionResponse();
@@ -480,6 +510,10 @@ class UssdServiceController extends Controller
      */
     public function handleExistingSession()
     {
+
+        //  Get the time before processing the request
+        $start_request_time = time();
+
         //  Get the existing session record from the database
         $this->existing_session = $this->getExistingSessionFromDatabase();
 
@@ -488,6 +522,17 @@ class UssdServiceController extends Controller
 
         //  Update the current sesion service code type
         $this->ussd_service_code_type = $this->existing_session->type;
+
+        //  Get the time after processing the request
+        $end_request_time = time();
+
+        //  Get the difference in seconds between the start and end request time
+        $request_time_in_seconds = ($end_request_time - $start_request_time);
+
+        $this->logInfo('Get existing session execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
+
+        //  Get the time before processing the request
+        $start_request_time = time();
 
         //  Get the USSD Builder for the given "Service Code"
         $this->getUssdBuilder();
@@ -520,6 +565,18 @@ class UssdServiceController extends Controller
             $this->addReplyRecord($this->msg, 'user', true);
         }
 
+        //  Get the time after processing the request
+        $end_request_time = time();
+
+        //  Get the difference in seconds between the start and end request time
+        $request_time_in_seconds = ($end_request_time - $start_request_time);
+
+        $this->logInfo('Get session builder execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
+
+
+        //  Get the time before processing the request
+        $start_request_time = time();
+
         //  Get the timeout limit in seconds e.g "120" to mean "timeout after 120 seconds"
         $this->timeout_limit_in_seconds = $this->getTimeoutLimitInSeconds();
 
@@ -528,9 +585,21 @@ class UssdServiceController extends Controller
             //  Handle timeout
             $response = $this->handleTimeout();
         } else {
+            
             //  Handle the current session
             $response = $this->handleSession();
         }
+
+        //  Get the time after processing the request
+        $end_request_time = time();
+
+        //  Get the difference in seconds between the start and end request time
+        $request_time_in_seconds = ($end_request_time - $start_request_time);
+
+        $this->logInfo('Session execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
+
+        //  Get the time before processing the request
+        $start_request_time = time();
 
         //  If we have "revisit_reply_records"
         if (count($this->revisit_reply_records)) {
@@ -551,6 +620,7 @@ class UssdServiceController extends Controller
             'fatal_error' => $this->fatal_error,
             'fatal_error_msg' => $this->fatal_error_msg,
             'reply_records' => json_encode($this->reply_records),
+            'metadata' => $this->existing_session->metadata,
             'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
             'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
         ];
@@ -564,6 +634,14 @@ class UssdServiceController extends Controller
         if ($this->shouldDisplayScreen($updateResponse)) {
             return $updateResponse;
         }
+
+        //  Get the time after processing the request
+        $end_request_time = time();
+
+        //  Get the difference in seconds between the start and end request time
+        $request_time_in_seconds = ($end_request_time - $start_request_time);
+
+        $this->logInfo('DB update execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
 
         return $response;
     }
@@ -600,6 +678,19 @@ class UssdServiceController extends Controller
             //  Overide the default details with any custom data
             $data = array_merge($data, $overide_data);
 
+            //  If we have Global Variables to save
+            if (count($this->global_variables_to_save)) {
+                //  Update the values of the global variables that must be saved
+                $this->updateGlobalVariablesToSave();
+
+                //  Set the "Global Variables" on the metadata
+                Arr::set($data, 'metadata.global_variables', $this->global_variables_to_save);
+            }
+
+            if (isset($data['metadata'])) {
+                $data['metadata'] = json_encode($data['metadata']);
+            }
+
             //  Create the new session record
             $this->new_session = DB::table('ussd_sessions')->insert($data);
 
@@ -612,8 +703,17 @@ class UssdServiceController extends Controller
      */
     public function updateExistingSessionDatabaseRecord($data = [])
     {
+        //  If we have Global Variables to save
+        if (count($this->global_variables_to_save)) {
+            //  Update the values of the global variables that must be saved
+            $this->updateGlobalVariablesToSave();
+
+            //  Set the "Global Variables" on the metadata
+            Arr::set($data, 'metadata.global_variables', $this->global_variables_to_save);
+        }
+
         //  Update the session record that matches the given Session Id
-        return \App\UssdSession::where('session_id', $this->session_id)->where('test', $this->test_mode)->update($data);
+        return DB::table('ussd_sessions')->where('session_id', $this->session_id)->where('test', $this->test_mode)->update($data);
     }
 
     /** Get the existing USSD session from the database
@@ -940,6 +1040,12 @@ class UssdServiceController extends Controller
 
         $global_variables = $this->builder['global_variables'] ?? [];
 
+        //  Get the previous recorded ussd session (The second last record) matching the given MSISDN and Test status
+        $ussd_session = (new \App\UssdSession())->where('msisdn', $this->msisdn)->where('test', $this->test_mode)->latest()->take(1)->first();
+
+        //  Get the last saved Global Variables from the last session otherwise default to an empty Array
+        $global_variables_to_save = $ussd_session['metadata']['global_variables'] ?? [];
+
         //  Foreach global variable
         foreach ($global_variables as $global_variable) {
             $name = $global_variable['name'];
@@ -947,62 +1053,96 @@ class UssdServiceController extends Controller
             $value = $global_variable['value'];
 
             if ($name) {
-                if ($type == 'String') {
-                    /*************************
-                     * BUILD STRING VALUE    *
-                     ************************/
+                //  If the given Global Variable was previously saved on the last session
+                if (collect($global_variables_to_save)->contains('name', $name) == true) {
+                    //  Get the value from the last session
+                    $value = collect(collect($global_variables_to_save)->filter(function ($global_variable_to_save) use ($name) {
+                        return $global_variable_to_save['name'] == $name;
+                    })->first())->get('value');
+                } else {
+                    if ($type == 'String') {
+                        /*************************
+                         * BUILD STRING VALUE    *
+                         ************************/
 
-                    //  Process dynamic content embedded within the text
-                    $outputResponse = $this->handleEmbeddedDynamicContentConversion($value['string']);
+                        //  Process dynamic content embedded within the text
+                        $outputResponse = $this->handleEmbeddedDynamicContentConversion($value['string']);
 
-                    //  If we have a screen to show return the response otherwise continue
-                    if ($this->shouldDisplayScreen($outputResponse)) {
-                        return $outputResponse;
+                        //  If we have a screen to show return the response otherwise continue
+                        if ($this->shouldDisplayScreen($outputResponse)) {
+                            return $outputResponse;
+                        }
+
+                        //  Get the generated output - Convert to (String) otherwise default to empty string
+                        $value = $this->convertToString($outputResponse) ?? '';
+                    } elseif ($type == 'Integer') {
+                        /*************************
+                         * BUILD NUMBER VALUE    *
+                         ************************/
+
+                        //  Process dynamic content embedded within the text
+                        $outputResponse = $this->handleEmbeddedDynamicContentConversion($value['number']);
+
+                        //  If we have a screen to show return the response otherwise continue
+                        if ($this->shouldDisplayScreen($outputResponse)) {
+                            return $outputResponse;
+                        }
+
+                        //  Get the generated output - Convert to (Integer) otherwise default to (0)
+                        $value = $this->convertToInteger($outputResponse) ?? 0;
+                    } elseif ($type == 'Boolean') {
+                        $value = $value['boolean'];
+
+                        if ($value == 'true') {
+                            $value = true;
+                        } elseif ($value == 'false') {
+                            $value = false;
+                        }
+                    } elseif ($type == 'Null') {
+                        $value = null;
+                    } elseif ($type == 'Custom') {
+                        $code = $value['code'];
+
+                        //  Process the PHP Code
+                        $outputResponse = $this->processPHPCode("$code");
+
+                        //  If we have a screen to show return the response otherwise continue
+                        if ($this->shouldDisplayScreen($outputResponse)) {
+                            return $outputResponse;
+                        }
+
+                        $value = $outputResponse;
                     }
+                }
 
-                    //  Get the generated output - Convert to (String) otherwise default to empty string
-                    $value = $this->convertToString($outputResponse) ?? '';
-                } elseif ($type == 'Integer') {
-                    /*************************
-                     * BUILD NUMBER VALUE    *
-                     ************************/
-
-                    //  Process dynamic content embedded within the text
-                    $outputResponse = $this->handleEmbeddedDynamicContentConversion($value['number']);
-
-                    //  If we have a screen to show return the response otherwise continue
-                    if ($this->shouldDisplayScreen($outputResponse)) {
-                        return $outputResponse;
+                //  If this property should be saved to the database but does not already exist
+                if (isset($global_variable['is_global']) && ($global_variable['is_global'] == true)) {
+                    //  If we don't already have the global variable saved to the database
+                    if (collect($this->global_variables_to_save)->contains('name', $name) == false) {
+                        //  Add the new global variable to save to the database
+                        array_push($this->global_variables_to_save, [
+                            'name' => $name,
+                            'value' => $value,
+                        ]);
                     }
-
-                    //  Get the generated output - Convert to (Integer) otherwise default to (0)
-                    $value = $this->convertToInteger($outputResponse) ?? 0;
-                } elseif ($type == 'Boolean') {
-                    $value = $value['boolean'];
-
-                    if ($value == 'true') {
-                        $value = true;
-                    } elseif ($value == 'false') {
-                        $value = false;
-                    }
-                } elseif ($type == 'Null') {
-                    $value = null;
-                } elseif ($type == 'Custom') {
-                    $code = $value['code'];
-
-                    //  Process the PHP Code
-                    $outputResponse = $this->processPHPCode("$code");
-
-                    //  If we have a screen to show return the response otherwise continue
-                    if ($this->shouldDisplayScreen($outputResponse)) {
-                        return $outputResponse;
-                    }
-
-                    $value = $outputResponse;
                 }
 
                 //  Store the value data using the given item reference name
                 $this->setProperty($name, $value);
+            }
+        }
+    }
+
+    public function updateGlobalVariablesToSave()
+    {
+        if (count($this->global_variables_to_save)) {
+            $this->logInfo('Update Global Variables to save for next session');
+
+            foreach ($this->global_variables_to_save as $key => $global_variable) {
+                $name = $global_variable['name'];
+
+                //  Get the updated value of the global variable (It is also possible that this value has not changed)
+                $this->global_variables_to_save[$key]['value'] = $this->getDynamicData($name);
             }
         }
     }
@@ -1467,7 +1607,7 @@ class UssdServiceController extends Controller
     public function getFirstScreen()
     {
         //  Set an info log that we are searching for the first screen
-        $this->logInfo('Searching for the first screen');
+        $this->logInfo('Searching for the first screen', 'searching_first_screen');
 
         //  Get all the screens available
         $this->screens = $this->builder['screens'];
@@ -1515,7 +1655,7 @@ class UssdServiceController extends Controller
 
         if ($this->screen) {
             //  Set an info log for the first selected screen
-            $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->screen['name']).' as the first screen');
+            $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->screen['name']).' as the first screen', 'selected_screen');
         }
     }
 
@@ -1530,6 +1670,19 @@ class UssdServiceController extends Controller
      */
     public function handleCurrentScreen()
     {
+        //  Add the current screen to the list of chained screens
+        array_push($this->chained_screens, array_merge($this->screen, [
+            //  Add metadata related to this chained screen
+            'metadata' => [
+                /* This text value will allow us to know the order of responses that lead
+                 *  up to this screen. This text can then be used whenever we want to
+                 *  revisit this screen in the future. This can be done using screen
+                 *  or display events such as the "Revisit Event".
+                 */
+                'text' => $this->chained_screen_metadata['text'],
+            ],
+        ]));
+
         //  Check if the current screen exists
         $doesNotExistResponse = $this->handleNonExistentScreen();
 
@@ -1755,13 +1908,17 @@ class UssdServiceController extends Controller
                         'revisit_reply_records' => $this->revisit_reply_records,
                     ]);
 
+                    //  Set the "revisit_reply_records" value on the metadata
+                    Arr::set($metadata, 'revisit_reply_records', $this->revisit_reply_records);
+
+                    //  Set the "metadata" value on the data
+                    Arr::set($data, 'metadata', $metadata);
+
                     /* Get the existing session record from the database. If this is
                      *  the first request that launches the USSD service, this value
                      *  will not exist since its a new session intirely.
                      */
                     if ($this->existing_session) {
-                        $data = ['metadata' => $metadata];
-
                         /** This will render as: $this->updateExistingSessionDatabaseRecord($data)
                          *  while being called within a try/catch handler.
                          */
@@ -1772,8 +1929,6 @@ class UssdServiceController extends Controller
                             return $updateResponse;
                         }
                     } else {
-                        $data = ['metadata' => json_encode($metadata)];
-
                         /** This will render as: $this->createNewSession($data)
                          *  while being called within a try/catch handler.
                          */
@@ -2062,18 +2217,41 @@ class UssdServiceController extends Controller
                     if ($this->navigation_request_type == 'navigate-forward' || $this->navigation_request_type == 'navigate-backward') {
                         //  If the current screen id does not match the navigation target screen id
                         if ($this->screen['id'] != $this->navigation_target_screen_id) {
-                            /* Since the current screen does not match the navigation target, we need to go back to
+                            /* Remember that we run handleCurrentScreen() method on every screen. This method will
+                             *  add the current screen being handled to the list of "chained screens". The "chained
+                             *  screens" keeps track of every screen that we are processing. It works like an up to
+                             *  date history of every screen being worked on. When we handle any screen, we first
+                             *  store it in the list of "chained screens", then we start processing that screen,
+                             *  for instance, we start checking if the given screen exists, if its a reapeating
+                             *  or non-repeating screen, If it is a repeating screen we handle the looping logic
+                             *  and so on. Each screen stored in the list of "chained screens" also contains
+                             *  metadata with additional properties such as the "responses by the user to
+                             *  reach that given screen".
+                             *
+                             *  Since the current screen does not match the navigation target, we need to go back to
                              *  the previous linked screen if any and run the same logic to see if it matches up as
-                             *  the target screen. To do this we access the history of chained screens. This is a
+                             *  the target screen. To do this we access the history of "chained screens". This is a
                              *  list of screens that were recorded each time we linked from one screen to another.
-                             *  This will allow us to check if we have any previous chaining screens
+                             *  We must remove this current screen first from the list of "chained screens" in
+                             *  order for us to only have a list of previous linked screens without the current
+                             *  screen included. This will allow us to check if we have any previous chaining
+                             *  screens.
+                             */
+
+                            /* Lets remove the current screen from the list of "chained screens". We should only be
+                             *  left with a list of previous "chained screens" without the current screen included
+                             */
+                            array_pop($this->chained_screens);
+
+                            /* Now that we have removed the current screen from the list of "chained screens".
+                             *  We should only be left with a list of previous "chained screens" without the current
+                             *  screen included. We can count if we have any "chained screens"
                              */
                             if (count($this->chained_screens)) {
-                                //  Get the last chained screen and set it as the current screen
+                                /* Since we have a list of previous "chained screens", we can get the last chained
+                                 *  screen and set this screen as the current screen.
+                                 */
                                 $this->screen = $this->chained_screens[count($this->chained_screens) - 1];
-
-                                //  Remove the last chained screen from the list
-                                array_pop($this->chained_screens);
                             }
 
                             /* Return the build response to the previous screen for processing.
@@ -2408,7 +2586,7 @@ class UssdServiceController extends Controller
     public function getFirstDisplay()
     {
         //  Set an info log that we are searching for the first display
-        $this->logInfo('Searching for the first display');
+        $this->logInfo('Searching for the first display', 'searching_first_display');
 
         //  Get all the displays available
         $this->displays = $this->screen['displays'];
@@ -2456,7 +2634,7 @@ class UssdServiceController extends Controller
 
         if ($this->display) {
             //  Set an info log for the first selected display
-            $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->display['name']).' as the first display');
+            $this->logInfo('Selected '.$this->wrapAsPrimaryHtml($this->display['name']).' as the first display', 'selected_display');
         }
     }
 
@@ -2520,6 +2698,17 @@ class UssdServiceController extends Controller
         if ($this->completedLevel($this->level)) {
             //  Get the user response (Input provided by the user) for the current display screen
             $this->getCurrentScreenUserResponse();
+
+            /* Update the "text" of the chained screen metadata. This value is used to hold all
+             *  the responses leading to a given chained screen. This allows us to know the exact
+             *  order of user responses that were provided in order to trigger a sequence of events
+             *  leading to the given "chained screen".
+             */
+            if (empty($this->chained_screen_metadata['text'])) {
+                $this->chained_screen_metadata['text'] = $this->current_user_response;
+            } else {
+                $this->chained_screen_metadata['text'] .= '*'.$this->current_user_response;
+            }
 
             //  Store the user response (Input provided by the user) as a named dynamic variable
             $storeInputResponse = $this->storeCurrentDisplayUserResponseAsDynamicVariable();
@@ -2806,6 +2995,8 @@ class UssdServiceController extends Controller
 
         //  Get the custom "no results message"
         $no_results_message = $this->display['content']['action']['select_option']['static_options']['no_results_message'] ?? null;
+
+        $options = is_array($options) ? $options : [];
 
         //  Check if we have options to display
         $optionsExist = count($options) ? true : false;
@@ -3113,6 +3304,8 @@ class UssdServiceController extends Controller
         try {
             //  Set an info log that we are starting to build the dynamic options
             $this->logInfo('Building dynamic options');
+
+            $options = is_array($options) ? $options : [];
 
             $optionsExist = count($options);
 
@@ -4221,6 +4414,7 @@ class UssdServiceController extends Controller
          *  link:   The screen or display to link to when this option is selected
          *  input:  What the user must input to select this option
          */
+        $options = is_array($options) ? $options : [];
 
         //  Check if we have options to display
         $optionsExist = count($options) ? true : false;
@@ -4649,9 +4843,6 @@ class UssdServiceController extends Controller
 
             //  If we have a screen we can link to
             } elseif (!empty($this->linked_screen)) {
-                //  Add the current screen to the list of chained screens
-                array_push($this->chained_screens, $this->screen);
-
                 //  Set the linked screen as the current screen
                 $this->screen = $this->linked_screen;
 
@@ -4814,43 +5005,58 @@ class UssdServiceController extends Controller
 
         //  If the pagination is active
         if ($activeState === true) {
+            
+            //  Get the time before processing the request
+            $start_event_time = time();
+
             //  Set an info log that we are preparing to handle the given event
             $this->logInfo('Display: '.$this->wrapAsPrimaryHtml($this->display['name']).' preparing to handle the '.$this->wrapAsSuccessHtml($event['name']).' event');
-
+       
             //  Get the current event
             $this->event = $event;
 
             if ($event['type'] == 'CRUD API') {
-                return $this->handle_CRUD_API_Event();
+                $response = $this->handle_CRUD_API_Event();
             } elseif ($event['type'] == 'SMS API') {
-                return $this->handle_SMS_API_Event();
+                $response = $this->handle_SMS_API_Event();
             } elseif ($event['type'] == 'Email API') {
-                return $this->handle_Email_API_Event();
+                $response = $this->handle_Email_API_Event();
             } elseif ($event['type'] == 'Location API') {
-                return $this->handle_Location_API_Event();
+                $response = $this->handle_Location_API_Event();
             } elseif ($event['type'] == 'Billing API') {
-                return $this->handle_Billing_API_Event();
+                $response = $this->handle_Billing_API_Event();
             } elseif ($event['type'] == 'Subcription API') {
-                return $this->handle_Subcription_API_Event();
+                $response = $this->handle_Subcription_API_Event();
             } elseif ($event['type'] == 'Validation') {
-                return $this->handle_Validation_Event();
+                $response = $this->handle_Validation_Event();
             } elseif ($event['type'] == 'Formatting') {
-                return $this->handle_Formatting_Event();
+                $response = $this->handle_Formatting_Event();
             } elseif ($event['type'] == 'Local Storage') {
-                return $this->handle_Local_Storage_Event();
+                $response = $this->handle_Local_Storage_Event();
             } elseif ($event['type'] == 'Custom Code') {
-                return $this->handle_Custom_Code_Event();
+                $response = $this->handle_Custom_Code_Event();
             } elseif ($event['type'] == 'Auto Reply') {
-                return $this->handle_Auto_Reply_Event();
+                $response = $this->handle_Auto_Reply_Event();
             } elseif ($event['type'] == 'Auto Link') {
-                return $this->handle_Auto_Link_Event();
+                $response = $this->handle_Auto_Link_Event();
             } elseif ($event['type'] == 'Revisit') {
-                return $this->handle_Revisit_Event();
+                $response = $this->handle_Revisit_Event();
             } elseif ($event['type'] == 'Redirect') {
-                return $this->handle_Redirect_Event();
+                $response = $this->handle_Redirect_Event();
             } elseif ($event['type'] == 'Create/Update Account') {
-                return $this->handle_Create_Or_Update_Account_Event();
+                $response = $this->handle_Create_Or_Update_Account_Event();
             }
+
+            //  Get the time after processing the request
+            $end_event_time = time();
+
+            //  Get the difference in seconds between the start and end request time
+            $event_time_in_seconds = ($end_event_time - $start_event_time);
+
+            $this->logInfo('Execution time for '.$this->wrapAsSuccessHtml($event['name']).' event: '. $this->wrapAsSuccessHtml($event_time_in_seconds . ($event_time_in_seconds == 1 ? ' second' : ' seconds')));
+
+            return $response;
+
         } else {
             //  Set an info log that the current event is not activated
             $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).' is not activated, therefore will not be executed.');
@@ -5006,67 +5212,55 @@ class UssdServiceController extends Controller
             $this->logInfo('Form Data: '.$this->wrapAsSuccessHtml($this->convertToString($form_data)));
         }
 
+        $request_options['http_errors'] = false;
+
         //  Create a new Http Guzzle Client
         $httpClient = new \GuzzleHttp\Client();
 
-        try {
-            //  Set an info log that we are performing CRUD API call
-            $this->logInfo('Run API call to: '.$this->wrapAsSuccessHtml($url));
+        //  Set an info log that we are performing CRUD API call
+        $this->logInfo('Run API call to: '.$this->wrapAsSuccessHtml($url));
 
-            //  Perform and return the Http request
-            return $httpClient->request($method, $url, $request_options);
+        //  Perform and return the Http request
+        $response = $httpClient->request($method, $url, $request_options);
 
-            /* About guzzle errors
-             *
-             *  GuzzleHttp\Exception\ClientException for 400-level errors
-             *  GuzzleHttp\Exception\ServerException for 500-level errors
-             *  GuzzleHttp\Exception\BadResponseException for both (it's their superclass)
-             *
-             *  Read More = http://docs.guzzlephp.org/en/latest/quickstart.html#exceptions
-             */
-        } catch (\GuzzleHttp\Exception\RequestException $e) {
+        //  Get the response status code e.g "200"
+        $status_code = $response->getStatusCode();
+
+        //  Get the response status phrase e.g "OK"
+        $status_phrase = $response->getReasonPhrase() ?? '';
+
+        //  Get the response body and convert the JSON Object to an Array e.g [ "products" => [ ... ] ]
+        $response_body = $this->convertObjectToArray(json_decode($response->getBody()));
+
+        //  Check if this is not a good status code e.g "100", "200", "301" e.t.c
+        if (!$this->checkIfGoodStatusCode($status_code)) {
             //  Set a warning log that the Api call failed
-            $this->logWarning('Api call to '.$this->wrapAsSuccessHtml($url).' failed.');
+            $this->logWarning('Api call to '.$this->wrapAsErrorHtml($url).' failed.');
 
-            if ($e->getMessage()) {
-                $this->logWarning($this->wrapAsErrorHtml($e->getMessage()));
-            }
+            //  Set a warning log of the status phrase
+            $this->logWarning('Status Code: '.$this->wrapAsErrorHtml($status_code));
 
-            /*
-             * Here we actually catch the instance of GuzzleHttp\Psr7\Response
-             * (find it in ./vendor/guzzlehttp/psr7/src/Response.php) with all
-             * its own and its 'Message' trait's methods.
-             *
-             * So now we have: HTTP status code, message, headers and body.
-             * Just check the exception object has the response before.
-             * running any methods on it.
-             */
-            if ($e->hasResponse()) {
-                //  Return the failed response from the current exception object
-                return $e->getResponse();
+            //  Set a warning log of the status phrase
+            $this->logWarning('Status Phase: '.$this->wrapAsErrorHtml($status_phrase));
 
-            //  Incase we fail to get the response object
-            } else {
-                //  Handle try catch error
-                return $this->handleTryCatchError($e);
-            }
+            //  Set a warning log of the response body (Usually contain)
+            $this->logWarning('Response: '.$this->wrapAsErrorHtml($response->getBody(true)));
 
-            //  Just incase we failed to catch RequestException
-        } catch (\Throwable $e) {
+            //  Set a warning log of the response body (Usually contain)
+            $this->logWarning('Response: '.$this->wrapAsErrorHtml($response_body));
+        } else {
             //  Set a warning log that the Api call failed
-            $this->logWarning('Api call to '.$this->wrapAsSuccessHtml($url).' failed.');
+            $this->logInfo('Api call to '.$this->wrapAsSuccessHtml($url).' was '.$this->wrapAsSuccessHtml('successful').'.');
 
-            //  Handle try catch error
-            return $this->handleTryCatchError($e);
+            //  Set a warning log of the status phrase
+            $this->logInfo('Status Code: '.$this->wrapAsSuccessHtml($status_code));
 
-            //  Just incase we failed to catch RequestException and Throwable
-        } catch (Exception $e) {
-            //  Set a warning log that the Api call failed
-            $this->logWarning('Api call to '.$this->wrapAsSuccessHtml($url).' failed.');
-
-            //  Handle try catch error
-            return $this->handleTryCatchError($e);
+            //  Set a warning log of the status phrase
+            $this->logInfo('Status Phase: '.$this->wrapAsSuccessHtml($status_phrase));
         }
+
+        //  Return the response of the successful API call
+        return $response;
     }
 
     public function get_CRUD_Api_URL()
@@ -5084,9 +5278,108 @@ class UssdServiceController extends Controller
 
             //  Get the generated output
             $url = $this->convertToString($outputResponse);
+
+            /** Extract the query params from the URL. The Http Guzzle Client
+             *  does not work when we pass literal query params as within the
+             *  url string e.g 
+             * 
+             *  http://wwww.example.com?field_1=value_1&field_2=value_2
+             * 
+             *  This above url query params will not be detected (everything after 
+             *  ? will be ignored). The Http Guzzle Client will only see the URL
+             *  without the query params e.g
+             * 
+             *  http://wwww.example.com
+             * 
+             * 
+             *  This is because he Http Guzzle Client expects us to pass any query 
+             *  params as a key-value on the options of the Guzzle method e.g
+             * 
+             *  $response = $httpClient->request($method, $url, [
+             *      'query' => [
+             *          'field_1' => 'value_1',
+             *          'field_2' => 'value_2',
+             *      ]
+             *  ]);
+             * 
+             *  For this reason we must extract the query params from the URL string.
+             *  We can then properly assign the query params to the "query" array
+             *  as seen in the example above. 
+             * 
+             */
+            $url = $this->extractQueryParamsFromURL($url);
         }
 
         return $url;
+    }
+
+    public function extractQueryParamsFromURL($url)
+    {
+        /** If we have the following URL
+         * 
+         *  http://wwww.example.com?field_1=value_1&field_2=value_2
+         * 
+         *  Explode the URL using the "?" symbol
+         * 
+         *  $exploded_url = [0 => 'http://wwww.example.com', 1 => 'field_1=value_1&field_2=value_2'];
+         * 
+         *  Check if the second key has been set i.e Does key "1" exist
+         * 
+         *  If we have the second key set, then explode the query params using "&" symbol
+         * 
+         *  $exploded_query_params = [0 => 'field_1=value_1', 1 => 'field_2=value_2'];
+         * 
+         *  Foreach $exploded_query_param, explode the result using the '=' symbol
+         * 
+         *  $exploded_query_param = [0 => 'field_1', 1 => 'value_1'];
+         * 
+         */
+
+        //  $exploded_url = [0 => 'http://wwww.example.com', 1 => 'field_1=value_1&field_2=value_2'];
+        $exploded_url = explode('?', $url);
+
+        //  Check if we have any query params
+        if( isset($exploded_url[1]) ){
+
+            //  $exploded_query_params = [0 => 'field_1=value_1', 1 => 'field_2=value_2'];   
+            $exploded_query_params = explode('&', $exploded_url[1]);
+
+            foreach($exploded_query_params as $exploded_query_param){
+
+                //  $exploded_query_param = [0 => 'field_1', 1 => 'value_1'];   
+                $exploded_query_param = explode('=', $exploded_query_param);
+                
+                //  If the query param name and value have been set
+                if( isset($exploded_query_param[0]) && isset($exploded_query_param[1]) ){
+
+                    //  $name = ['field_1'];
+                    $name = $exploded_query_param[0];
+
+                    //  $value = ['value_1'];
+                    $value = $exploded_query_param[1];
+
+                    //  Convert the "query_param value" into its associated dynamic value
+                    $outputResponse = $this->handleEmbeddedDynamicContentConversion($value);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) {
+                        return $outputResponse;
+                    }
+
+                    //  Get the generated output
+                    $value = $this->convertToString($outputResponse);
+
+                    //  $this->url_query_params['field_1'] = 'value_1';
+                    $this->url_query_params[$name] = $value;
+
+                }
+
+            }
+        }
+
+        //  Return the URL without the query params string e.g "http://wwww.example.com"
+        return $exploded_url[0];
+        
     }
 
     public function get_CRUD_Api_Method()
@@ -5189,6 +5482,32 @@ class UssdServiceController extends Controller
                 $data[$query_param['name']] = $value;
             }
         }
+
+        /** Note that $this->url_query_params represents the field-value
+         *  query params that have been directly extracted from the URL
+         *  e.g
+         *  
+         *  http://wwww.example.com?field_1=value_1&field_2=value_2
+         * 
+         *  If we had the above url, then $this->url_query_params would
+         *  be an array of the query params e.g
+         * 
+         *  $this->url_query_params = [
+         *      'field_1' => 'value_1',
+         *      'field_2' => 'value_2'
+         *  ];
+         * 
+         *  Now we want to merge these query params with the compilled
+         *  query params of the $data so that we have a single 
+         *  collection.
+         */
+        $data = array_merge($this->url_query_params, $data);
+
+        /** Reset $this->url_query_params to an empty array. We need to
+         *  reset to an empty array so that the next CRUD EVENT does not
+         *  use these old query params for its own request. 
+         */
+        $this->url_query_params = [];
 
         return $data;
     }
@@ -5866,8 +6185,8 @@ class UssdServiceController extends Controller
 
     /** This method validates to make sure the target input
      *  is a valid money format e.g "35", "35.5" or "35.50"
-     *  are valid while "P35", "3,500", "35 .5" and "35. 5" 
-     *  are invalid
+     *  are valid while "P35", "3,500", "35 .5" and "35. 5"
+     *  are invalid.
      */
     public function validateMoney($target_value, $validation_rule)
     {
@@ -5890,7 +6209,7 @@ class UssdServiceController extends Controller
     public function validateDateFormat($target_value, $validation_rule)
     {
         //  Regex pattern
-        $pattern = '/[0-9]{2}\/[0-9]{2}\/[0-9]{4}/';
+        $pattern = '/^[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}$/';
 
         //  Convert to [String]
         $target_value = $this->convertToString($target_value);
@@ -6656,7 +6975,11 @@ class UssdServiceController extends Controller
         //  Convert to [String]
         $target_value = $this->convertToString($target_value);
 
-        return substr($target_value, $start, $length);
+        if ($outputResponse == '') {
+            return substr($target_value, $start);
+        } else {
+            return substr($target_value, $start, $length);
+        }
     }
 
     /** This method removes letters from the target value
@@ -7613,27 +7936,23 @@ class UssdServiceController extends Controller
                 if ($revisit_type == 'home_revisit') {
                     return $this->handleHomeRevisit($automatic_replies_text);
                 } elseif ($revisit_type == 'screen_revisit') {
-                    return $this->handleScreenRevisit($automatic_replies_text);
+                    //  Get the provided link
+                    $link = $this->event['event_data']['revisit_type']['screen_revisit']['link'];
+
+                    //  Get the screen matching the given link and set it as the current screen
+                    $screen = $this->getScreenById($link);
+
+                    //  If the screen to revisit was found
+                    if ($screen) {
+                        $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to revisit '.$this->wrapAsPrimaryHtml($screen['name']));
+
+                        return $this->handleScreenRevisit($screen, $automatic_replies_text);
+                    }
                 } elseif ($revisit_type == 'marked_revisit') {
                 }
             }
         }
     }
-
-    /***********************************************************
-     *
-     *
-     *
-     *
-     *  REMOVE THE $this->text completely
-     *
-     *  ONLY USE IT TO SAVE A RECORD IN DB
-     *
-     *  OTHERWISE IT IS GOING TO CONFUSE US IN THE FUTURE!!!!
-     *
-     *
-     *
-     ***********************************************************/
 
     public function handleHomeRevisit($automatic_replies_text = '')
     {
@@ -7701,21 +8020,104 @@ class UssdServiceController extends Controller
         return $this->handleExistingSession();
     }
 
-    public function handleScreenRevisit($automatic_replies = [])
+    public function handleScreenRevisit($screen, $automatic_replies_text = '')
     {
-        $outputResponse = $this->merge_array_text_responses($this->service_code, $automatic_replies);
+        //  Empty the existing reply records
+        $this->emptyReplyRecords();
 
-        //  If we have a screen to show return the response otherwise continue
-        if ($this->shouldDisplayScreen($outputResponse)) {
-            return $outputResponse;
+        $screen_name = '';
+
+        foreach ($this->chained_screens as $chained_screen) {
+            if ($chained_screen['id'] == $screen['id']) {
+                $screen_name = $chained_screen['name'];
+
+                //  Get the user responses leading on to this screen as "text"
+                $text = $chained_screen['metadata']['text'];
+
+                //  Convert the user responses from "text" to an "array" of responses
+                $replies = $this->getUserResponses($text);
+
+                //  If we have any user replies
+                if (count($replies)) {
+                    //  Add the new user reply records
+                    foreach ($replies as $key => $reply) {
+                        /********************************
+                         *  CAPTURE USER REPLY RECORD   *
+                         ********************************/
+
+                        /* Get the "User Reply" record and save it locally.
+                        *  This reply will be recorded to originate from the "User" event
+                        *  and is a removable reply (Can be deleted by the user) depending on
+                        *  the given event settings
+                        */
+                        $this->addReplyRecord($reply, 'user', true);
+                    }
+                }
+
+                //  Stop the loop
+                break 1;
+            }
         }
 
-        //  Get the processed service code
-        $service_code = $outputResponse;
+        //  Get the automatic replies
+        $automatic_replies = $this->getUserResponses($automatic_replies_text);
 
-        $this->logInfo('Revisiting Screen: '.$this->wrapAsSuccessHtml($service_code));
+        //  If we have any automatic replies
+        if (count($automatic_replies)) {
+            //  Add the new automatic reply records
+            foreach ($automatic_replies as $key => $automatic_reply) {
+                /*************************************
+                 *  CAPTURE AUTOMATIC REPLY RECORD   *
+                 ************************************/
 
-        return $service_code;
+                /* Get the "Automatic Reply" record and save it locally.
+                 *  This reply will be recorded to originate from the "Revisit" event
+                 *  and is a removable reply (Can be deleted by the user) depending on
+                 *  the given event settings
+                 */
+                $this->addReplyRecord($automatic_reply, 'revisit_event', true);
+            }
+        }
+
+        if (!empty($this->text)) {
+            $service_code = substr($this->service_code, 0, -1).'*'.$this->text.'#';
+        } else {
+            $service_code = $this->service_code;
+        }
+
+        $this->logInfo('Revisiting '.$this->wrapAsPrimaryHtml($screen_name).': '.$this->wrapAsSuccessHtml($service_code));
+
+        /* We need to re-run the handleExistingSession() method. This will allow us the opportunity
+         *  to change the database "text" value. By updating this value we are able to alter the
+         *  current session journey to force changes such as:
+         *
+         *  - Going back
+         *  - Going back and inserting new replies
+         *  - Cancelling long Journeys
+         *  - Undoing previous actions
+         *  ...e.t.c
+        */
+
+        //  Reset the level
+        $this->level = 1;
+
+        //  Reset the user reply message
+        $this->msg = '';
+
+        //  Update the current existing session
+        $updated = $this->updateExistingSessionDatabaseRecord([
+            'text' => $this->text,
+            'reply_records' => json_encode($this->reply_records),
+        ]);
+
+        //  Empty the existing reply records (Again)
+        $this->emptyReplyRecords();
+
+        //  Fetch the existing session record from the database by force
+        $this->existing_session = $this->getExistingSessionFromDatabase($force = true);
+
+        //  Handle existing session - Re-run the handleExistingSession()
+        return $this->handleExistingSession();
     }
 
     /******************************************
@@ -8287,12 +8689,11 @@ class UssdServiceController extends Controller
     {
         //  Use the try/catch handles incase we run into any possible errors
         try {
+
+            $dynamic_variables = [];
+
             //  If we have dynamic data
             if (count($this->getDynamicData())) {
-                //  Set an info log that we are setting variables with dynamic data
-                if ($log_dynamic_data) {
-                    $this->logInfo('Setting variables using stored dynamic data');
-                }
 
                 //  Create dynamic variables
                 foreach ($this->getDynamicData() as $key => $value) {
@@ -8320,13 +8721,28 @@ class UssdServiceController extends Controller
 
                     //  Set an info log for the created variable and its dynamic data value
                     if ($log_dynamic_data) {
+
                         //  Get the value type wrapped in html tags
                         $dataType = $this->wrapAsSuccessHtml($this->getDataType($value));
 
-                        //  Use json_encode($value) to show $value data instead of getDataType($value)
-                        $this->logInfo('Variable '.$this->wrapAsSuccessHtml('$'.$key).' = ['.$dataType.']');
+                        //  Get the variable for logs 
+                        array_push($dynamic_variables, [
+                            'name' => '$'.$key,                 //  $first_name
+                            'data_type' => $dataType,           //  String
+                            'value' => json_encode($value),     //  John
+                        ]);
                     }
                 }
+
+            }
+
+            if( count($dynamic_variables) ){
+
+                //  Log the available dynamic variables
+                $this->logInfo('Getting dynamic variables', 'dynamic_variables', [
+                    'dynamic_variables' => $dynamic_variables
+                ]);
+
             }
 
             //  Process dynamic content embedded within the code
@@ -8634,25 +9050,25 @@ class UssdServiceController extends Controller
     /** This method is used to log information about the USSD
      *  application build process.
      */
-    public function logInfo($description = '')
+    public function logInfo($description = '', $data_type = null, $data = null)
     {
-        $this->addLog(['type' => 'info', 'description' => $description]);
+        $this->addLog(['type' => 'info', 'description' => $description, 'data_type' => $data_type, 'data' => $data]);
     }
 
     /** This method is used to log warnings about the USSD
      *  application build process.
      */
-    public function logWarning($description = '')
+    public function logWarning($description = '', $data_type = null, $data = null)
     {
-        $this->addLog(['type' => 'warning', 'description' => $description]);
+        $this->addLog(['type' => 'warning', 'description' => $description, 'data_type' => $data_type, 'data' => $data]);
     }
 
     /** This method is used to log errors about the USSD
      *  application build process.
      */
-    public function logError($description = '')
+    public function logError($description = '', $data_type = null, $data = null)
     {
-        $this->addLog(['type' => 'error', 'description' => $description]);
+        $this->addLog(['type' => 'error', 'description' => $description, 'data_type' => $data_type, 'data' => $data]);
     }
 
     /** This method is used to add a log
@@ -8661,8 +9077,8 @@ class UssdServiceController extends Controller
     {
         //  Set additional information
         $data['level'] = $this->level ?? null;
-        $data['screen'] = $this->screen['id'] ?? null;
-        $data['display'] = $this->display['id'] ?? null;
+        $data['screen'] = $this->screen['name'] ?? null;
+        $data['display'] = $this->display['name'] ?? null;
 
         //  Push the latest log update
         array_push($this->logs, $data);
