@@ -35,6 +35,7 @@
 <script>
 
     import ussdSimulator from './../../../../../../../../components/_common/simulators/ussdSimulator.vue';
+    import lineChart from './../../../../../../../../components/_common/charts/lineChart.vue';
     import userAccountsWidget from './user-accounts/main.vue';
     import debuggerWidget from './debugger/main.vue';    
     import settingsWidget from './settings/main.vue';
@@ -60,7 +61,21 @@
                 ussdSimulatorLoading: false,
                 ussdSimulatorResponse: null
             }
-        }
+        },
+        watch: {
+            //  Watch for changes on the ussdSimulatorLoading
+            ussdSimulatorLoading: {
+                handler: function (newVal, oldVal) {
+                    this.$emit('ussdSimulatorLoading', newVal);
+                }
+            },
+            //  Watch for changes on the ussdSimulatorResponse
+            ussdSimulatorResponse: {
+                handler: function (newVal, oldVal) {
+                    this.$emit('ussdSimulatorResponse', newVal);
+                }
+            }  
+        },
     };
   
 </script>

@@ -204,6 +204,11 @@
                         comment: 'Generate a random string of the specified length e.g "40" will return a random 40 character string'
                     },
                     {
+                        name: 'Set To Null',
+                        type: 'set_to_null',
+                        comment: 'Set the target value equal to Null'
+                    },
+                    {
                         value: '',
                         name: 'Custom Code',
                         type: 'custom_code',

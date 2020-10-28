@@ -14,35 +14,19 @@
 
         <Col :span="17">
 
-            <simulatorContent :version="version" :project="project" :activeView="activeView"></simulatorContent>
+            <simulatorContent :version="version" :project="project" :activeView="activeView"
+                              @ussdSimulatorResponse="ussdSimulatorResponse = $event"
+                              @ussdSimulatorLoading="ussdSimulatorLoading = $event">
+            </simulatorContent>
 
         </Col>
 
         <Col :span="24">
-
-            <div :style="{ overflow: 'scroll' }" class="d-flex py-5">
-
-                <div :style="{ width: '350px' }" class="border-right mx-1 px-1">
-
-                    <div :style="{ width: '300px' }" class="bg-white border m-auto pb-3 px-4">
-                    
-<p style="white-space: pre-wrap;">
-Neo Boutique
-1. General
-2. Orders (0)
-3. Products (1)
-4. Customers (0)
-5. Coupons (0)
-6. Staff (0)
-7. Reviews (0)
-0. Back
-</p>
-                    
-                    </div>
-
-                </div>
-
-            </div>
+            
+            <simulatorAnalysis :version="version" :project="project" :activeView="activeView"
+                               :ussdSimulatorResponse="ussdSimulatorResponse"
+                               :ussdSimulatorLoading="ussdSimulatorLoading">
+            </simulatorAnalysis>
 
         </Col>
 
@@ -52,11 +36,12 @@ Neo Boutique
 
 <script>
 
+    import simulatorAnalysis from './analysis/main.vue';
     import simulatorContent from './content/main.vue';
     import simulatorAside from './aside/main.vue';
 
     export default {
-        components: { simulatorContent, simulatorAside },
+        components: { simulatorAnalysis, simulatorContent, simulatorAside },
         props: {
             project: {
                 type: Object,
@@ -71,6 +56,8 @@ Neo Boutique
             return {
                 activeView: 'Debugger',
                 availableViews: ['Debugger', 'User Accounts', 'Settings'],
+                ussdSimulatorResponse: null,
+                ussdSimulatorLoading: null
             }
         },
         methods: {

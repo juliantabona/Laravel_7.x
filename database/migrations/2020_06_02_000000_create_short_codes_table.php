@@ -23,6 +23,10 @@ class CreateShortCodesTable extends Migration
             /*  Ownership Information  */
             $table->unsignedInteger('project_id')->nullable();
 
+            /*  Indexes  */
+            $table->index('shared_code');
+            $table->index('dedicated_code');
+
             /*  Timestamps  */
             $table->timestamps();
             

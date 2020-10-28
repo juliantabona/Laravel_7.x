@@ -30,13 +30,22 @@ class CreateUssdSessionsTable extends Migration
             $table->boolean('test')->nullable()->default(false);
             $table->boolean('allow_timeout')->nullable()->default(0);
             $table->timestampTz('timeout_at')->nullable();
+            $table->decimal('estimated_record_size', 8, 2)->default(0.00);
+            $table->unsignedMediumInteger('total_session_duration')->default(0);
+            $table->text('user_response_durations')->nullable();
+            $table->text('session_execution_times')->nullable();
+            $table->text('estimated_record_sizes')->nullable();
 
             /*  Meta Data  */
             $table->json('metadata')->nullable();
 
             /*  Ownership Information  */
-            $table->unsignedInteger('owner_id')->nullable();
-            $table->string('owner_type')->nullable();
+            $table->unsignedInteger('project_id')->nullable();
+            $table->unsignedInteger('version_id')->nullable();
+
+            /*  Indexes  */
+            $table->index(['session_id', 'test']);
+            $table->index(['msisdn', 'test', 'created_at']);
 
             /*  Timestamps  */
             $table->timestamps();

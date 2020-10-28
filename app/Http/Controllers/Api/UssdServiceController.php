@@ -39,6 +39,7 @@ class UssdServiceController extends Controller
     public $reply_records = [];
     public $fatal_error = false;
     public $user_account = null;
+    public $summarized_logs = [];
     public $chained_screens = [];
     public $pagination_index = 0;
     public $display_instructions;
@@ -52,8 +53,16 @@ class UssdServiceController extends Controller
     public $timeout_limit_in_seconds;
     public $dynamic_data_storage = [];
     public $revisit_reply_records = [];
+    public $session_execution_time = 0;
+    public $estimated_record_sizes = [];
+    public $screen_total_responses = [];
     public $navigation_target_screen_id;
+    public $display_total_responses = [];
+    public $user_response_durations = [];
+    public $session_execution_times = [];
     public $global_variables_to_save = [];
+    public $end_session_execution_time = 0;
+    public $start_session_execution_time = 0;
     public $chained_screen_metadata = ['text' => ''];
     public $allow_dynamic_content_highlighting = true;
     public $default_no_select_options_message = 'No options available';
@@ -152,8 +161,8 @@ class UssdServiceController extends Controller
 
         /*  HANDLE REQUEST   */
 
-        //  Get the time before processing the request
-        $start_request_time = time();
+        //  Get the start request execution time
+        $this->start_session_execution_time = microtime(true);
 
         //  Store the Ussd Gateway values
         $this->storeUssdGatewayValues();
@@ -161,13 +170,17 @@ class UssdServiceController extends Controller
         //  Handle the Ussd Session request
         $this->handleSessionRequest();
 
-        //  Get the time after processing the request
-        $end_request_time = time();
+        //  Get the end request execution time
+        $this->end_session_execution_time = microtime(true);
 
         //  Get the difference in seconds between the start and end request time
-        $request_time_in_seconds = ($end_request_time - $start_request_time);
+        $this->session_execution_time = round(($this->end_session_execution_time - $this->start_session_execution_time), 2);
 
-        $this->logInfo('Request execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
+        $this->logInfo(
+            'Total request execution time: '.
+             $this->wrapAsSuccessHtml($this->session_execution_time.
+            ($this->session_execution_time == 1 ? ' second' : ' seconds'))
+        );
 
         //  Handle the Ussd Session response
         return $this->handleSessionResponse();
@@ -244,6 +257,12 @@ class UssdServiceController extends Controller
 
         //  Handle the current session
         $sessionResponse = $this->handleSession();
+
+        //  Get the end request execution time
+        $this->end_session_execution_time = microtime(true);
+
+        //  Get the difference in seconds between the start and end request time
+        $this->session_execution_time = round(($this->end_session_execution_time - $this->start_session_execution_time), 2);
 
         /** This will render as: $this->createNewSession()
          *  while being called within a try/catch handler.
@@ -355,13 +374,44 @@ class UssdServiceController extends Controller
         //  Remove the first value and assign it to the "$first_number" variable
         $first_number = array_shift($values);
 
-        //  Get the Shared Service Codes
-        $shared_short_codes = \App\SharedShortCode::all();
+        /** Get the Shared Service Codes
+         *
+         *  Use the Query Builder to get the shared service codes instead of Eloquent.
+         *  This is so that we can speed up performance. The eloquent alternative
+         *  is as follows:.
+         *
+         *  \App\SharedShortCode::all();
+         *
+         *  We ran tests to compare the speed of getting the shared short codes using Eloquent
+         *  and Query Builder. The results prove that using Query Builder was must faster.
+         *  See below speed comparisons:
+         *
+         *  Eloquent      ->  [0.106, 0.028, 0.047, 0.027, 0.034]
+         *  Query Builder ->  [0.002, 0.001, 0.001, 0.001, 0.002]
+         *
+         *  As seen above, Query Builder performed better
+         */
+        $shared_short_codes = DB::table('shared_short_codes')->get();
 
         //  Handle the Shared Service Code
         for ($x = 0; $x < count($shared_short_codes); ++$x) {
-            //  Get the Shared Service Code e.g *321#, *432#, *543#
-            $shared_service_code = $shared_short_codes[$x]['code'];
+            /** Get the Shared Service Code e.g *321#, *432#, *543#
+             *
+             *  Note that the "$shared_service_codes" are in the form of stdClass. This
+             *  means that we cannot access properties normally using array format. We
+             *  must use the arrow notation e.g.
+             *
+             *  instead doing the following:
+             *
+             *      $shared_service_codes[$x]['code']
+             *
+             *  we need to do this instead:
+             *
+             *      $shared_service_codes[$x]->code
+             *
+             *  otherwise we will get an error
+             */
+            $shared_service_code = $shared_short_codes[$x]->code;
 
             //  Remove the "*" and "#" symbol from the Shared Service Code of the Main Ussd Service Code e.g from "*321#" to "321"
             $shared_service_code_number = str_replace(['*', '#'], '', $shared_service_code);
@@ -419,30 +469,51 @@ class UssdServiceController extends Controller
             //  If this is a Shared Ussd Service Code
             if ($this->ussd_service_code_type == 'shared') {
                 //  Get the Ussd Service Code Record from the database
-                $ussd_service_code = \App\ShortCode::where('shared_code', $this->service_code)->first();
+                $ussd_service_code = DB::table('short_codes')->where('shared_code', $this->service_code)->first();
 
             //  If this is a Dedicated Ussd Service Code
             } elseif ($this->ussd_service_code_type == 'dedicated') {
                 //  Get the Ussd Service Code Record from the database
-                $ussd_service_code = \App\ShortCode::where('dedicated_code', $this->service_code)->first();
+                $ussd_service_code = DB::table('short_codes')->where('dedicated_code', $this->service_code)->first();
             }
 
             //  If we have a matching Ussd Service Code
             if ($ussd_service_code) {
-                //  Get the owning resource (i.e owning Project resource)
-                $this->project = $ussd_service_code->project;
+                /* Get the project linked to this USSD Service Code.
+                 *
+                 *  Note that if the above code was as follows:
+                 *
+                 *  $ussd_service_code = \App\ShortCode::where('shared_code', $this->service_code)->first();
+                 *
+                 *  or
+                 *
+                 *  $ussd_service_code = \App\ShortCode::where('dedicated_code', $this->service_code)->first();
+                 *
+                 *  then we could have easily accessed the linked project as follows:
+                 *
+                 *  $ussd_service_code->project;
+                 *
+                 *  However this way of getting the project is very much slower and will eventually cost us more
+                 *  on performance as requests increase. Therefore it is better to use Query Builder as often
+                 *  as possible to have better performance benifits.
+                 */
+                $this->project = DB::table('projects')->find($ussd_service_code->project_id);
 
                 //  If the project exists
                 if ($this->project) {
                     //  If the project has an active version assigned
                     if ($this->project->active_version_id) {
-                        //  Get the version
-                        $this->version = \App\Version::find($this->project->active_version_id);
+                        // Get the version
+                        $this->version = DB::table('versions')->find($this->project->active_version_id);
 
                         //  If the version exists
                         if ($this->version) {
-                            //  Get the version builder
-                            $this->builder = $this->version->builder;
+                            /* Get the version builder.
+                             *
+                             *  Note that the builder property is a literal string which we must convert into an array.
+                             *  We use the json_decode() method to convert it into an associative array.
+                             */
+                            $this->builder = json_decode($this->version->builder, true);
                         }
                     }
                 }
@@ -510,10 +581,6 @@ class UssdServiceController extends Controller
      */
     public function handleExistingSession()
     {
-
-        //  Get the time before processing the request
-        $start_request_time = time();
-
         //  Get the existing session record from the database
         $this->existing_session = $this->getExistingSessionFromDatabase();
 
@@ -522,17 +589,6 @@ class UssdServiceController extends Controller
 
         //  Update the current sesion service code type
         $this->ussd_service_code_type = $this->existing_session->type;
-
-        //  Get the time after processing the request
-        $end_request_time = time();
-
-        //  Get the difference in seconds between the start and end request time
-        $request_time_in_seconds = ($end_request_time - $start_request_time);
-
-        $this->logInfo('Get existing session execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
-
-        //  Get the time before processing the request
-        $start_request_time = time();
 
         //  Get the USSD Builder for the given "Service Code"
         $this->getUssdBuilder();
@@ -565,18 +621,6 @@ class UssdServiceController extends Controller
             $this->addReplyRecord($this->msg, 'user', true);
         }
 
-        //  Get the time after processing the request
-        $end_request_time = time();
-
-        //  Get the difference in seconds between the start and end request time
-        $request_time_in_seconds = ($end_request_time - $start_request_time);
-
-        $this->logInfo('Get session builder execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
-
-
-        //  Get the time before processing the request
-        $start_request_time = time();
-
         //  Get the timeout limit in seconds e.g "120" to mean "timeout after 120 seconds"
         $this->timeout_limit_in_seconds = $this->getTimeoutLimitInSeconds();
 
@@ -585,21 +629,9 @@ class UssdServiceController extends Controller
             //  Handle timeout
             $response = $this->handleTimeout();
         } else {
-            
             //  Handle the current session
             $response = $this->handleSession();
         }
-
-        //  Get the time after processing the request
-        $end_request_time = time();
-
-        //  Get the difference in seconds between the start and end request time
-        $request_time_in_seconds = ($end_request_time - $start_request_time);
-
-        $this->logInfo('Session execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
-
-        //  Get the time before processing the request
-        $start_request_time = time();
 
         //  If we have "revisit_reply_records"
         if (count($this->revisit_reply_records)) {
@@ -613,8 +645,13 @@ class UssdServiceController extends Controller
             $this->text = $this->extractUserResponsesAsText();
         }
 
-        $update_data = [
-            'logs' => $this->logs,
+        //  Get the end request execution time
+        $this->end_session_execution_time = microtime(true);
+
+        //  Get the difference in seconds between the start and end request time
+        $this->session_execution_time = round(($this->end_session_execution_time - $this->start_session_execution_time), 2);
+
+        $session_record = [
             'text' => $this->text,
             'request_type' => $this->request_type,
             'fatal_error' => $this->fatal_error,
@@ -623,27 +660,38 @@ class UssdServiceController extends Controller
             'metadata' => $this->existing_session->metadata,
             'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
             'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
+            'project_id' => $this->project->id,
+            'version_id' => $this->version->id,
         ];
 
-        /** This will render as: $this->updateExistingSessionDatabaseRecord($update_data)
+        /** This will render as: $this->updateExistingSessionDatabaseRecord($session_record)
          *  while being called within a try/catch handler.
          */
-        $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord', [$update_data]);
+        $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord', [$session_record]);
 
         //  If we have a screen to show return the response otherwise continue
         if ($this->shouldDisplayScreen($updateResponse)) {
             return $updateResponse;
         }
 
-        //  Get the time after processing the request
-        $end_request_time = time();
-
-        //  Get the difference in seconds between the start and end request time
-        $request_time_in_seconds = ($end_request_time - $start_request_time);
-
-        $this->logInfo('DB update execution time: '. $this->wrapAsSuccessHtml($request_time_in_seconds . ($request_time_in_seconds == 1 ? ' second' : ' seconds')));
-
         return $response;
+    }
+
+    public function calculateVariableSizeInKB($data)
+    {
+        /** Calculate session record size
+         *
+         *  The strlen() method returns the number of chars in a string. Each char is 1 byte.
+         *  So to get size in bits, multiply strlen() result by 8. We then need to divide by
+         *  1024 for KB or KiB.
+         *
+         *  Reference: https://stackoverflow.com/questions/7452325/size-in-kb-of-variable-in-php#:~:text=php%20%24data%20%3D%20array(%27,1024%20for%20KB%20or%20KiB.
+         */
+        $serialized_data = serialize($data);
+        $size = strlen($serialized_data);
+        $size = ($size * 8 / 1024);
+
+        return $size;
     }
 
     /** Create a new USSD session
@@ -657,9 +705,16 @@ class UssdServiceController extends Controller
             //  Get the timeout limit in seconds e.g "120" to mean "timeout after 120 seconds"
             $this->timeout_limit_in_seconds = $this->getTimeoutLimitInSeconds();
 
+            //  Calculate the new session execution times
+            $this->session_execution_times = [
+                [
+                    'time' => $this->session_execution_time,
+                    'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+                ],
+            ];
+
             $data = [
                 'text' => $this->text,
-                'logs' => json_encode($this->logs),
                 'reply_records' => json_encode($this->reply_records),
                 'type' => $this->ussd_service_code_type,
                 'msisdn' => $this->msisdn,
@@ -670,9 +725,12 @@ class UssdServiceController extends Controller
                 'test' => $this->test_mode,
                 'fatal_error' => $this->fatal_error,
                 'fatal_error_msg' => $this->fatal_error_msg,
+                'session_execution_times' => json_encode($this->session_execution_times),
                 'created_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
                 'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
                 'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
+                'project_id' => $this->project->id,
+                'version_id' => $this->version->id,
             ];
 
             //  Overide the default details with any custom data
@@ -690,6 +748,23 @@ class UssdServiceController extends Controller
             if (isset($data['metadata'])) {
                 $data['metadata'] = json_encode($data['metadata']);
             }
+
+            //  If we have any fatal errors set the detailed logs otherwise use the summarized logs
+            Arr::set($data, 'logs', $this->fatal_error ? json_encode($this->summarized_logs) : null);
+
+            //  Calculate the size of the session record in KB (This is an estimate of the session record data size)
+            $session_record_estimated_size = $this->calculateVariableSizeInKB($data);
+
+            //  Add the current session record size as the first record
+            $this->estimated_record_sizes = [
+                [
+                    'size' => $session_record_estimated_size,
+                    'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+                ],
+            ];
+
+            //  Set the "estimated_record_size" value
+            Arr::set($data, 'estimated_record_sizes', json_encode($this->estimated_record_sizes));
 
             //  Create the new session record
             $this->new_session = DB::table('ussd_sessions')->insert($data);
@@ -712,8 +787,59 @@ class UssdServiceController extends Controller
             Arr::set($data, 'metadata.global_variables', $this->global_variables_to_save);
         }
 
+        //  Calculate the total session duration (The total seconds since the session started)
+        $total_session_duration = \Carbon\Carbon::now()->diffInSeconds($this->existing_session->created_at, true);
+
+        //  Set the total session duration
+        Arr::set($data, 'total_session_duration', $total_session_duration);
+
+        //  Calculate the current user response duration (The total seconds since the user's last response)
+        $user_response_duration = \Carbon\Carbon::now()->diffInSeconds($this->existing_session->updated_at, true);
+
+        //  Get the previously recorded user response duration's otherwise default to an empty array
+        $this->user_response_durations = is_null($this->existing_session->user_response_durations) ? [] : $this->existing_session->user_response_durations;
+
+        //  Add the new user response duration
+        array_push($this->user_response_durations, [
+            'duration' => $user_response_duration,
+            'replied_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+        ]);
+
+        //  Set the user response duration's
+        Arr::set($data, 'user_response_durations', $this->user_response_durations);
+
+        //  If we have any fatal errors set the detailed logs otherwise use the summarized logs
+        Arr::set($data, 'logs', $this->fatal_error ? $this->summarized_logs : null);
+
+        //  Get the previously recorded session execution time otherwise default to an empty array
+        $this->session_execution_times = is_null($this->existing_session->session_execution_times) ? [] : $this->existing_session->session_execution_times;
+
+        //  Add the new session execution time
+        array_push($this->session_execution_times, [
+            'time' => $this->session_execution_time,
+            'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+        ]);
+
+        //  Set the user response duration's
+        Arr::set($data, 'session_execution_times', $this->session_execution_times);
+
+        //  Calculate the size of the session record in KB (This is an estimate of the session record data size)
+        $session_record_estimated_size = $this->calculateVariableSizeInKB($data);
+
+        //  Get the previously recorded session record sizes otherwise default to an empty array
+        $this->estimated_record_sizes = is_null($this->existing_session->estimated_record_sizes) ? [] : $this->existing_session->estimated_record_sizes;
+
+        //  Add the new session execution time
+        array_push($this->estimated_record_sizes, [
+            'size' => $session_record_estimated_size,
+            'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+        ]);
+
+        //  Set the "estimated_record_size" value
+        Arr::set($data, 'estimated_record_sizes', $this->estimated_record_sizes);
+
         //  Update the session record that matches the given Session Id
-        return DB::table('ussd_sessions')->where('session_id', $this->session_id)->where('test', $this->test_mode)->update($data);
+        return DB::table('ussd_sessions')->where('id', $this->existing_session->id)->update($data);
     }
 
     /** Get the existing USSD session from the database
@@ -722,8 +848,50 @@ class UssdServiceController extends Controller
     {
         //  If we don't have an existing session already set or we are forced to refetch the session
         if (empty($this->existing_session) || $force == true) {
-            //  Get the session record that matches the given Session Id
-            return \App\UssdSession::where('session_id', $this->session_id)->where('test', $this->test_mode)->first();
+            /* Get the session record that matches the given Session Id
+             *
+             *  We ran tests to compare the speed of getting the existing session using Eloquent
+             *  and Query Builder. The results we quite suprising, since it was faster run this
+             *  query using Eloquent. This is why we decided to leave this query as it is. See
+             *  below speed comparisons
+             *
+             *  Query Builder ->  [0.019, 0.025, 0.043, 0.019, 0.03]
+             *  Eloquent      ->  [0.015, 0.018, 0.020, 0.012, 0.021]
+             *
+             *  As seen above, Eloquent performed better. This outcome is very unsual, however
+             *  i believe is has something to do with the idea of excluding logs. Not sure but
+             *
+             *  Below if the alternative using Query Builder:
+             *
+             *  --------------------------------------------------------------------------------
+             *
+             *      Select all the existing session columns except the logs. This is because the
+             *      logs may be large in size therefore can potentially slow down performance.
+             *      Its important to note that logs can even be larger than 1MB for a single
+             *      ussd session record.
+             *
+             *      //  Capture all the columns exceppt the logs
+             *      $selected_columns = collect(
+             *
+             *           //  Select all columns
+             *          array_merge((new \App\UssdSession)->getFillable(), ['created_at', 'updated_at'])
+             *
+             *      //  Exclude the logs
+             *      )->except(['logs'])->all();
+             *
+             *      Get the existing session record from the database
+             *      $existing_session = DB::table('ussd_sessions')
+             *                            ->where('session_id', $this->session_id)
+             *                            ->where('test', $this->test_mode)
+             *                            ->select($selected_columns)
+             *                            ->first();
+             *
+             *  --------------------------------------------------------------------------------
+             */
+
+            return \App\UssdSession::where('session_id', $this->session_id)
+                                    ->where('test', $this->test_mode)
+                                    ->exclude(['logs'])->first();
         }
 
         //  If we have an existing session already set
@@ -802,11 +970,19 @@ class UssdServiceController extends Controller
             'msisdn' => $this->msisdn,
             'text' => $this->text,
             'msg' => $this->msg,
+            'stats' => [],
             'logs' => [],
         ];
 
         //  If we are on test mode
         if ($this->test_mode) {
+            //  Set the response statistics
+            $response['stats'] = [
+                'user_response_durations' => $this->user_response_durations,
+                'session_execution_times' => $this->session_execution_times,
+                'estimated_record_sizes' => $this->estimated_record_sizes,
+            ];
+
             //  Include the logs if required
             if ($this->builder['simulator']['debugger']['return_logs']) {
                 //  Set an info log of the ussd properties
@@ -1040,11 +1216,66 @@ class UssdServiceController extends Controller
 
         $global_variables = $this->builder['global_variables'] ?? [];
 
-        //  Get the previous recorded ussd session (The second last record) matching the given MSISDN and Test status
-        $ussd_session = (new \App\UssdSession())->where('msisdn', $this->msisdn)->where('test', $this->test_mode)->latest()->take(1)->first();
+        /* If we have Global Variables then continue. We run this check so that if we
+         *  don't have any Global Variables, we avoid running a database query to get
+         *  the previous recorded ussd session. This is so that we speed up
+         *  performance.
+         */
+        if (count($global_variables)) {
+            /** Get the previous recorded ussd session (The second last record) matching the given MSISDN and Test status.
+             *
+             *  Use the Query Builder to get the previous recorded ussd session instead of Eloquent.
+             *  This is so that we can speed up performance. The eloquent alternative is as follows:.
+             *
+             *  \App\UssdSession::where('msisdn', $this->msisdn)->where('test', $this->test_mode)->latest()->take(1)->first();
+             *
+             *  We ran tests to compare the speed of getting the records using Eloquent and Query Builder.
+             *  The results prove that using Query Builder was must faster. See below speed comparisons:
+             *
+             *  Query Builder ->  ['0.00113', '0.00113', '0.00102', '0.00097', '0.00096']
+             *  Eloquent      ->  ['0.00130', '0.00134', '0.00130', '0.00124', '0.00111']
+             *
+             *  As seen above, Query Builder performed better
+             */
+            $ussd_session = DB::table('ussd_sessions')->where('msisdn', $this->msisdn)->where('test', $this->test_mode)->latest()->take(1)->first();
 
-        //  Get the last saved Global Variables from the last session otherwise default to an empty Array
-        $global_variables_to_save = $ussd_session['metadata']['global_variables'] ?? [];
+            //  Get the last saved Global Variables from the last session otherwise default to an empty Array
+
+            /**
+             *  Note that the "$global_variables_to_save" is in the form of stdClass. This
+             *  means that we cannot access properties normally using array format. We
+             *  must use the arrow notation e.g.
+             *
+             *  instead doing the following:
+             *
+             *      $ussd_session['metadata']['global_variables']
+             *
+             *  we need to do this instead:
+             *
+             *      $ussd_session->metadata['global_variables']
+             *
+             *  otherwise we will get an error.
+             *
+             *  Note that the "metadata" property is a literal string which we must convert into an array.
+             *  We use the json_decode() method to convert it into an associative array. We need to first check if
+             *  we have any values so we use empty() to check. If its empty return an empty array otherwise convert
+             *  the literal string to an associative array.
+             *
+             *  Note that we need to check if the $ussd_session exists first since its possible for it not to exist.
+             *  This is because if the user is dialing the service for the first time ever, then they cannot possibly
+             *  have any previous ussd sessions that have been recorded. The current session would be recorded as their
+             *  first ever session and will then be referenced by other future sessions.
+             */
+            if ($ussd_session) {
+                // Convert metadata to associative array
+                $ussd_session->metadata = json_decode($ussd_session->metadata, true);
+
+                //  Extract saved Global Variables from metadata
+                $global_variables_to_save = $ussd_session->metadata['global_variables'] ?? [];
+            } else {
+                $global_variables_to_save = [];
+            }
+        }
 
         //  Foreach global variable
         foreach ($global_variables as $global_variable) {
@@ -2687,6 +2918,79 @@ class UssdServiceController extends Controller
             return $handleLinkingResponse;
         }
 
+        /*****************************************
+         *  RECORD THE TOTAL NUMBER OF RESPONSES *
+         *  TO THE CURRENT SCREEN & DISPLAY      *
+         ****************************************/
+
+        /* Note that this must be done before we can build the current
+         *  display otherwise we won't be able to get the latest updated
+         *  totals to show on the current display. Basically we would
+         *  need to link to another screen to show the update which
+         *  is not a desirable outcome.
+         */
+
+        //  Check if the user has already responded to the current display screen
+        if ($this->completedLevel($this->level)) {
+            /** Record the number of times we have responded to the screen.
+             *
+             *  First check if we have a record matching the given screen id.
+             *  Note that "$this->screen_total_responses" is an array of screen
+             *  id's that linked to the total number of responses for a given
+             *  screen e.g.
+             *
+             *  $this->screen_total_responses = [
+             *      'screen_1603621400274' => 1,    //  This means we responded once to screen id "screen_1603621400274"
+             *      'screen_1603621400275' => 2,    //  This means we responded twice to screen id "screen_1603621400275"
+             *      'screen_1603621400276' => 1,    //  This means we responded once to screen id "screen_1603621400276"
+             *      e.t.c ...                       //  and so on ...
+             *  ];
+             */
+            if (isset($this->screen_total_responses[$this->screen['id']])) {
+                /** Since the screen has already been recorded before, lets increment
+                 *  the existing total number of responses and update the record.
+                 */
+                $total = ++$this->screen_total_responses[$this->screen['id']];
+                Arr::set($this->screen_total_responses, $this->screen['id'], $total);
+            } else {
+                /* Since the screen has not already been recorded before, lets set the
+                 *  total number of responses to 1.
+                 *
+                 *  Set the "Screen id" with a value equal to 1
+                 */
+                Arr::set($this->screen_total_responses, $this->screen['id'], 1);
+            }
+
+            /** Record the number of times we have responded to the display.
+             *
+             *  First check if we have a record matching the given display id.
+             *  Note that "$this->display_total_responses" is an array of display
+             *  id's that linked to the total number of responses for a given
+             *  display e.g.
+             *
+             *  $this->display_total_responses = [
+             *      'display_1603621400274' => 1,    //  This means we responded once to display id "display_1603621400274"
+             *      'display_1603621400275' => 2,    //  This means we responded twice to display id "display_1603621400275"
+             *      'display_1603621400276' => 1,    //  This means we responded once to display id "display_1603621400276"
+             *      e.t.c ...                       //  and so on ...
+             *  ];
+             */
+            if (isset($this->display_total_responses[$this->display['id']])) {
+                /** Since the display has already been recorded before, lets increment
+                 *  the existing total number of responses and update the record.
+                 */
+                $total = ++$this->display_total_responses[$this->display['id']];
+                Arr::set($this->display_total_responses, $this->display['id'], $total);
+            } else {
+                /* Since the display has not already been recorded before, lets set the
+                 *  total number of responses to 1.
+                 *
+                 *  Set the "Screen id" with a value equal to 1
+                 */
+                Arr::set($this->display_total_responses, $this->display['id'], 1);
+            }
+        }
+
         /************************
          *  BUILD THE DISPLAY   *
          ************************/
@@ -2696,6 +3000,9 @@ class UssdServiceController extends Controller
 
         //  Check if the user has already responded to the current display screen
         if ($this->completedLevel($this->level)) {
+            //  Record the number of times we have responded to the display
+            $this->current_user_response = $this->getResponseFromLevel($this->level) ?? '';   //  John Doe
+
             //  Get the user response (Input provided by the user) for the current display screen
             $this->getCurrentScreenUserResponse();
 
@@ -5005,13 +5312,12 @@ class UssdServiceController extends Controller
 
         //  If the pagination is active
         if ($activeState === true) {
-            
             //  Get the time before processing the request
-            $start_event_time = time();
+            $start_event_time = microtime(true);
 
             //  Set an info log that we are preparing to handle the given event
             $this->logInfo('Display: '.$this->wrapAsPrimaryHtml($this->display['name']).' preparing to handle the '.$this->wrapAsSuccessHtml($event['name']).' event');
-       
+
             //  Get the current event
             $this->event = $event;
 
@@ -5048,15 +5354,14 @@ class UssdServiceController extends Controller
             }
 
             //  Get the time after processing the request
-            $end_event_time = time();
+            $end_event_time = microtime(true);
 
             //  Get the difference in seconds between the start and end request time
-            $event_time_in_seconds = ($end_event_time - $start_event_time);
+            $event_time_in_seconds = round(($end_event_time - $start_event_time), 2);
 
-            $this->logInfo('Execution time for '.$this->wrapAsSuccessHtml($event['name']).' event: '. $this->wrapAsSuccessHtml($event_time_in_seconds . ($event_time_in_seconds == 1 ? ' second' : ' seconds')));
+            $this->logInfo('Execution time for '.$this->wrapAsSuccessHtml($event['name']).' event: '.$this->wrapAsSuccessHtml($event_time_in_seconds.($event_time_in_seconds == 1 ? ' second' : ' seconds')));
 
             return $response;
-
         } else {
             //  Set an info log that the current event is not activated
             $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).' is not activated, therefore will not be executed.');
@@ -5281,31 +5586,30 @@ class UssdServiceController extends Controller
 
             /** Extract the query params from the URL. The Http Guzzle Client
              *  does not work when we pass literal query params as within the
-             *  url string e.g 
-             * 
+             *  url string e.g.
+             *
              *  http://wwww.example.com?field_1=value_1&field_2=value_2
-             * 
-             *  This above url query params will not be detected (everything after 
+             *
+             *  This above url query params will not be detected (everything after
              *  ? will be ignored). The Http Guzzle Client will only see the URL
              *  without the query params e.g
-             * 
+             *
              *  http://wwww.example.com
-             * 
-             * 
-             *  This is because he Http Guzzle Client expects us to pass any query 
+             *
+             *
+             *  This is because he Http Guzzle Client expects us to pass any query
              *  params as a key-value on the options of the Guzzle method e.g
-             * 
+             *
              *  $response = $httpClient->request($method, $url, [
              *      'query' => [
              *          'field_1' => 'value_1',
              *          'field_2' => 'value_2',
              *      ]
              *  ]);
-             * 
+             *
              *  For this reason we must extract the query params from the URL string.
              *  We can then properly assign the query params to the "query" array
-             *  as seen in the example above. 
-             * 
+             *  as seen in the example above.
              */
             $url = $this->extractQueryParamsFromURL($url);
         }
@@ -5316,42 +5620,38 @@ class UssdServiceController extends Controller
     public function extractQueryParamsFromURL($url)
     {
         /** If we have the following URL
-         * 
-         *  http://wwww.example.com?field_1=value_1&field_2=value_2
-         * 
+         *
+         *  http://wwww.example.com?field_1=value_1&field_2=value_2.
+         *
          *  Explode the URL using the "?" symbol
-         * 
+         *
          *  $exploded_url = [0 => 'http://wwww.example.com', 1 => 'field_1=value_1&field_2=value_2'];
-         * 
+         *
          *  Check if the second key has been set i.e Does key "1" exist
-         * 
+         *
          *  If we have the second key set, then explode the query params using "&" symbol
-         * 
+         *
          *  $exploded_query_params = [0 => 'field_1=value_1', 1 => 'field_2=value_2'];
-         * 
+         *
          *  Foreach $exploded_query_param, explode the result using the '=' symbol
-         * 
+         *
          *  $exploded_query_param = [0 => 'field_1', 1 => 'value_1'];
-         * 
          */
 
         //  $exploded_url = [0 => 'http://wwww.example.com', 1 => 'field_1=value_1&field_2=value_2'];
         $exploded_url = explode('?', $url);
 
         //  Check if we have any query params
-        if( isset($exploded_url[1]) ){
-
-            //  $exploded_query_params = [0 => 'field_1=value_1', 1 => 'field_2=value_2'];   
+        if (isset($exploded_url[1])) {
+            //  $exploded_query_params = [0 => 'field_1=value_1', 1 => 'field_2=value_2'];
             $exploded_query_params = explode('&', $exploded_url[1]);
 
-            foreach($exploded_query_params as $exploded_query_param){
-
-                //  $exploded_query_param = [0 => 'field_1', 1 => 'value_1'];   
+            foreach ($exploded_query_params as $exploded_query_param) {
+                //  $exploded_query_param = [0 => 'field_1', 1 => 'value_1'];
                 $exploded_query_param = explode('=', $exploded_query_param);
-                
-                //  If the query param name and value have been set
-                if( isset($exploded_query_param[0]) && isset($exploded_query_param[1]) ){
 
+                //  If the query param name and value have been set
+                if (isset($exploded_query_param[0]) && isset($exploded_query_param[1])) {
                     //  $name = ['field_1'];
                     $name = $exploded_query_param[0];
 
@@ -5371,15 +5671,12 @@ class UssdServiceController extends Controller
 
                     //  $this->url_query_params['field_1'] = 'value_1';
                     $this->url_query_params[$name] = $value;
-
                 }
-
             }
         }
 
         //  Return the URL without the query params string e.g "http://wwww.example.com"
         return $exploded_url[0];
-        
     }
 
     public function get_CRUD_Api_Method()
@@ -5485,27 +5782,27 @@ class UssdServiceController extends Controller
 
         /** Note that $this->url_query_params represents the field-value
          *  query params that have been directly extracted from the URL
-         *  e.g
-         *  
+         *  e.g.
+         *
          *  http://wwww.example.com?field_1=value_1&field_2=value_2
-         * 
+         *
          *  If we had the above url, then $this->url_query_params would
          *  be an array of the query params e.g
-         * 
+         *
          *  $this->url_query_params = [
          *      'field_1' => 'value_1',
          *      'field_2' => 'value_2'
          *  ];
-         * 
+         *
          *  Now we want to merge these query params with the compilled
-         *  query params of the $data so that we have a single 
+         *  query params of the $data so that we have a single
          *  collection.
          */
         $data = array_merge($this->url_query_params, $data);
 
-        /** Reset $this->url_query_params to an empty array. We need to
+        /* Reset $this->url_query_params to an empty array. We need to
          *  reset to an empty array so that the next CRUD EVENT does not
-         *  use these old query params for its own request. 
+         *  use these old query params for its own request.
          */
         $this->url_query_params = [];
 
@@ -6785,6 +7082,10 @@ class UssdServiceController extends Controller
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'randomStringFormat'); break;
 
+                        case 'set_to_null':
+
+                            return $this->applyFormattingRule($target_value, $formatting_rule, 'setToNullFormat'); break;
+
                         case 'custom_code':
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'customCodeFormat'); break;
@@ -7138,6 +7439,13 @@ class UssdServiceController extends Controller
          *  $target_value is equal to 1
          */
         return Str::random($target_value);
+    }
+
+    /** This method will set the target value to Null
+     */
+    public function setToNullFormat($target_value, $formatting_rule)
+    {
+        return null;
     }
 
     public function customCodeFormat($target_value, $formatting_rule)
@@ -8689,12 +8997,10 @@ class UssdServiceController extends Controller
     {
         //  Use the try/catch handles incase we run into any possible errors
         try {
-
             $dynamic_variables = [];
 
             //  If we have dynamic data
             if (count($this->getDynamicData())) {
-
                 //  Create dynamic variables
                 foreach ($this->getDynamicData() as $key => $value) {
                     /*  Foreach dataset use the iterator key to create the dynamic variable name and
@@ -8721,11 +9027,10 @@ class UssdServiceController extends Controller
 
                     //  Set an info log for the created variable and its dynamic data value
                     if ($log_dynamic_data) {
-
                         //  Get the value type wrapped in html tags
                         $dataType = $this->wrapAsSuccessHtml($this->getDataType($value));
 
-                        //  Get the variable for logs 
+                        //  Get the variable for logs
                         array_push($dynamic_variables, [
                             'name' => '$'.$key,                 //  $first_name
                             'data_type' => $dataType,           //  String
@@ -8733,16 +9038,13 @@ class UssdServiceController extends Controller
                         ]);
                     }
                 }
-
             }
 
-            if( count($dynamic_variables) ){
-
+            if (count($dynamic_variables)) {
                 //  Log the available dynamic variables
                 $this->logInfo('Getting dynamic variables', 'dynamic_variables', [
-                    'dynamic_variables' => $dynamic_variables
+                    'dynamic_variables' => $dynamic_variables,
                 ]);
-
             }
 
             //  Process dynamic content embedded within the code
@@ -9082,6 +9384,25 @@ class UssdServiceController extends Controller
 
         //  Push the latest log update
         array_push($this->logs, $data);
+
+        /** When setting logs, its important to note that some logs are very repetitive
+         *  e.g logs of variable values and data types. This information may be necessary
+         *  during real-time debugging of the application since it gives additional insights
+         *  during the application build process, however it results in a huge dataset of logs
+         *  that may even size up to 1mb. This might not be ideal information to save directly
+         *  to the database as it will require huge amounts of storage. Imagine 2 million users
+         *  dial to request a session and each session contains logs that size up to 1mb, that
+         *  would mean we would need 2 million megabytes of storage (i.e 2TB) to store all that
+         *  information for just that moment in time. To reduce this insane size, we can push
+         *  only important logs to a variable called "summarized_logs". This variable will
+         *  only get logs that are essential for storage in the database session record.
+         */
+        $excluded_datatypes = ['dynamic_variables'];
+
+        if (!in_array($data['data_type'], $excluded_datatypes)) {
+            //  Push the latest log update
+            array_push($this->summarized_logs, $data);
+        }
     }
 
     /*******************************
@@ -9242,5 +9563,49 @@ class UssdServiceController extends Controller
     public function showRedirectScreen($service_code)
     {
         return 'RED '.$service_code;
+    }
+
+    /********************************
+     *  SPECIAL DEVELOPER METHODS   *
+     *******************************/
+
+    /** Count the number of times that the user responded
+     *  to a given screen based on the provided screen id.
+     */
+    public function getTotalScreenResponses($screen_id = null)
+    {
+        //  If the screen id provided is not null and is a valid string
+        if (!is_null($screen_id) && is_string($screen_id)) {
+            //  If we have recorded screens
+            if (count($this->screen_total_responses)) {
+                //  If we have the total number of responses to the screen set
+                if (isset($this->screen_total_responses[$screen_id])) {
+                    //  Return the total number of responses to the screen
+                    return $this->screen_total_responses[$screen_id];
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    /** Count the number of times that the user responded to
+     *  a given display based on the provided display id.
+     */
+    public function getTotalDisplayResponses($display_id = null)
+    {
+        //  If the display id provided is not null and is a valid string
+        if (!is_null($display_id) && is_string($display_id)) {
+            //  If we have recorded displays
+            if (count($this->display_total_responses)) {
+                //  If we have the total number of responses to the display set
+                if (isset($this->display_total_responses[$display_id])) {
+                    //  Return the total number of responses to the display
+                    return $this->display_total_responses[$display_id];
+                }
+            }
+        }
+
+        return 0;
     }
 }

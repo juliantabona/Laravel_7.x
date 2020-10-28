@@ -16,6 +16,9 @@
             sampleCodeTemplate="ussd_service_custom_code_event_sample_code">
         </customEditor>
 
+        <!-- Code Methods -->
+        <Table :columns="columns" :data="data" class="mb-5" size="small" max-height="300"></Table>
+
     </div>
 
 </template>
@@ -50,6 +53,38 @@
         },
         data(){
             return{
+                data: [
+                    {
+                        name: '$this->logInfo(\'My message\')',
+                        desc: 'Log information on the Simulator debugger. The input is the message string.'
+                    },
+                    {
+                        name: '$this->logWarning(\'My Warning\')',
+                        desc: 'Log a warning on the Simulator debugger. The input is the warning string.'
+                    },
+                    {
+                        name: '$this->logError(\'My Error\')',
+                        desc: 'Log an error on the Simulator debugger. The input is the message error.'
+                    },
+                    {
+                        name: '$this->getTotalScreenResponses(\'screen_1603621400274\')',
+                        desc: 'Count the number of responses to the givent screen. The input is the screen id'
+                    },
+                    {
+                        name: '$this->getTotalDisplayResponses(\'display_1603621405919\')',
+                        desc: 'Count the number of responses to the givent display. The input is the display id'
+                    }
+                ],
+                columns: [
+                    {
+                        title: 'Code',
+                        key: 'name'
+                    },
+                    {
+                        title: 'Description',
+                        key: 'desc'
+                    }
+                ],
 
             }
         }

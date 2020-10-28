@@ -700,6 +700,46 @@ function ussd_service_custom_code_event_sample_code()
 
     //  $this->setProperty('first_name', 'John');
 
+    /** Get Number Of Screen Responses
+     *  
+     *  Get the total number of times that the user responded 
+     *  to a specific screen. Lets assume that the user was 
+     *  presented with a screen called "Screen 1". If they
+     *  respond to this screen, they may be linked to the
+     *  next screen called "Screen 2". 
+     * 
+     *  At this moment, we have one (1) response for "Screen 1" 
+     *  and zero (0) response for "Screen 2". If we reply to 
+     *  "Screen 2" and we are linked back to "Screen 1" then 
+     *  we have one (1) response for "Screen 1" and one (1) 
+     *  response for "Screen 2". If we reply to "Screen 1" 
+     *  again then we will have two (2) responses for 
+     *  "Screen 1" and one (1) response and so on. 
+     */
+    
+    //  $screen_id = 'screen_1603621400274';
+    //  $this->getTotalScreenResponses($screen_id);   //  e.g 2
+
+    /** Get Number Of Screen Responses
+     *  
+     *  Get the total number of times that the user responded 
+     *  to a specific display. Lets assume that the user was 
+     *  presented with a display called "Display 1". If they
+     *  respond to this display, they may be linked to the
+     *  next display called "Display 2". 
+     * 
+     *  At this moment, we have one (1) response for "Display 1" 
+     *  and zero (0) response for "Display 2". If we reply to 
+     *  "Display 2" and we are linked back to "Display 1" then 
+     *  we have one (1) response for "Display 1" and one (1) 
+     *  response for "Display 2". If we reply to "Display 1" 
+     *  again then we will have two (2) responses for 
+     *  "Display 1" and one (1) response and so on. 
+     */
+    
+    //  $display_id = 'display_1603621405919';
+    //  $this->getTotalDisplayResponses($display_id);   //  e.g 2
+
     /** Log Message
      * 
      *  Log messages as info, warnings or errors using simple

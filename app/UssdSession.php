@@ -2,14 +2,15 @@
 
 namespace App;
 
-use Illuminate\Support\Str;
 use App\Traits\CommonTraits;
 use App\Traits\UssdSessionTraits;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class UssdSession extends Model
 {
-    use UssdSessionTraits, CommonTraits;
+    use UssdSessionTraits;
+    use CommonTraits;
 
     /**
      * The table associated with the model.
@@ -17,9 +18,12 @@ class UssdSession extends Model
      * @var string
      */
     protected $casts = [
+        'user_response_durations' => 'array',
+        'session_execution_times' => 'array',
+        'estimated_record_sizes' => 'array',
         'allow_timeout' => 'boolean',       //  Return the following 1/0 as true/false
-        'fatal_error' => 'boolean',
         'reply_records' => 'array',
+        'fatal_error' => 'boolean',
         'metadata' => 'array',
         'test' => 'boolean',                //  Return the following 1/0 as true/false
         'logs' => 'array',
@@ -31,7 +35,7 @@ class UssdSession extends Model
      * @var array
      */
     protected $dates = [
-        'timeout_at'
+        'timeout_at',
     ];
 
     /**
@@ -40,19 +44,27 @@ class UssdSession extends Model
      * @var array
      */
     protected $fillable = [
-
         /*  Session Details  */
-        'session_id', 'service_code', 'type', 'msisdn', 'request_type', 
-        'text', 'reply_records', 'logs', 'test', 'status', 'fatal_error', 
-        'fatal_error_msg', 'allow_timeout', 'timeout_at',
+        'session_id', 'service_code', 'type', 'msisdn', 'request_type',
+        'text', 'reply_records', 'logs', 'test', 'status', 'fatal_error',
+        'fatal_error_msg', 'allow_timeout', 'timeout_at', 'estimated_record_sizes',
+        'total_session_duration', 'user_response_durations', 'session_execution_times',
 
         /*  Meta Data  */
         'metadata',
 
         /*  Ownership Information  */
-        'owner_id', 'owner_type'
-
+        'project_id', 'version_id'
     ];
+
+    /**
+     *  Returns the query with select columns excluded.
+     */
+    public function scopeExclude($query, $value = [])
+    {
+        $columns = array_merge($this->getFillable(), ['id', 'created_at', 'updated_at']);
+        return $query->select(array_diff($columns, (array) $value));
+    }
 
     /*
      *  Returns the owner of the ussd session
@@ -74,8 +86,7 @@ class UssdSession extends Model
     public function gethasTimedOutAttribute()
     {
         //  If the test uses a time limit
-        if( $this->allow_timeout ){
-
+        if ($this->allow_timeout) {
             //  Get the session timeout date and time (as a timestamp)
             $timeout_at = $this->timeout_at->getTimestamp();
 
@@ -87,7 +98,6 @@ class UssdSession extends Model
 
             //  Return final result
             return $result;
-
         }
 
         //  Otherwise return false
@@ -130,16 +140,16 @@ class UssdSession extends Model
 
     public function setTestAttribute($value)
     {
-        $this->attributes['test'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
+        $this->attributes['test'] = (($value == 'true' || $value === '1') ? 1 : 0);
     }
 
     public function setAllowTimeoutAttribute($value)
     {
-        $this->attributes['allow_timeout'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
+        $this->attributes['allow_timeout'] = (($value == 'true' || $value === '1') ? 1 : 0);
     }
 
     public function setFatalErrorAttribute($value)
     {
-        $this->attributes['fatal_error'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
+        $this->attributes['fatal_error'] = (($value == 'true' || $value === '1') ? 1 : 0);
     }
 }

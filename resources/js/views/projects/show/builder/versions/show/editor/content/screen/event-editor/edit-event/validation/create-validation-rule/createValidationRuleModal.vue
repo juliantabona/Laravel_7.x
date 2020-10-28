@@ -90,82 +90,82 @@
                     {
                         name: 'Only Letters',
                         type: 'only_letters',
-                        error_msg: 'Please enter letters only (spaces allowed)',
+                        error_msg: 'Please enter letters only (spaces allowed). Go back and try again',
                         comment: 'Makes sure that the target value only contains letters and nothing else e.g "abc", "ABC" and "A B C". White spaces are also allowed.'
                     },
                     {
                         name: 'Only Numbers',
                         type: 'only_numbers',
-                        error_msg: 'Please enter numbers only (spaces allowed)',
+                        error_msg: 'Please enter numbers only (spaces allowed). Go back and try again',
                         comment: 'Makes sure that the target value only contains numbers and nothing else e.g "123" and "1 2 3". White spaces are also allowed.'
                     },
                     {
                         name: 'Only Letters And Numbers',
                         type: 'only_letters_and_numbers',
-                        error_msg: 'Please enter letters and numbers only (spaces allowed)',
+                        error_msg: 'Please enter letters and numbers only (spaces allowed). Go back and try again',
                         comment: 'Makes sure that the target value only contains letters and numbers and nothing else e.g "abc123", "ABC123" and "A B C 1 2 3". White spaces are also allowed.'
                     },
                     {
                         value: '3',
                         name: 'Minimum Character Length',
                         type: 'minimum_characters',
-                        error_msg: 'Please enter 3 or more characters',
+                        error_msg: 'Please enter 3 or more characters. Go back and try again',
                         comment: 'Makes sure that the target value contains atleast the specified number of characters e.g "3" means atleast 3 characters must be provided. This means "abc" is valid while "a" and "ab" are not valid. Remember that we also count whitespaces e.g "a b" is also 3 characters.'
                     },
                     {
                         value: '3',
                         name: 'Maximum Character Length',
                         type: 'maximum_characters',
-                        error_msg: 'Please enter no more than 3 characters',
+                        error_msg: 'Please enter no more than 3 characters. Go back and try again',
                         comment: 'Makes sure that the target value contains no more than the specified number of characters e.g "3" means no more than 3 characters must be provided. This means "a", "ab" and "abc" are valid while "abcd" is not valid. Remember that we also count whitespaces e.g "a b" is also 3 characters.'
                     },
                     {
                         value: '3',
                         name: 'Equal To Character Length',
                         type: 'equal_to_characters',
-                        error_msg: 'Please enter exactly 3 characters',
+                        error_msg: 'Please enter exactly 3 characters. Go back and try again',
                         comment: 'Makes sure that the target value contains the exact specified number of characters e.g "3" exactly 3 characters must be provided. This means "a", "ab" and "abcd" are valid while "abc" is valid. Remember that we also count whitespaces e.g "a b" is also 3 characters.'
                     },
                     {
                         value: '3',
                         name: 'Equal To (=)',
                         type: 'equal_to',
-                        error_msg: 'Please enter the character 3',
+                        error_msg: 'Please enter the character 3. Go back and try again',
                         comment: 'Makes sure that the target value is an exact matching character e.g "3" means that the value provided must be exactly "3".'
                     },
                     {
                         value: '3',
                         name: 'Not Equal To',
                         type: 'not_equal_to',
-                        error_msg: 'Please enter any character except 3',
+                        error_msg: 'Please enter any character except 3. Go back and try again',
                         comment: 'Makes sure that the target value is not an exact matching character e.g "3" means that the value provided must not be "3".'
                     },
                     {
                         value: '3',
                         name: 'Less Than (<)',
                         type: 'less_than',
-                        error_msg: 'Please enter numbers less than 3',
+                        error_msg: 'Please enter numbers less than 3. Go back and try again',
                         comment: 'Makes sure that the target value is less than the given number e.g "3" means that the value provided must be strictly less than "3".'
                     },
                     {
                         value: '3',
                         name: 'Less Than Or Equal (<=)',
                         type: 'less_than_or_equal',
-                        error_msg: 'Please enter numbers less than or equal to 3',
+                        error_msg: 'Please enter numbers less than or equal to 3. Go back and try again',
                         comment: 'Makes sure that the target value is less than or equal to the given number e.g "3" means that the value provided must be less than or equal to "3".'
                     },
                     {
                         value: '3',
                         name: 'Greater Than (>)',
                         type: 'greater_than',
-                        error_msg: 'Please enter numbers greater than 3',
+                        error_msg: 'Please enter numbers greater than 3. Go back and try again',
                         comment: 'Makes sure that the target value is greater than the given number e.g "3" means that the value provided must be strictly greater than "3".'
                     },
                     { 
                         value: '3',
                         name: 'Greater Than Or Equal (>=)',
                         type: 'greater_than_or_equal',
-                        error_msg: 'Please enter numbers greater than or equal to 3',
+                        error_msg: 'Please enter numbers greater than or equal to 3. Go back and try again',
                         comment: 'Makes sure that the target value is greater than or equal to the given number e.g "3" means that the value provided must be greater than or equal to "3".'
                     },
                     {
@@ -173,7 +173,7 @@
                         value_2: '10',
                         name: 'In Between (Including Inputs)',
                         type: 'in_between_including',
-                        error_msg: 'Please enter numbers between 1 and 10 (including 1 and 10)',
+                        error_msg: 'Please enter numbers between 1 and 10 (including 1 and 10). Go back and try again',
                         comment: 'Makes sure that the target value is a number that is in-between or equal to any of the given minimum and maximum values e.g min="3" and max="5" means that the value provided must "3", "4" or "5" to be valid.'
                     },
                     {
@@ -181,37 +181,37 @@
                         value_2: '10',
                         name: 'In Between (Excluding Inputs)',
                         type: 'in_between_excluding',
-                        error_msg: 'Please enter numbers between 1 and 10 (excluding 1 and 10)',
+                        error_msg: 'Please enter numbers between 1 and 10 (excluding 1 and 10). Go back and try again',
                         comment: 'Makes sure that the target value is a number that is in-between and not equal to any of the given minimum and maximum values e.g min="3" and max="5" means that the value provided must only be "4" to be valid.'
                     },
                     {
                         name: 'Validate Email',
                         type: 'validate_email',
-                        error_msg: 'Please provide a valid email address e.g example@gmail.com',
+                        error_msg: 'Please provide a valid email address e.g example@gmail.com. Go back and try again',
                         comment: 'Makes sure that the target value contains a valid email address e.g "joe@gmail.com" or "sarah@example.com".'
                     },
                     {
                         name: 'Validate Mobile Number',
                         type: 'validate_mobile_number',
-                        error_msg: 'Please provide a valid Botswana phone number e.g "71234567"',
+                        error_msg: 'Please provide a valid Botswana phone number e.g "71234567". Go back and try again',
                         comment: 'Makes sure that the target value contains a valid phone number e.g "71234567".'
                     },
                     {
                         name: 'Validate Money',
                         type: 'validate_money',
-                        error_msg: 'Please provide a valid money format e.g "35", "35.5" or "35.50"',
+                        error_msg: 'Please provide a valid money format e.g "35", "35.5" or "35.50". Go back and try again',
                         comment: 'Makes sure that the target value contains a valid money format e.g "35", "35.5" or "35.50" are valid while "P35", "3,500", "35 .5" and "35. 5" are invalid'
                     },
                     {
                         name: 'Validate Date Format (DD/MM/YYYY)',
                         type: 'valiate_date_format',
-                        error_msg: 'Please enter a valid date (DD/MM/YYYY) e.g 02/08/2020',
+                        error_msg: 'Please enter a valid date (DD/MM/YYYY) e.g 02/08/2020. Go back and try again',
                         comment: 'Makes sure that the target value contains a valid date format (DD/MM/YYYY) e.g e.g 02/08/2020.'
                     },
                     {
                         name: 'No Spaces',
                         type: 'no_spaces',
-                        error_msg: 'Do not use spaces',
+                        error_msg: 'Do not use spaces. Go back and try again',
                         comment: 'Makes sure that the target value does not contain any white spaces e.g "abc123" is valid while "abc 123" is not valid since we have white space.'
                     },
                     {

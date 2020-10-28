@@ -19,6 +19,9 @@ class CreateSharedShortCodesTable extends Migration
             $table->string('code')->nullable();
             $table->string('country')->nullable();
 
+            /*  Indexes  */
+            $table->index('code');
+
             /*  Timestamps  */
             $table->timestamps();
             
