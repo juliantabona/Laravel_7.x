@@ -43,6 +43,7 @@ class UssdServiceController extends Controller
     public $chained_screens = [];
     public $pagination_index = 0;
     public $display_instructions;
+    public $chained_displays = [];
     public $current_user_response;
     public $url_query_params = [];
     public $fatal_error_msg = null;
@@ -64,6 +65,7 @@ class UssdServiceController extends Controller
     public $end_session_execution_time = 0;
     public $start_session_execution_time = 0;
     public $chained_screen_metadata = ['text' => ''];
+    public $chained_display_metadata = ['text' => ''];
     public $allow_dynamic_content_highlighting = true;
     public $default_no_select_options_message = 'No options available';
     public $default_technical_difficulties_message = 'Sorry, we are experiencing technical difficulties';
@@ -2469,7 +2471,7 @@ class UssdServiceController extends Controller
                              *  screens.
                              */
 
-                            /* Lets remove the current screen from the list of "chained screens". We should only be
+                            /** Lets remove the current screen from the list of "chained screens". We should only be
                              *  left with a list of previous "chained screens" without the current screen included
                              */
                             array_pop($this->chained_screens);
@@ -2879,6 +2881,19 @@ class UssdServiceController extends Controller
      */
     public function handleCurrentDisplay()
     {
+        //  Add the current display to the list of chained displays
+        array_push($this->chained_displays, array_merge($this->display, [
+            //  Add metadata related to this chained display
+            'metadata' => [
+                /** This text value will allow us to know the order of responses that lead
+                 *  up to this display. This text can then be used whenever we want to
+                 *  revisit this display in the future. This can be done using screen
+                 *  or display events such as the "Revisit Event".
+                 */
+                'text' => $this->chained_display_metadata['text'],
+            ],
+        ]));
+
         //  Reset pagination
         $this->resetPagination();
 
@@ -3006,7 +3021,7 @@ class UssdServiceController extends Controller
             //  Get the user response (Input provided by the user) for the current display screen
             $this->getCurrentScreenUserResponse();
 
-            /* Update the "text" of the chained screen metadata. This value is used to hold all
+            /** Update the "text" of the chained screen metadata. This value is used to hold all
              *  the responses leading to a given chained screen. This allows us to know the exact
              *  order of user responses that were provided in order to trigger a sequence of events
              *  leading to the given "chained screen".
@@ -3015,6 +3030,17 @@ class UssdServiceController extends Controller
                 $this->chained_screen_metadata['text'] = $this->current_user_response;
             } else {
                 $this->chained_screen_metadata['text'] .= '*'.$this->current_user_response;
+            }
+
+            /** Update the "text" of the chained display metadata. This value is used to hold all
+             *  the responses leading to a given chained display. This allows us to know the exact
+             *  order of user responses that were provided in order to trigger a sequence of events
+             *  leading to the given "chained display".
+             */
+            if (empty($this->chained_display_metadata['text'])) {
+                $this->chained_display_metadata['text'] = $this->current_user_response;
+            } else {
+                $this->chained_display_metadata['text'] .= '*'.$this->current_user_response;
             }
 
             //  Store the user response (Input provided by the user) as a named dynamic variable
@@ -5552,7 +5578,7 @@ class UssdServiceController extends Controller
             $this->logWarning('Response: '.$this->wrapAsErrorHtml($response->getBody(true)));
 
             //  Set a warning log of the response body (Usually contain)
-            $this->logWarning('Response: '.$this->wrapAsErrorHtml($response_body));
+            $this->logWarning('Response: '.$this->wrapAsErrorHtml(json_encode(json_decode($response->getBody()))));
         } else {
             //  Set a warning log that the Api call failed
             $this->logInfo('Api call to '.$this->wrapAsSuccessHtml($url).' was '.$this->wrapAsSuccessHtml('successful').'.');
@@ -6201,87 +6227,92 @@ class UssdServiceController extends Controller
                     switch ($validationType) {
                         case 'only_letters':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateOnlyLetters'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateOnlyLetters'); break;
 
                         case 'only_numbers':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateOnlyNumbers'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateOnlyNumbers'); break;
 
                         case 'only_letters_and_numbers':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateOnlyLettersAndNumbers'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateOnlyLettersAndNumbers'); break;
 
                         case 'minimum_characters':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateMinimumCharacters'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateMinimumCharacters'); break;
 
                         case 'maximum_characters':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateMaximumCharacters'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateMaximumCharacters'); break;
 
                         case 'equal_to_characters':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateEqualToCharacters'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateEqualToCharacters'); break;
 
                         case 'validate_email':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateEmail'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateEmail'); break;
 
                         case 'validate_mobile_number':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateMobileNumber'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateMobileNumber'); break;
 
                         case 'validate_money':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateMoney'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateMoney'); break;
 
                         case 'valiate_date_format':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateDateFormat'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateDateFormat'); break;
 
                         case 'equal_to':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateEqualTo'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateEqualTo'); break;
 
                         case 'not_equal_to':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateNotEqualTo'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateNotEqualTo'); break;
 
                         case 'less_than':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateLessThan'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateLessThan'); break;
 
                         case 'less_than_or_equal':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateLessThanOrEqualTo'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateLessThanOrEqualTo'); break;
 
                         case 'greater_than':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateGreaterThan'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateGreaterThan'); break;
 
                         case 'greater_than_or_equal':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateGreaterThanOrEqualTo'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateGreaterThanOrEqualTo'); break;
 
                         case 'in_between_including':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateInBetweenIncluding'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateInBetweenIncluding'); break;
 
                         case 'in_between_excluding':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateInBetweenExcluding'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateInBetweenExcluding'); break;
 
                         case 'no_spaces':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateNoSpaces'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateNoSpaces'); break;
 
                         case 'custom_regex':
 
-                            return $this->applyValidationRule($target_value, $validation_rule, 'validateCustomRegex'); break;
+                            $validationResponse = $this->applyValidationRule($target_value, $validation_rule, 'validateCustomRegex'); break;
 
                         case 'custom_code':
 
-                            return $this->applyFormattingRule($target_value, $validation_rule, 'validateCustomCode'); break;
+                            $validationResponse = $this->applyFormattingRule($target_value, $validation_rule, 'validateCustomCode'); break;
+                    }
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($validationResponse)) {
+                        return $validationResponse;
                     }
                 }
             }
@@ -7391,7 +7422,7 @@ class UssdServiceController extends Controller
             return Str::of($target_value)->replaceLast($search_value, $replace_value);
         } else {
             //  Replaces the every occurrence of a given value in a string
-            return str_replace($target_value, $search_value, $replace_value);
+            return str_replace($search_value, $replace_value, $target_value);
         }
     }
 
@@ -8070,6 +8101,7 @@ class UssdServiceController extends Controller
     public function handle_Auto_Link_Event()
     {
         if ($this->event) {
+
             //  Get the trigger type e.g "automatic", "manual"
             $trigger = $this->event['event_data']['trigger']['selected_type'];
 
@@ -8086,6 +8118,7 @@ class UssdServiceController extends Controller
              *  input matches the required value to trigger the redirect.
              */
             if ($trigger == 'manual') {
+                
                 $this->logInfo($this->wrapAsSuccessHtml('Manual Linking').' event triggered');
 
                 /********************************
@@ -8120,15 +8153,34 @@ class UssdServiceController extends Controller
 
             //  If the event has been triggered
             if ($is_triggered) {
-                //  Get the screen matching the given link and set it as the current screen
+
+                //  Get the screen matching the given link
                 $screen = $this->getScreenById($link);
 
+                //  Get the display matching the given link
+                $display = $this->getDisplayById($link);
+
+                //  If the screen to revisit was found
                 if ($screen) {
-                    $this->logInfo('Linking to '.$this->wrapAsPrimaryHtml($screen['name']));
+
+                    $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to link to the following screen: '.$this->wrapAsPrimaryHtml($screen['name']));
 
                     $this->linked_screen = $screen;
 
+                //  If the display to revisit was found
+                }elseif($display){
+
+                    $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to link to the following display: '.$this->wrapAsPrimaryHtml($display['name']));
+
+                    $this->linked_display = $display;
+
+                }
+
+                //  If we have the screen or display to link to
+                if ($screen || $display) {
+
                     if (!$this->completedLevel($this->level)) {
+
                         //  Set an automatic reply for this "Auto Link" event
                         $auto_link_reply = 'A_L';
 
@@ -8139,12 +8191,14 @@ class UssdServiceController extends Controller
                          *************************************************/
 
                         /* Add the auto link reply as a reply record.
-                         *  This reply will be recorded to originate from the "auto link" event
-                         *  and is a removable reply (Can be deleted by the user) depending on the
-                         *  given event settings
-                         */
+                        *  This reply will be recorded to originate from the "auto link" event
+                        *  and is a removable reply (Can be deleted by the user) depending on the
+                        *  given event settings
+                        */
                         $this->addReplyRecord($auto_link_reply, 'auto_link', true);
+
                     }
+
                 }
             }
         }
@@ -8247,14 +8301,26 @@ class UssdServiceController extends Controller
                     //  Get the provided link
                     $link = $this->event['event_data']['revisit_type']['screen_revisit']['link'];
 
-                    //  Get the screen matching the given link and set it as the current screen
+                    //  Get the screen matching the given link
                     $screen = $this->getScreenById($link);
+
+                    //  Get the display matching the given link
+                    $display = $this->getDisplayById($link);
 
                     //  If the screen to revisit was found
                     if ($screen) {
-                        $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to revisit '.$this->wrapAsPrimaryHtml($screen['name']));
 
-                        return $this->handleScreenRevisit($screen, $automatic_replies_text);
+                        $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to revisit the following screen: '.$this->wrapAsPrimaryHtml($screen['name']));
+
+                        return $this->handleScreenRevisit($screen, 'screen', $automatic_replies_text);
+
+                    //  If the display to revisit was found
+                    }elseif($display){
+
+                        $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to revisit following display: '.$this->wrapAsPrimaryHtml($display['name']));
+
+                        return $this->handleScreenRevisit($display, 'display', $automatic_replies_text);
+
                     }
                 } elseif ($revisit_type == 'marked_revisit') {
                 }
@@ -8328,19 +8394,22 @@ class UssdServiceController extends Controller
         return $this->handleExistingSession();
     }
 
-    public function handleScreenRevisit($screen, $automatic_replies_text = '')
+    public function handleScreenRevisit($screen_or_display, $type = null, $automatic_replies_text = '')
     {
         //  Empty the existing reply records
         $this->emptyReplyRecords();
 
-        $screen_name = '';
+        if($type == 'screen'){
+            $chained_screens_or_displays = $this->chained_screens;
+        }else if($type == 'display'){
+            $chained_screens_or_displays = $this->chained_displays;
+        }
 
-        foreach ($this->chained_screens as $chained_screen) {
-            if ($chained_screen['id'] == $screen['id']) {
-                $screen_name = $chained_screen['name'];
+        foreach ($chained_screens_or_displays as $chained_screen_or_display) {
+            if ($chained_screen_or_display['id'] == $screen_or_display['id']) {
 
-                //  Get the user responses leading on to this screen as "text"
-                $text = $chained_screen['metadata']['text'];
+                //  Get the user responses leading on to this screen/display as "text"
+                $text = $chained_screen_or_display['metadata']['text'];
 
                 //  Convert the user responses from "text" to an "array" of responses
                 $replies = $this->getUserResponses($text);
@@ -8372,19 +8441,23 @@ class UssdServiceController extends Controller
 
         //  If we have any automatic replies
         if (count($automatic_replies)) {
+
             //  Add the new automatic reply records
             foreach ($automatic_replies as $key => $automatic_reply) {
+                
                 /*************************************
                  *  CAPTURE AUTOMATIC REPLY RECORD   *
                  ************************************/
 
-                /* Get the "Automatic Reply" record and save it locally.
+                /** Get the "Automatic Reply" record and save it locally.
                  *  This reply will be recorded to originate from the "Revisit" event
                  *  and is a removable reply (Can be deleted by the user) depending on
                  *  the given event settings
                  */
                 $this->addReplyRecord($automatic_reply, 'revisit_event', true);
+            
             }
+
         }
 
         if (!empty($this->text)) {
@@ -8393,7 +8466,11 @@ class UssdServiceController extends Controller
             $service_code = $this->service_code;
         }
 
-        $this->logInfo('Revisiting '.$this->wrapAsPrimaryHtml($screen_name).': '.$this->wrapAsSuccessHtml($service_code));
+        if($type == 'screen'){
+            $this->logInfo('Revisiting screen '.$this->wrapAsPrimaryHtml($screen_or_display['name']).': '.$this->wrapAsSuccessHtml($service_code));
+        }else if($type == 'display'){
+            $this->logInfo('Revisiting display '.$this->wrapAsPrimaryHtml($screen_or_display['name']).': '.$this->wrapAsSuccessHtml($service_code));
+        }
 
         /* We need to re-run the handleExistingSession() method. This will allow us the opportunity
          *  to change the database "text" value. By updating this value we are able to alter the

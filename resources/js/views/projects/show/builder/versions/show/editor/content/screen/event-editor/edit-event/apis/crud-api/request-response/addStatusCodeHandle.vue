@@ -19,17 +19,21 @@
 
                 <Col :span="8" v-for="(statusType, key) in statusTypes" :key="key" class="mb-2">
                     
-                    <Card @click.native="addStatusCodeHandler(statusType)" :padding="0"
-                            :class="[isGoodStatus(statusType) ? 'bg-success' : 'bg-danger', 'cursor-pointer']">
+                <Poptip trigger="hover" :content="statusType.desc" word-wrap width="300" class="poptip-w-100">
+
+                    <Card @click.native="addStatusCodeHandler(statusType.code)" :padding="0"
+                            :class="[isGoodStatus(statusType.code) ? 'bg-success' : 'bg-danger', 'cursor-pointer']">
                         
                         <div style="padding: 30px;">
                             
                             <!-- Status Name -->
-                            <p class="text-center text-white">{{ statusType }}</p>
+                            <p class="text-center text-white">{{ statusType.code }}</p>
 
                         </div>
 
                     </Card>
+
+                </Poptip>
 
                 </Col>
 

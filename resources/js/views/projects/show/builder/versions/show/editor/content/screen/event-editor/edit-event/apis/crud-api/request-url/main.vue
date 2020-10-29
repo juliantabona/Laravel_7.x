@@ -24,6 +24,7 @@
                 <Select v-model="event.event_data.method" class="w-50">
                     <Option value="get">GET</Option>
                     <Option value="post">POST</Option>
+                    <Option value="put">PUT</Option>
                     <Option value="patch">PATCH</Option>
                     <Option value="delete">DELETE</Option>
                 </Select>

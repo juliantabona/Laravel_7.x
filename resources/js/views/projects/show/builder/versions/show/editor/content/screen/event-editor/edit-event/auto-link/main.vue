@@ -25,10 +25,10 @@
 
             <Col :span="firstRowSpan" class="mb-2">
 
-                <!-- Select Screen Link -->
+                <!-- Select Screen/Display Link -->
                 <screenAndDisplaySelector 
                     :link="event.event_data.link"
-                    :version="version" :screen="screen" :display="display" :showDisplays="false">
+                    :version="version" :screen="screen" :display="display" :showDisplays="true">
                 </screenAndDisplaySelector>
             
             </Col>

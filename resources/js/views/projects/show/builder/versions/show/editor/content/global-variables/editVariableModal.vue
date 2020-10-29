@@ -120,6 +120,13 @@
              */
             handleSubmit(){
 
+                console.log('this.version.builder.global_variables');
+                console.log(this.version.builder.global_variables);
+                console.log('this.index');
+                console.log(this.index);
+                console.log('this.globalVariableForm');
+                console.log(this.globalVariableForm);
+
                 this.$set(this.version.builder.global_variables, this.index, this.globalVariableForm);
                 
                 this.closeModal();
