@@ -36,7 +36,9 @@ class UssdServiceController extends Controller
     public $display_actions;
     public $display_content;
     public $existing_session;
+    public $version_id = null;
     public $reply_records = [];
+    public $api_response = null;
     public $fatal_error = false;
     public $user_account = null;
     public $summarized_logs = [];
@@ -61,6 +63,7 @@ class UssdServiceController extends Controller
     public $display_total_responses = [];
     public $user_response_durations = [];
     public $session_execution_times = [];
+    public $is_revisting_session = false;
     public $global_variables_to_save = [];
     public $end_session_execution_time = 0;
     public $start_session_execution_time = 0;
@@ -208,6 +211,9 @@ class UssdServiceController extends Controller
 
         //  Get the "TEST MODE" status
         $this->test_mode = ($this->request->get('testMode') == 'true' || $this->request->get('testMode') == '1') ? true : false;
+
+        //  Get the project "Version ID" to target
+        $this->version_id = $this->request->get('version_id');
     }
 
     /** Determine if this is a new or existing session, then execute
@@ -505,8 +511,14 @@ class UssdServiceController extends Controller
                 if ($this->project) {
                     //  If the project has an active version assigned
                     if ($this->project->active_version_id) {
-                        // Get the version
-                        $this->version = DB::table('versions')->find($this->project->active_version_id);
+                        //  If we are on Test Mode and the Version Id is provided
+                        if ($this->test_mode && $this->version_id) {
+                            //  Get the specified version to simulate
+                            $this->version = DB::table('versions')->find($this->version_id);
+                        } else {
+                            //  Get the project's currently active version
+                            $this->version = DB::table('versions')->find($this->project->active_version_id);
+                        }
 
                         //  If the version exists
                         if ($this->version) {
@@ -635,46 +647,38 @@ class UssdServiceController extends Controller
             $response = $this->handleSession();
         }
 
-        //  If we have "revisit_reply_records"
-        if (count($this->revisit_reply_records)) {
-            //  Add the "revisit_reply_records" to the "reply_records"
-            $this->reply_records = array_merge(
-                collect($this->revisit_reply_records)->toArray(),
-                collect($this->reply_records)->toArray()
-            );
+        if ($this->is_revisting_session == false) {
+            //  If we have "revisit_reply_records"
+            if (count($this->revisit_reply_records)) {
+                //  Add the "revisit_reply_records" to the "reply_records"
+                $this->reply_records = array_merge(
+                    collect($this->revisit_reply_records)->toArray(),
+                    collect($this->reply_records)->toArray()
+                );
 
-            //  Get the text which represents responses from the user
-            $this->text = $this->extractUserResponsesAsText();
+                //  Get the text which represents responses from the user
+                $this->text = $this->extractUserResponsesAsText();
+            }
+
+            //  Get the end request execution time
+            $this->end_session_execution_time = microtime(true);
+
+            //  Get the difference in seconds between the start and end request time
+            $this->session_execution_time = round(($this->end_session_execution_time - $this->start_session_execution_time), 2);
+
+            /** This will render as: $this->updateExistingSessionDatabaseRecord()
+             *  while being called within a try/catch handler.
+             */
+            $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord');
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($updateResponse)) {
+                return $updateResponse;
+            }
         }
 
-        //  Get the end request execution time
-        $this->end_session_execution_time = microtime(true);
-
-        //  Get the difference in seconds between the start and end request time
-        $this->session_execution_time = round(($this->end_session_execution_time - $this->start_session_execution_time), 2);
-
-        $session_record = [
-            'text' => $this->text,
-            'request_type' => $this->request_type,
-            'fatal_error' => $this->fatal_error,
-            'fatal_error_msg' => $this->fatal_error_msg,
-            'reply_records' => json_encode($this->reply_records),
-            'metadata' => $this->existing_session->metadata,
-            'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
-            'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
-            'project_id' => $this->project->id,
-            'version_id' => $this->version->id,
-        ];
-
-        /** This will render as: $this->updateExistingSessionDatabaseRecord($session_record)
-         *  while being called within a try/catch handler.
-         */
-        $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord', [$session_record]);
-
-        //  If we have a screen to show return the response otherwise continue
-        if ($this->shouldDisplayScreen($updateResponse)) {
-            return $updateResponse;
-        }
+        //  Reset "is_revisting_session" to false
+        $this->is_revisting_session = false;
 
         return $response;
     }
@@ -738,15 +742,6 @@ class UssdServiceController extends Controller
             //  Overide the default details with any custom data
             $data = array_merge($data, $overide_data);
 
-            //  If we have Global Variables to save
-            if (count($this->global_variables_to_save)) {
-                //  Update the values of the global variables that must be saved
-                $this->updateGlobalVariablesToSave();
-
-                //  Set the "Global Variables" on the metadata
-                Arr::set($data, 'metadata.global_variables', $this->global_variables_to_save);
-            }
-
             if (isset($data['metadata'])) {
                 $data['metadata'] = json_encode($data['metadata']);
             }
@@ -771,6 +766,18 @@ class UssdServiceController extends Controller
             //  Create the new session record
             $this->new_session = DB::table('ussd_sessions')->insert($data);
 
+            /** Create or update the Global Variables record
+             *  
+             * This will render as: $this->createOrUpdateGlobalVariablesToDatabase($data)
+             *  while being called within a try/catch handler.
+             */
+            $updateResponse = $this->tryCatch('createOrUpdateGlobalVariablesToDatabase');
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($updateResponse)) {
+                return $updateResponse;
+            }
+
             //  Return the new session record
             return $this->new_session;
         }
@@ -780,13 +787,21 @@ class UssdServiceController extends Controller
      */
     public function updateExistingSessionDatabaseRecord($data = [])
     {
-        //  If we have Global Variables to save
-        if (count($this->global_variables_to_save)) {
-            //  Update the values of the global variables that must be saved
-            $this->updateGlobalVariablesToSave();
+        if( empty($data) ){
 
-            //  Set the "Global Variables" on the metadata
-            Arr::set($data, 'metadata.global_variables', $this->global_variables_to_save);
+            $data = [
+                'text' => $this->text,
+                'request_type' => $this->request_type,
+                'fatal_error' => $this->fatal_error,
+                'fatal_error_msg' => $this->fatal_error_msg,
+                'reply_records' => json_encode($this->reply_records),
+                'metadata' => $this->existing_session->metadata,
+                'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+                'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
+                'project_id' => $this->project->id,
+                'version_id' => $this->version->id,
+            ];
+
         }
 
         //  Calculate the total session duration (The total seconds since the session started)
@@ -841,7 +856,52 @@ class UssdServiceController extends Controller
         Arr::set($data, 'estimated_record_sizes', $this->estimated_record_sizes);
 
         //  Update the session record that matches the given Session Id
-        return DB::table('ussd_sessions')->where('id', $this->existing_session->id)->update($data);
+        $updateResponse = DB::table('ussd_sessions')->where('id', $this->existing_session->id)->update($data);
+        
+        /** Create or update the Global Variables record
+         *  
+         * This will render as: $this->createOrUpdateGlobalVariablesToDatabase($data)
+         *  while being called within a try/catch handler.
+         */
+        $updateResponse = $this->tryCatch('createOrUpdateGlobalVariablesToDatabase');
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($updateResponse)) {
+            return $updateResponse;
+        }
+
+        return $updateResponse;
+
+    }
+
+    public function createOrUpdateGlobalVariablesToDatabase()
+    {
+        //  If we have Global Variables to save
+        if (count($this->global_variables_to_save)) {
+
+            //  Update the values of the global variables that must be saved for the next session
+            $this->updateGlobalVariablesToSave();
+
+            /** Create or Update Global Variables record
+             *
+             *  1. The Global Variables record must match the subscribers mobile number (MSISDN).
+             *  2. The Global Variables record must match the test/live mode of this request.
+             *  3. The Global Variables record must belong to this project.
+             */
+            return DB::table('global_variables')->updateOrInsert(
+                //  Conditions to find the record to update (If it exists)
+                ['msisdn' => $this->msisdn, 'test' => $this->test_mode, 'project_id' => $this->project->id],
+                //  Columns to update
+                [
+                    'msisdn' => $this->msisdn, 
+                    'test' => $this->test_mode, 
+                    'project_id' => $this->project->id, 
+                    'metadata' => json_encode($this->global_variables_to_save)
+                ]
+            );
+
+
+        }
     }
 
     /** Get the existing USSD session from the database
@@ -1218,65 +1278,57 @@ class UssdServiceController extends Controller
 
         $global_variables = $this->builder['global_variables'] ?? [];
 
-        /* If we have Global Variables then continue. We run this check so that if we
+        //  Reset the "global_variables_to_save" to an empty Array
+        $this->global_variables_to_save = [];
+
+        /** If we have Global Variables then continue. We run this check so that if we
          *  don't have any Global Variables, we avoid running a database query to get
          *  the previous recorded ussd session. This is so that we speed up
          *  performance.
          */
         if (count($global_variables)) {
-            /** Get the previous recorded ussd session (The second last record) matching the given MSISDN and Test status.
+
+            /** Get the Global Variables saved to the database
              *
-             *  Use the Query Builder to get the previous recorded ussd session instead of Eloquent.
-             *  This is so that we can speed up performance. The eloquent alternative is as follows:.
-             *
-             *  \App\UssdSession::where('msisdn', $this->msisdn)->where('test', $this->test_mode)->latest()->take(1)->first();
-             *
-             *  We ran tests to compare the speed of getting the records using Eloquent and Query Builder.
-             *  The results prove that using Query Builder was must faster. See below speed comparisons:
-             *
-             *  Query Builder ->  ['0.00113', '0.00113', '0.00102', '0.00097', '0.00096']
-             *  Eloquent      ->  ['0.00130', '0.00134', '0.00130', '0.00124', '0.00111']
-             *
-             *  As seen above, Query Builder performed better
+             *  1. The Global Variables record must match the subscribers mobile number (MSISDN).
+             *  2. The Global Variables record must match the test/live mode of this request.
+             *  3. The Global Variables record must belong to this project.
              */
-            $ussd_session = DB::table('ussd_sessions')->where('msisdn', $this->msisdn)->where('test', $this->test_mode)->latest()->take(1)->first();
+            $global_variables_record = DB::table('global_variables')->where([
+                'msisdn' => $this->msisdn,
+                'test' => $this->test_mode,
+                'project_id' => $this->project->id,
+            ])->latest()->first();
 
-            //  Get the last saved Global Variables from the last session otherwise default to an empty Array
-
-            /**
-             *  Note that the "$global_variables_to_save" is in the form of stdClass. This
+            /** Note that the "$global_variables_record" is in the form of stdClass. This
              *  means that we cannot access properties normally using array format. We
              *  must use the arrow notation e.g.
              *
              *  instead doing the following:
              *
-             *      $ussd_session['metadata']['global_variables']
+             *      $global_variables_record['metadata']
              *
              *  we need to do this instead:
              *
-             *      $ussd_session->metadata['global_variables']
+             *      $global_variables_record->metadata
              *
              *  otherwise we will get an error.
              *
              *  Note that the "metadata" property is a literal string which we must convert into an array.
-             *  We use the json_decode() method to convert it into an associative array. We need to first check if
-             *  we have any values so we use empty() to check. If its empty return an empty array otherwise convert
-             *  the literal string to an associative array.
-             *
-             *  Note that we need to check if the $ussd_session exists first since its possible for it not to exist.
-             *  This is because if the user is dialing the service for the first time ever, then they cannot possibly
-             *  have any previous ussd sessions that have been recorded. The current session would be recorded as their
-             *  first ever session and will then be referenced by other future sessions.
+             *  We use the json_decode() method to convert it into an associative array.
              */
-            if ($ussd_session) {
-                // Convert metadata to associative array
-                $ussd_session->metadata = json_decode($ussd_session->metadata, true);
+            if ($global_variables_record) {
 
-                //  Extract saved Global Variables from metadata
-                $global_variables_to_save = $ussd_session->metadata['global_variables'] ?? [];
+                // Convert metadata to associative array
+                $global_variables_to_save = json_decode($global_variables_record->metadata, true) ?? [];
+
             } else {
+                
+                //  Default to an empty array
                 $global_variables_to_save = [];
+
             }
+            
         }
 
         //  Foreach global variable
@@ -1369,7 +1421,7 @@ class UssdServiceController extends Controller
     public function updateGlobalVariablesToSave()
     {
         if (count($this->global_variables_to_save)) {
-            $this->logInfo('Update Global Variables to save for next session');
+            $this->logInfo('Save updated Global Variables for next session');
 
             foreach ($this->global_variables_to_save as $key => $global_variable) {
                 $name = $global_variable['name'];
@@ -2471,7 +2523,7 @@ class UssdServiceController extends Controller
                              *  screens.
                              */
 
-                            /** Lets remove the current screen from the list of "chained screens". We should only be
+                            /* Lets remove the current screen from the list of "chained screens". We should only be
                              *  left with a list of previous "chained screens" without the current screen included
                              */
                             array_pop($this->chained_screens);
@@ -2885,7 +2937,7 @@ class UssdServiceController extends Controller
         array_push($this->chained_displays, array_merge($this->display, [
             //  Add metadata related to this chained display
             'metadata' => [
-                /** This text value will allow us to know the order of responses that lead
+                /* This text value will allow us to know the order of responses that lead
                  *  up to this display. This text can then be used whenever we want to
                  *  revisit this display in the future. This can be done using screen
                  *  or display events such as the "Revisit Event".
@@ -3021,7 +3073,7 @@ class UssdServiceController extends Controller
             //  Get the user response (Input provided by the user) for the current display screen
             $this->getCurrentScreenUserResponse();
 
-            /** Update the "text" of the chained screen metadata. This value is used to hold all
+            /* Update the "text" of the chained screen metadata. This value is used to hold all
              *  the responses leading to a given chained screen. This allows us to know the exact
              *  order of user responses that were provided in order to trigger a sequence of events
              *  leading to the given "chained screen".
@@ -3032,7 +3084,7 @@ class UssdServiceController extends Controller
                 $this->chained_screen_metadata['text'] .= '*'.$this->current_user_response;
             }
 
-            /** Update the "text" of the chained display metadata. This value is used to hold all
+            /* Update the "text" of the chained display metadata. This value is used to hold all
              *  the responses leading to a given chained display. This allows us to know the exact
              *  order of user responses that were provided in order to trigger a sequence of events
              *  leading to the given "chained display".
@@ -5165,6 +5217,7 @@ class UssdServiceController extends Controller
 
             //  If we have a display we can link to
             if (!empty($this->linked_display)) {
+
                 //  Set the linked display as the current display
                 $this->display = $this->linked_display;
 
@@ -5172,7 +5225,9 @@ class UssdServiceController extends Controller
                 $this->linked_display = null;
 
                 //  Handle the current display (This means we are handling the linked display)
-                return $this->handleCurrentDisplay();
+                $response = $this->handleCurrentDisplay();
+
+                return $response;
 
             //  If we have a screen we can link to
             } elseif (!empty($this->linked_screen)) {
@@ -5311,17 +5366,53 @@ class UssdServiceController extends Controller
         if (count($events)) {
             //  Foreach event
             foreach ($events as $event) {
+
                 //  Handle the current event
                 $handleEventResponse = $this->handleEvent($event);
 
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($handleEventResponse)) {
+
                     //  Set an info log that the current event wants to display information
                     $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).', wants to display information, we are not running any other events or processes, instead we will return information to display.');
 
                     //  Return the screen information
                     return $handleEventResponse;
+
                 }
+                
+                //  Check if we can run any other events after this event has been executed
+                if( isset($event['run_next_events']) ){
+
+                    //  Set an info log that we are checking if we can run any other events after the current event
+                    $this->logInfo('Checking if we can run any other events after the '.$this->wrapAsSuccessHtml($event['name']).' event.');
+
+                    //  Get the active state value of the "run_next_events"
+                    $activeState = $this->processActiveState($event['run_next_events']);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($activeState)) {
+                        return $activeState;
+                    }
+
+                    //  If the pagination is active
+                    if ($activeState === true) {
+
+                        //  Set an info log that we can run any events after this event
+                        $this->logInfo($this->wrapAsSuccessHtml('Continue Event Execution: ').' We can run any other events after the '.$this->wrapAsSuccessHtml($event['name']).' event.');
+
+                    }else{
+
+                        //  Set an info log that we are not running anymore events after this event
+                        $this->logInfo($this->wrapAsWarningHtml('Stop Event Execution: ').' We are not running any other events after the '.$this->wrapAsSuccessHtml($event['name']).' event.');
+
+                        //  Return null to stop the foreach loop so that we don't execute any other events
+                        return null;
+
+                    }
+
+                }
+
             }
         }
     }
@@ -5390,7 +5481,7 @@ class UssdServiceController extends Controller
             return $response;
         } else {
             //  Set an info log that the current event is not activated
-            $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).' is not activated, therefore will not be executed.');
+            $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).' is '.$this->wrapAsWarningHtml('not activated').', therefore will not be executed.');
         }
     }
 
@@ -5554,14 +5645,57 @@ class UssdServiceController extends Controller
         //  Perform and return the Http request
         $response = $httpClient->request($method, $url, $request_options);
 
+        //  Get the response body as a String
+        $body = (string) $response->getBody();
+
+        //  Get the response body and convert the JSON Object to an Array e.g [ "products" => [ ... ] ]
+        //  $body = $this->convertObjectToArray(json_decode($response->getBody()));
+
+        //  Get the response body as an Associative Array
+        $array_body = json_decode($body, true);
+
+        //  Get the response body as a JSON Object
+        $json_body = json_decode($body, false);
+
         //  Get the response status code e.g "200"
-        $status_code = $response->getStatusCode();
+        $status_code = (int) $response->getStatusCode();
 
         //  Get the response status phrase e.g "OK"
         $status_phrase = $response->getReasonPhrase() ?? '';
 
-        //  Get the response body and convert the JSON Object to an Array e.g [ "products" => [ ... ] ]
-        $response_body = $this->convertObjectToArray(json_decode($response->getBody()));
+        //  Check if the is an "OK" status
+        $ok = ($status_code == 200);
+
+        //  Check if the is a "Success" response
+        $successful = ($status_code >= 200 && $status_code < 300);
+
+        //  Check if the is a "Redirect" response
+        $redirect = ($status_code >= 300 && $status_code < 400);
+
+        //  Check if the is a "Client Error" response
+        $clientError = ($status_code >= 400 && $status_code < 500);
+
+        //  Check if the is a "Server Error" response
+        $serverError = $status_code >= 500;
+
+        //  Check if the is a "Server/Client Error" response
+        $failed = ($clientError || $serverError);
+
+        //  Set the API Response Global Variable
+        $this->api_response = [
+            'body' => $body,
+            'array' => $array_body,
+            'json' => $json_body,
+            'status' => $status_code,
+            'ok' => $ok,
+            'successful' => $successful,
+            'redirect' => $redirect,
+            'clientError' => $clientError,
+            'serverError' => $serverError,
+            'failed' => $failed,
+        ];
+
+        //  END TESTING HERE
 
         //  Check if this is not a good status code e.g "100", "200", "301" e.t.c
         if (!$this->checkIfGoodStatusCode($status_code)) {
@@ -5578,7 +5712,7 @@ class UssdServiceController extends Controller
             $this->logWarning('Response: '.$this->wrapAsErrorHtml($response->getBody(true)));
 
             //  Set a warning log of the response body (Usually contain)
-            $this->logWarning('Response: '.$this->wrapAsErrorHtml(json_encode(json_decode($response->getBody()))));
+            $this->logWarning('Response: '.$this->wrapAsErrorHtml(json_encode(json_decode($body))));
         } else {
             //  Set a warning log that the Api call failed
             $this->logInfo('Api call to '.$this->wrapAsSuccessHtml($url).' was '.$this->wrapAsSuccessHtml('successful').'.');
@@ -6018,6 +6152,9 @@ class UssdServiceController extends Controller
 
                         //  Add the current response body to the dynamic data storage
                         $this->setProperty($response_reference_name, $response_body, false);
+
+                        //  Set an info log of the number of response attributes found
+                        $this->logInfo('Setting '.$this->wrapAsSuccessHtml($response_reference_name).' as response variable');
 
                         //  Foreach attribute
                         foreach ($response_attributes as $response_attribute) {
@@ -8101,7 +8238,6 @@ class UssdServiceController extends Controller
     public function handle_Auto_Link_Event()
     {
         if ($this->event) {
-
             //  Get the trigger type e.g "automatic", "manual"
             $trigger = $this->event['event_data']['trigger']['selected_type'];
 
@@ -8118,7 +8254,6 @@ class UssdServiceController extends Controller
              *  input matches the required value to trigger the redirect.
              */
             if ($trigger == 'manual') {
-                
                 $this->logInfo($this->wrapAsSuccessHtml('Manual Linking').' event triggered');
 
                 /********************************
@@ -8153,7 +8288,6 @@ class UssdServiceController extends Controller
 
             //  If the event has been triggered
             if ($is_triggered) {
-
                 //  Get the screen matching the given link
                 $screen = $this->getScreenById($link);
 
@@ -8162,25 +8296,20 @@ class UssdServiceController extends Controller
 
                 //  If the screen to revisit was found
                 if ($screen) {
-
                     $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to link to the following screen: '.$this->wrapAsPrimaryHtml($screen['name']));
 
                     $this->linked_screen = $screen;
 
                 //  If the display to revisit was found
-                }elseif($display){
-
+                } elseif ($display) {
                     $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to link to the following display: '.$this->wrapAsPrimaryHtml($display['name']));
 
                     $this->linked_display = $display;
-
                 }
 
                 //  If we have the screen or display to link to
                 if ($screen || $display) {
-
                     if (!$this->completedLevel($this->level)) {
-
                         //  Set an automatic reply for this "Auto Link" event
                         $auto_link_reply = 'A_L';
 
@@ -8196,9 +8325,7 @@ class UssdServiceController extends Controller
                         *  given event settings
                         */
                         $this->addReplyRecord($auto_link_reply, 'auto_link', true);
-
                     }
-
                 }
             }
         }
@@ -8309,18 +8436,15 @@ class UssdServiceController extends Controller
 
                     //  If the screen to revisit was found
                     if ($screen) {
-
                         $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to revisit the following screen: '.$this->wrapAsPrimaryHtml($screen['name']));
 
                         return $this->handleScreenRevisit($screen, 'screen', $automatic_replies_text);
 
                     //  If the display to revisit was found
-                    }elseif($display){
-
+                    } elseif ($display) {
                         $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to revisit following display: '.$this->wrapAsPrimaryHtml($display['name']));
 
                         return $this->handleScreenRevisit($display, 'display', $automatic_replies_text);
-
                     }
                 } elseif ($revisit_type == 'marked_revisit') {
                 }
@@ -8361,37 +8485,7 @@ class UssdServiceController extends Controller
 
         $this->logInfo('Revisiting Home: '.$this->wrapAsSuccessHtml($service_code));
 
-        /* We need to re-run the handleExistingSession() method. This will allow us the opportunity
-         *  to change the database "text" value. By updating this value we are able to alter the
-         *  current session journey to force changes such as:
-         *
-         *  - Going back
-         *  - Going back and inserting new replies
-         *  - Cancelling long Journeys
-         *  - Undoing previous actions
-         *  ...e.t.c
-        */
-
-        //  Reset the level
-        $this->level = 1;
-
-        //  Reset the user reply message
-        $this->msg = '';
-
-        //  Update the current existing session
-        $updated = $this->updateExistingSessionDatabaseRecord([
-            'text' => $this->text,
-            'reply_records' => json_encode($this->reply_records),
-        ]);
-
-        //  Empty the existing reply records (Again)
-        $this->emptyReplyRecords();
-
-        //  Fetch the existing session record from the database by force
-        $this->existing_session = $this->getExistingSessionFromDatabase($force = true);
-
-        //  Handle existing session - Re-run the handleExistingSession()
-        return $this->handleExistingSession();
+        return $this->handleRevisit();
     }
 
     public function handleScreenRevisit($screen_or_display, $type = null, $automatic_replies_text = '')
@@ -8399,15 +8493,14 @@ class UssdServiceController extends Controller
         //  Empty the existing reply records
         $this->emptyReplyRecords();
 
-        if($type == 'screen'){
+        if ($type == 'screen') {
             $chained_screens_or_displays = $this->chained_screens;
-        }else if($type == 'display'){
+        } elseif ($type == 'display') {
             $chained_screens_or_displays = $this->chained_displays;
         }
 
         foreach ($chained_screens_or_displays as $chained_screen_or_display) {
             if ($chained_screen_or_display['id'] == $screen_or_display['id']) {
-
                 //  Get the user responses leading on to this screen/display as "text"
                 $text = $chained_screen_or_display['metadata']['text'];
 
@@ -8441,23 +8534,19 @@ class UssdServiceController extends Controller
 
         //  If we have any automatic replies
         if (count($automatic_replies)) {
-
             //  Add the new automatic reply records
             foreach ($automatic_replies as $key => $automatic_reply) {
-                
                 /*************************************
                  *  CAPTURE AUTOMATIC REPLY RECORD   *
                  ************************************/
 
-                /** Get the "Automatic Reply" record and save it locally.
+                /* Get the "Automatic Reply" record and save it locally.
                  *  This reply will be recorded to originate from the "Revisit" event
                  *  and is a removable reply (Can be deleted by the user) depending on
                  *  the given event settings
                  */
                 $this->addReplyRecord($automatic_reply, 'revisit_event', true);
-            
             }
-
         }
 
         if (!empty($this->text)) {
@@ -8466,12 +8555,17 @@ class UssdServiceController extends Controller
             $service_code = $this->service_code;
         }
 
-        if($type == 'screen'){
+        if ($type == 'screen') {
             $this->logInfo('Revisiting screen '.$this->wrapAsPrimaryHtml($screen_or_display['name']).': '.$this->wrapAsSuccessHtml($service_code));
-        }else if($type == 'display'){
+        } elseif ($type == 'display') {
             $this->logInfo('Revisiting display '.$this->wrapAsPrimaryHtml($screen_or_display['name']).': '.$this->wrapAsSuccessHtml($service_code));
         }
 
+        return $this->handleRevisit();
+    }
+
+    public function handleRevisit()
+    {
         /* We need to re-run the handleExistingSession() method. This will allow us the opportunity
          *  to change the database "text" value. By updating this value we are able to alter the
          *  current session journey to force changes such as:
@@ -8489,17 +8583,53 @@ class UssdServiceController extends Controller
         //  Reset the user reply message
         $this->msg = '';
 
-        //  Update the current existing session
-        $updated = $this->updateExistingSessionDatabaseRecord([
-            'text' => $this->text,
-            'reply_records' => json_encode($this->reply_records),
-        ]);
+        /** This will render as: $this->updateExistingSessionDatabaseRecord()
+         *  while being called within a try/catch handler.
+         */
+        $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord');
 
         //  Empty the existing reply records (Again)
         $this->emptyReplyRecords();
 
         //  Fetch the existing session record from the database by force
         $this->existing_session = $this->getExistingSessionFromDatabase($force = true);
+
+        /* Make a indication that we are revisting. Its important to note that when we are revisiting,
+         *  we are actually re-handling the session again from scratch using the handleExistingSession()
+         *  method which will build the App from the ground up. The problem we have is that whenever we
+         *  have Events that are fired in order to reset some Global Variables we keep overiding these
+         *  values since everytime we build an App we request Global Variables from the previous session.
+         *  This becomes an issue since each time we revisit, we end up overiding our changed variables
+         *  with information of variables from the previous session. We need to avoid getting the previous
+         *  session variables immediately after we implement a "Revisit event". Assume that we have the
+         *  following scenerio:
+         *
+         *  We launch our App, which in-fact triggers our logic to build the App by first creating a new
+         *  session and fetching the last session Global Variables. These Global Variables will overide
+         *  the current variables (if they are allowed to do so i.e if the global variable can use data
+         *  saved in the database from previous session records). Lets say we have a variable called
+         *  "token" currently set to "1234", and "token" is a global variable that can be saved in
+         *  the database against the current session for later use by other future sessions.
+         *
+         *  Now lets say that we decide that we want to change this variable by using a "Formatting Event"
+         *  which converts it from "1234" to NULL.
+         *
+         *  After this, we then decide to use a "Revisit Event" to go back to the home screen. This updates
+         *  our current session with the new Global Variable "token" set to NULL. The "Revisit Event"
+         *  causes us to run "$this->handleExistingSession()" which forces our App to re-build.
+         *
+         *  This triggers our logic (Again) to build the App, however we do not create a new session but
+         *  instead use the existing session. We start fetching the last session Global Variables (which is
+         *  not ideal for our case). These Global Variables from the previous session then overide the
+         *  current session variables, which means we lose all the changes that we made before we fired the
+         *  "Revisit Event". This means that the value of "token" which was previously "1234" will overide
+         *  the new value which is set to NULL. As you can see we have a conflict whenever we use a "Revisit
+         *  Event" since the values of the old session overide any potentially updated values. We can use the
+         *  "is_revisting_session" variable to help us not to reload any Global Variables from the last session
+         *  but target the current session Global Variables so that this way we never lose any of our changes.
+         *
+         */
+        $this->is_revisting_session = true;
 
         //  Handle existing session - Re-run the handleExistingSession()
         return $this->handleExistingSession();

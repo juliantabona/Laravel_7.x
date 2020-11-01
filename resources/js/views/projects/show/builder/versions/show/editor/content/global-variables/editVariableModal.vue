@@ -46,7 +46,7 @@
                         content="The value will be saved to the database and made available for future sessions">
 
                     <Checkbox v-model="globalVariableForm.is_global" class="mb-2">
-                        <span class="font-weight-bold">Save to database</span>
+                        <span class="font-weight-bold">Save for next session</span>
                     </Checkbox>
 
                 </Poptip>

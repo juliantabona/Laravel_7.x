@@ -45,7 +45,8 @@ class CreateUssdSessionsTable extends Migration
 
             /*  Indexes  */
             $table->index(['session_id', 'test']);
-            $table->index(['msisdn', 'test', 'created_at']);
+            $table->index(['msisdn', 'test', 'project_id', 'created_at']);
+
 
             /*  Timestamps  */
             $table->timestamps();

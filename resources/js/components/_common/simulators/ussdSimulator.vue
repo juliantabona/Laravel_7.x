@@ -381,6 +381,7 @@
                     sessionId: this.ussd.sessionId,
                     requestType: this.ussd.requestType,
                     msisdn: this.version.builder.simulator.subscriber.phone_number,
+                    version_id: this.version.id
                     
                 };
 

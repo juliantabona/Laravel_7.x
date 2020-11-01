@@ -38,7 +38,17 @@
                         <activeStateSelector v-model="eventForm.active" class="mb-2"></activeStateSelector>
 
                     </Col>
+                    
+                    <!-- Check if the property "run_next_events" exists on the "eventForm" object -->
+                    <Col :span="firstRowSpan" v-if="eventForm.hasOwnProperty('run_next_events')">
 
+                        <!-- Show active state checkbox to run the next events after this event (Marks if this is active / inactive) -->
+                        <activeStateSelector v-model="eventForm.run_next_events" class="mb-2" 
+                            title="Run events after this event" :titleStyle="{ width: '250px' }">
+                        </activeStateSelector>
+
+                    </Col>
+                    
                     <Col :span="24">
 
                         <!-- Enter Name -->

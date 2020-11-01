@@ -306,6 +306,10 @@
                         selected_type: 'yes',
                         code: ''
                     },
+                    run_next_events: {
+                        selected_type: 'yes',
+                        code: ''
+                    },
                     event_data: {},
                     hexColor: '#CECECE'
 
