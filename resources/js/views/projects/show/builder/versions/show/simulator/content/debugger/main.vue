@@ -63,8 +63,16 @@
 
                             <!-- Selected screen/display icon -->
                             <Icon v-if="['selected_screen', 'selected_display'].includes(log.data_type)" type="ios-pin-outline" class="text-success" :size="20" /> 
+               
+                            <!-- If value is JSON -->
+                            <pre v-if="isJson(log.description)"
+                                v-html="convertToJson(log.description)" :class="[
+                                    (log.type == 'error' ? 'text-danger' : ''), 'bg-light border', 'rounded',  'p-2'
+                                ]">
+                            </pre>
 
-                            <span 
+                            <!-- If value is not JSON -->
+                            <span v-else
                                 v-html="log.description"
                                 :class="log.type == 'error' ? 'text-danger' : ''">
                             </span>
@@ -80,7 +88,23 @@
 
                                             <Poptip trigger="hover" :content="dynamic_variable.value" 
                                                     placement="right" word-wrap width="300">
+                                                
                                                 <Icon type="ios-information-circle-outline" :size="20" /> 
+
+                                                <div slot="content">
+
+                                                    <!-- If value is JSON -->
+                                                    <pre v-if="isJson(dynamic_variable.value)"
+                                                        v-html="convertToJson(dynamic_variable.value)" :class="[
+                                                            'bg-light border', 'rounded',  'p-2'
+                                                        ]">
+                                                    </pre>
+
+                                                    <!-- If value is not JSON -->
+                                                    <span v-else v-html="dynamic_variable.value"></span>
+
+                                                </div>
+
                                             </Poptip>
                                         </p>
                                     </div>
@@ -200,6 +224,38 @@
             }
         },
         methods: {
+            isJson(value) {
+
+                try {
+                    if (typeof value === "object" && value !== null) {
+                        return true;
+                    }else{
+                        var item = JSON.parse(value);
+                    }
+                } catch (e) {
+                    return false;
+                }
+
+                if (typeof item === "object" && item !== null) {
+                    return true;
+                }
+
+                return false;
+            },
+            convertToJson(value) {
+                //  If the value is already a JSON Object
+                if (typeof value === "object" && value !== null) {
+
+                    //  Return value as it is
+                    return value;
+
+                }else{
+
+                    //  Convert string to valid JSON
+                    return JSON.parse(value);
+                
+                } 
+            },
             getLogDotColor(type){
                 if( type == 'info' ){
                     return 'green';

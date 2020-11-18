@@ -27,7 +27,7 @@
                 <Alert v-if="serverErrorMessage  && !isLoading" type="warning">{{ serverErrorMessage }}</Alert>
                 <Alert v-if="serverGeneralError  && !isLoading" type="warning">{{ serverGeneralError }}</Alert>
 
-                <Form ref="projectForm" :model="projectForm" :rules="projectFormRules">
+                <Form ref="projectForm" :model="projectForm" :rules="projectFormRules" @submit.native.prevent="handleSubmit()">
                     
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">

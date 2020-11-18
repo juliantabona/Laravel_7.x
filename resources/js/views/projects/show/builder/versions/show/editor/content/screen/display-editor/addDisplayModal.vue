@@ -19,10 +19,14 @@
 
             <Alert v-if="isCloning" show-icon>Cloning "<span class="font-weight-bold">{{ display.name }}</span>"</Alert>
 
-            <!-- Form -->
-            <Form ref="displayForm" :model="displayForm" :rules="displayFormRules">
+            <!-- Form 
+                 ---
+                 NOTE: @submit.native.prevent="handleSubmit()" will preven the page from refreshing 
+                 each time that the user presses the enter key.
+            -->
+            <Form ref="displayForm" :model="displayForm" :rules="displayFormRules" @submit.native.prevent="handleSubmit()">
 
-                <!-- Enter Name -->
+                <!-- Enter Name  -->
                 <FormItem prop="name">
                     <Input  type="text" v-model="displayForm.name" placeholder="Welcome" maxlength="50" 
                             show-word-limit @keyup.enter.native="handleSubmit()" v-focus="'input'">

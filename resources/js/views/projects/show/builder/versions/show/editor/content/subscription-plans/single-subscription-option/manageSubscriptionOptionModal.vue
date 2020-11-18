@@ -19,7 +19,7 @@
             <Alert v-else-if="isCloning" show-icon>Cloning "<span class="font-weight-bold">{{ subscriptionOption.name }}</span>"</Alert>
 
             <!-- Form -->
-            <Form ref="subscriptionOptionForm" :model="subscriptionOptionForm" :rules="subscriptionOptionFormRules">
+            <Form ref="subscriptionOptionForm" :model="subscriptionOptionForm" :rules="subscriptionOptionFormRules" @submit.native.prevent="handleSubmit()">
 
                 <Row :gutter="12" class="mb-2">
 

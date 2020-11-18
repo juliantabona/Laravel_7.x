@@ -1,7 +1,7 @@
 <template>
 
     <!-- Form -->
-    <Form ref="commentForm" :model="commentForm" :rules="commentFormRules" class="mx-0 my-0">
+    <Form ref="commentForm" :model="commentForm" :rules="commentFormRules" class="mx-0 my-0" @submit.native.prevent="handleSubmit()">
 
         <span class="d-block font-weight-bold mb-1">Comment:</span>
 

@@ -9,7 +9,7 @@
         </span>
 
         <!-- Form -->
-        <Form ref="referenceForm" :model="referenceForm" :rules="referenceFormRules" class="w-100 mb-0">
+        <Form ref="referenceForm" :model="referenceForm" :rules="referenceFormRules" class="w-100 mb-0" @submit.native.prevent="handleSubmit()">
 
             <!-- Reference Name Input -->
             <FormItem prop="name" class="mb-0">

@@ -15,7 +15,7 @@
             @on-visible-change="detectClose">
 
             <!-- Form -->
-            <Form ref="referenceForm" :model="referenceForm" :rules="referenceFormRules">
+            <Form ref="referenceForm" :model="referenceForm" :rules="referenceFormRules" @submit.native.prevent="handleSubmit()">
 
                 <!-- Enter Name -->
                 <FormItem prop="name">

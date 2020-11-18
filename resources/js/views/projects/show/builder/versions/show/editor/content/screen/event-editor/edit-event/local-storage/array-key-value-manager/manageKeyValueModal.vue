@@ -20,7 +20,7 @@
             <Alert v-else-if="isCloning" show-icon>Cloning</Alert>
 
             <!-- Form -->
-            <Form ref="keyValueForm" class="mb-4" :model="keyValueForm" :rules="keyValueFormRules">
+            <Form ref="keyValueForm" class="mb-4" :model="keyValueForm" :rules="keyValueFormRules" @submit.native.prevent="handleSubmit()">
 
                 <Row :gutter="12">
 

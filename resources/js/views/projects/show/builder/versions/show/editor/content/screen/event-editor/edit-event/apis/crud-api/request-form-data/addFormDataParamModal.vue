@@ -15,7 +15,7 @@
             @on-visible-change="detectClose">
 
             <!-- Form -->
-            <Form ref="formDataParamForm" :model="formDataParamForm" :rules="formDataParamFormRules">
+            <Form ref="formDataParamForm" :model="formDataParamForm" :rules="formDataParamFormRules" @submit.native.prevent="handleSubmit()">
 
                 <!-- Enter Name -->
                 <FormItem prop="name">

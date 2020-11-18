@@ -20,7 +20,7 @@
             <Alert v-else-if="isCloning" show-icon>Cloning</Alert>
 
             <!-- Form -->
-            <Form ref="arrayValueForm" class="mb-4" :model="arrayValueForm" :rules="arrayValueFormRules">
+            <Form ref="arrayValueForm" class="mb-4" :model="arrayValueForm" :rules="arrayValueFormRules" @submit.native.prevent="handleSubmit()">
 
                 <Row :gutter="12">
 

@@ -20,6 +20,20 @@
 
                     <lineChart :chartdata="chart.chartData" :options="chartOptions" :style="chartStyles"/>
 
+                    <Card v-if="chart.title == 'Reply Durations'" title="Summary">
+                        
+                        <span v-if="averageUserResponseDuration" class="d-block mb-2">
+                            Average Response: <span :class="responseDurationClasses(maxUserResponseDuration)">{{ averageUserResponseDuration + (averageUserResponseDuration == 1 ? ' Second' : ' Seconds') }}</span>
+                        </span>
+                        <span v-if="minUserResponseDuration" class="d-block mb-2">
+                            Fastest Response: <span :class="responseDurationClasses(maxUserResponseDuration)">{{ minUserResponseDuration + (minUserResponseDuration == 1 ? ' Second' : ' Seconds') }}</span>
+                        </span>
+                        <span v-if="maxUserResponseDuration" class="d-block">
+                            Slowest Response: <span :class="responseDurationClasses(maxUserResponseDuration)">{{ maxUserResponseDuration + (maxUserResponseDuration == 1 ? ' Second' : ' Seconds') }}</span>
+                        </span>
+
+                    </Card>
+
                 </Card>
 
             </Col>
@@ -94,6 +108,15 @@
         computed: {
             stats(){
                 return ((this.ussdSimulatorResponse || {}).stats || {});
+            },
+            minUserResponseDuration(){
+                return ((this.stats || {}).user_response_durations || {}).min;
+            },
+            maxUserResponseDuration(){
+                return ((this.stats || {}).user_response_durations || {}).max;
+            },
+            averageUserResponseDuration(){
+                return ((this.stats || {}).user_response_durations || {}).average;
             }
         },
         methods: {   
@@ -141,7 +164,7 @@
                         title: 'Reply Durations',
                         desc: 'This measures the duration between the user replies in seconds. If the duration is short, then this means that the user is replying fast, whereas if the duration is long then the user is replying slowly. Each response must not exceed 120 seconds otherwise the user will risk being timed out from their current session.',
                         chartData: {
-                            labels: ((this.stats || {}).user_response_durations || []).map( (data) => {
+                            labels: (((this.stats || {}).user_response_durations || {}).records || []).map( (data) => {
                                     return data.replied_at
                                 }),
                             datasets: [
@@ -149,7 +172,7 @@
                                     label: 'Reply Durations (In Seconds)',
                                     borderColor: '#61d800',
                                     fill: false,              // Remove background color below the line
-                                    data: ((this.stats || {}).user_response_durations || []).map( (data) => {
+                                    data: (((this.stats || {}).user_response_durations || {}).records || []).map( (data) => {
                                         return data.duration
                                     })
                                 }
@@ -169,6 +192,9 @@
                     }
                     */
                 ]
+            },
+            responseDurationClasses(seconds){
+                return [(seconds >= 120 ? 'text-danger' : 'text-success'),'font-weight-bold mb-2'];
             }
         }
     }

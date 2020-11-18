@@ -15,7 +15,7 @@
             @on-visible-change="detectClose">
 
             <!-- Form -->
-            <Form ref="queryParamForm" :model="queryParamForm" :rules="queryParamFormRules">
+            <Form ref="queryParamForm" :model="queryParamForm" :rules="queryParamFormRules" @submit.native.prevent="handleSubmit()">
 
                 <!-- Enter Name -->
                 <FormItem prop="name">

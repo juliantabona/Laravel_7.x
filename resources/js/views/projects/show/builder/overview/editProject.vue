@@ -18,7 +18,7 @@
                 <!-- Error Message Alert -->
                 <Alert v-if="serverErrorMessage && !isSavingChanges" type="warning">{{ serverErrorMessage }}</Alert>
 
-                <Form ref="projectForm" :model="projectForm" :rules="projectFormRules">
+                <Form ref="projectForm" :model="projectForm" :rules="projectFormRules" @submit.native.prevent="handleSubmit()">
 
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">

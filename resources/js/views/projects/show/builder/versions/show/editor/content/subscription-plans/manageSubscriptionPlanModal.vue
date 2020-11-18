@@ -23,7 +23,7 @@
             <Alert v-else-if="isCloning" show-icon>Cloning "<span class="font-weight-bold">{{ subscriptionPlan.name }}</span>"</Alert>
 
             <!-- Form -->
-            <Form ref="subscriptionPlanForm" :model="subscriptionPlanForm" :rules="subscriptionPlanFormRules">
+            <Form ref="subscriptionPlanForm" :model="subscriptionPlanForm" :rules="subscriptionPlanFormRules" @submit.native.prevent="handleSubmit()">
 
                 <!-- Enter Name -->
                 <FormItem prop="name">

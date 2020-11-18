@@ -20,7 +20,7 @@
             <Alert v-else-if="isCloning" show-icon>Cloning</Alert>
 
             <!-- Form -->
-            <Form ref="staticOptionForm" :model="staticOptionForm" :rules="staticOptionFormRules">
+            <Form ref="staticOptionForm" :model="staticOptionForm" :rules="staticOptionFormRules" @submit.native.prevent="handleSubmit()">
                                 
                 <!-- Show active state checkbox (Marks if this is active / inactive) -->
                 <activeStateSelector v-model="staticOptionForm.active" class="mb-2"></activeStateSelector>

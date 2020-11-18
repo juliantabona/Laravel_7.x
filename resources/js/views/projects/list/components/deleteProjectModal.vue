@@ -18,7 +18,7 @@
             <Loader v-if="isDeleting" class="mt-2">Deleting project...</Loader>
 
             <!-- Form -->
-            <Form v-else ref="projectForm" :model="projectForm" :rules="projectFormRules">
+            <Form v-else ref="projectForm" :model="projectForm" :rules="projectFormRules" @submit.native.prevent="handleSubmit()">
 
                 <Alert type="warning">
                     Delete <span class="font-weight-bold">{{ project.name }}</span>

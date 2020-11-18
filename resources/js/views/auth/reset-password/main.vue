@@ -12,7 +12,7 @@
                 <!-- Error Message Alert -->
                 <Alert v-if="serverErrorMessage && !isLoading" type="warning">{{ serverErrorMessage }}</Alert>
 
-                <Form ref="passwordResetForm" :model="passwordResetForm" :rules="passwordResetFormRules">
+                <Form ref="passwordResetForm" :model="passwordResetForm" :rules="passwordResetFormRules" @submit.native.prevent="handleSubmit()">
                                        
                     <!-- Enter Password -->
                     <FormItem prop="password" :error="serverPasswordError">

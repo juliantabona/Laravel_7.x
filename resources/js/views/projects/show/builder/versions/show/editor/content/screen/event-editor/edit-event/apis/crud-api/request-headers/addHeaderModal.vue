@@ -15,7 +15,7 @@
             @on-visible-change="detectClose">
 
             <!-- Form -->
-            <Form ref="headerForm" :model="headerForm" :rules="headerFormRules">
+            <Form ref="headerForm" :model="headerForm" :rules="headerFormRules" @submit.native.prevent="handleSubmit()">
 
                 <!-- Enter Name -->
                 <FormItem prop="name">

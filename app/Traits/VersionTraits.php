@@ -2,7 +2,6 @@
 
 namespace App\Traits;
 
-use Illuminate\Validation\ValidationException;
 use App\Http\Resources\Version as VersionResource;
 use App\Http\Resources\Versions as VersionsResource;
 
@@ -18,52 +17,49 @@ trait VersionTraits
      */
     public function convertToApiFormat($versions = null)
     {
-        if( $versions ){
-                
+        if ($versions) {
             //  Transform the multiple instances
             return new VersionsResource($versions);
-
-        }else{
-            
+        } else {
             //  Transform the single instance
             return new VersionResource($this);
-
         }
     }
 
     public function getBuilderTemplate()
     {
         return [
-            "screens" => [], 
-            "markers" => [], 
-            "global_variables" => [], 
-            "subscription_plans" => [], 
-            "conditional_screens" => [
+            'screens' => [],
+            'markers' => [],
+            'global_events' => [],
+            'global_variables' => [],
+            'subscription_plans' => [],
+            'conditional_screens' => [
                 'active' => false,
-                'code' => null
-            ], 
-            "simulator" => [
-                "debugger" => [
-                    "return_logs" => true, 
-                    "return_log_types" => [
-                        "info", "warning", "error" 
-                    ] 
-                ], 
-                "subscriber" => [
-                        "phone_number" => "2677747908" 
-                    ], 
-                "settings" => [
-                    "allow_timeouts" => true, 
-                    "timeout_limit_in_seconds" => 120, 
-                    "timeout_message" => "TIMEOUT: You have exceeded your time limit." 
-                ] 
-            ] 
-         ]; 
+                'code' => null,
+            ],
+            'simulator' => [
+                'debugger' => [
+                    'return_logs' => true,
+                    'return_log_types' => [
+                        'info', 'warning', 'error',
+                    ],
+                ],
+                'subscriber' => [
+                        'phone_number' => '2677747908',
+                    ],
+                'settings' => [
+                    'allow_timeouts' => true,
+                    'timeout_limit_in_seconds' => 120,
+                    'timeout_message' => 'TIMEOUT: You have exceeded your time limit.',
+                ],
+            ],
+         ];
     }
 
     /*  This method creates a new Version
      */
-    public function initiateCreate( $request )
+    public function initiateCreate($request)
     {
         $this->request = $request;
 
@@ -72,11 +68,10 @@ trait VersionTraits
             'project_id' => $this->request->input('project_id'),
             'number' => $this->request->input('number') ?? 1.00,
             'description' => $this->request->input('description') ?? null,
-            'builder' => $this->request->input('builder') ?? $this->getBuilderTemplate()
+            'builder' => $this->request->input('builder') ?? $this->getBuilderTemplate(),
         ];
 
         try {
-
             /*
              *  Create new a version, then retrieve a fresh instance
              */
@@ -84,16 +79,11 @@ trait VersionTraits
 
             //  If the version was created successfully
             if ($this->version) {
-
                 return $this->version->fresh();
-
             }
-
         } catch (\Exception $e) {
-
             //  Throw a validation error
             throw $e;
-            
         }
     }
 }

@@ -10,7 +10,7 @@
                 <!-- Error Message Alert -->
                 <Alert v-if="serverErrorMessage && !isLoading" type="warning">{{ serverErrorMessage }}</Alert>
 
-                <Form ref="registerForm" :model="registerForm" :rules="registerFormRules">
+                <Form ref="registerForm" :model="registerForm" :rules="registerFormRules" @submit.native.prevent="handleSubmit()">
                     
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">

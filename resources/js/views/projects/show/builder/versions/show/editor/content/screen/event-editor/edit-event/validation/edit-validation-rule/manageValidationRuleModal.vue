@@ -20,7 +20,7 @@
             <Alert v-else-if="isCloning" show-icon>Cloning</Alert>
             
             <!-- Form -->
-            <Form ref="validationRuleForm" class="mb-4" :model="validationRuleForm" :rules="validationRuleFormRules">
+            <Form ref="validationRuleForm" class="mb-4" :model="validationRuleForm" :rules="validationRuleFormRules" @submit.native.prevent="handleSubmit()">
 
                 <Row :gutter="12">
 

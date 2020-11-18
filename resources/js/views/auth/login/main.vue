@@ -10,7 +10,7 @@
                 <!-- Error Message Alert -->
                 <Alert v-if="serverErrorMessage && !isLoading" type="warning">{{ serverErrorMessage }}</Alert>
 
-                <Form ref="loginForm" :model="loginForm" :rules="loginFormRules">
+                <Form ref="loginForm" :model="loginForm" :rules="loginFormRules" @submit.native.prevent="handleSubmit()">
                     
                     <!-- Enter Email -->
                     <FormItem prop="email" :error="serverEmailError">

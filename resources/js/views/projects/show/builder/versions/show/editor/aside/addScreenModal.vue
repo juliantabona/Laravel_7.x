@@ -20,7 +20,7 @@
             <Alert v-if="isCloning" show-icon>Cloning "<span class="font-weight-bold">{{ screen.name }}</span>"</Alert>
 
             <!-- Form -->
-            <Form ref="screenForm" :model="screenForm" :rules="screenFormRules">
+            <Form ref="screenForm" :model="screenForm" :rules="screenFormRules" @submit.native.prevent="handleSubmit()">
 
                 <!-- Enter Name -->
                 <FormItem prop="name">

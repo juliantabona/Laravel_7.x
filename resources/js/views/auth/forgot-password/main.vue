@@ -15,7 +15,7 @@
                 <!-- Success Message Alert -->
                 <Alert v-if="serverSuccessMessage && !isLoading" type="success">{{ serverSuccessMessage }}</Alert>
 
-                <Form ref="passwordResetForm" :model="passwordResetForm" :rules="passwordResetFormRules">
+                <Form ref="passwordResetForm" :model="passwordResetForm" :rules="passwordResetFormRules" @submit.native.prevent="handleSubmit()">
                     
                     <!-- Enter Email -->
                     <FormItem prop="email" :error="serverEmailError">

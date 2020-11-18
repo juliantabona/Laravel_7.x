@@ -813,14 +813,31 @@ class UssdServiceController extends Controller
         //  Calculate the current user response duration (The total seconds since the user's last response)
         $user_response_duration = \Carbon\Carbon::now()->diffInSeconds($this->existing_session->updated_at, true);
 
-        //  Get the previously recorded user response duration's otherwise default to an empty array
-        $this->user_response_durations = is_null($this->existing_session->user_response_durations) ? [] : $this->existing_session->user_response_durations;
+        if( !empty( $this->existing_session->user_response_durations )  ){
+
+            //  Get the previously recorded user response duration's otherwise default to an empty array
+            $records = $this->existing_session->user_response_durations['records'] ?? [];
+
+            //  Set the previously recorded records to the current user response durations
+            Arr::set($this->user_response_durations, 'records', $records);
+
+        }else{
+
+            //  Set the records to an empty array
+            Arr::set($this->user_response_durations, 'records', []);
+
+        }
 
         //  Add the new user response duration
-        array_push($this->user_response_durations, [
+        array_push($this->user_response_durations['records'], [
             'duration' => $user_response_duration,
             'replied_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
         ]);
+        
+        //  Set the previously recorded records to the current user response durations
+        Arr::set($this->user_response_durations, 'average', round(collect($this->user_response_durations['records'])->average('duration'), 1));
+        Arr::set($this->user_response_durations, 'max', round(collect($this->user_response_durations['records'])->max('duration'), 1));
+        Arr::set($this->user_response_durations, 'min', round(collect($this->user_response_durations['records'])->min('duration'), 1));
 
         //  Set the user response duration's
         Arr::set($data, 'user_response_durations', $this->user_response_durations);

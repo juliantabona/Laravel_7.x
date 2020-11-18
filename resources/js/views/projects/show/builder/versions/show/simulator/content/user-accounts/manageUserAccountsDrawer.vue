@@ -20,7 +20,7 @@
 
             <Alert v-if="serverErrorMessage && !isCreating && !isSavingChanges" type="warning">{{ serverErrorMessage }}</Alert>
 
-            <Form ref="userAccountForm" :model="userAccountForm" :rules="userAccountFormRules">
+            <Form ref="userAccountForm" :model="userAccountForm" :rules="userAccountFormRules" @submit.native.prevent="handleSubmit()">
 
                 <!-- Enter First Name -->
                 <FormItem label="First Name" prop="first_name" class="mb-3">
