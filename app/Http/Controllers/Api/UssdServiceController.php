@@ -27,6 +27,7 @@ class UssdServiceController extends Controller
     public $level = 1;
     public $test_mode;
     public $session_id;
+    public $project_id;
     public $event_type;
     public $new_session;
     public $service_code;
@@ -435,39 +436,59 @@ class UssdServiceController extends Controller
          *  As seen above, Query Builder performed better
          */
 
-        //  Get the Shared Short Codes
-        $shared_short_code_records = DB::table('shared_short_codes')->pluck('code');
+        //  Get the Short Codes & Linked Project ID's
+        $short_code_records = DB::table('short_codes')->select('shared_code', 'dedicated_code', 'project_id')->get();
 
         //  Convert result to an Array e.g ['*200*1*2#','*321#', '*789*1#']
-        $shared_short_code_records = collect($shared_short_code_records)->toArray();
+        $short_code_records = collect($short_code_records)->toArray();
 
-        /** Sort by the Short Code length e.g ['*200*1*2#', '*789*1#', '*321#']
+        /** Sort by the Shared Short Code length e.g ['*200*1*2#', '*789*1#', '*321#']
          *  We want to sort the shortcodes starting with the longest shortcode
          *  until the shortest shortcode. 
          */
-        $shared_short_codes = array_values(array_reverse(Arr::sort($shared_short_code_records, function ($short_code) {
-            return strlen($short_code);
+        $shared_short_code_records = array_filter($short_code_records, function ($short_code_record) {
+            return ($short_code_record->shared_code != '') && !is_null($short_code_record->shared_code);
+        });
+
+        $shared_short_code_records = array_values(array_reverse(Arr::sort($shared_short_code_records, function ($shared_short_code_record) {
+            return strlen($shared_short_code_record->shared_code);
         })));
 
-        // Foreach Shared Service Code e.g *321#, *432#, *543#
-        foreach($shared_short_codes as $key => $shared_service_code){
+        /** Sort by the dedicated Short Code length e.g ['*200*1*2#', '*789*1#', '*321#']
+         *  We want to sort the shortcodes starting with the longest shortcode
+         *  until the shortest shortcode. 
+         */
+        $dedicated_short_code_records = array_filter($short_code_records, function ($short_code_record) {
+            return ($short_code_record->dedicated_code != '') && !is_null($short_code_record->dedicated_code);
+        });
+        
+        $dedicated_short_code_records = array_values(array_reverse(Arr::sort($dedicated_short_code_records, function ($dedicated_short_code_record) {
+            return strlen($dedicated_short_code_record->dedicated_code);
+        })));
 
-            //  Remove the "*" and "#" symbol from the Shared Service Code of the Main Ussd Service Code e.g from "*321#" to "*321"
-            $shared_service_code = str_replace('#', '', $shared_service_code);
+        /********************************
+         *   HANDLE DEDICATED CODES     *
+         *******************************/
 
-            //  If the shared shortcode is the same at the begining with the dialed shortcode
-            if(preg_match('/^'.preg_quote($shared_service_code).'/', $this->msg)){
+        // Foreach Dedicated Code e.g *321#, *432#, *543#
+        foreach($dedicated_short_code_records as $key => $dedicated_short_code_record){
 
-                /** Get the remaining message after removing the portion of the Shared Short Code
+            //  Remove the "*" and "#" symbol from the Dedicated Code of the Main Ussd Service Code e.g from "*321#" to "*321"
+            $dedicated_code = str_replace('#', '', $dedicated_short_code_record->dedicated_code);
+
+            //  If the dedicated shortcode is the same at the begining with the dialed shortcode
+            if(preg_match('/^'.preg_quote($dedicated_code).'/', $this->msg)){
+
+                /** Get the remaining message after removing the portion of the Dedicated Short Code
                  *  from the code dialed by the user
                  * 
                  *  User Dialed         *321*1*2#
-                 *  Shared Short Code   *321
+                 *  Dedicated Short Code   *321*1
                  *  -----------------------------
-                 *  Remainder              *1*2#
+                 *  Remainder                 *2#
                  *  -----------------------------
                  */
-                $remaining_message = preg_replace('/^'.preg_quote($shared_service_code).'/', '', $this->msg);
+                $remaining_message = preg_replace('/^'.preg_quote($dedicated_code).'/', '', $this->msg);
 
                 //  Replace "#" to "*"
                 $remaining_message = str_replace('#', '*', $remaining_message);
@@ -475,58 +496,98 @@ class UssdServiceController extends Controller
                 /** Explode into an array using the "*" symbol. If the remaining message is "*1*2#",
                  *  then our values will resolve to the following result:
                  *  
-                 *  $values = ['', '1', '', 2, ''];
+                 *  $values = ['', '2', ''];
                  */
                 $values = explode('*', $remaining_message);
 
                 /** Remove empty values and reset the numerical array keys. This will resolve the above
                  *  array to the following result
                  * 
-                 *  $values = ['1', 2];
+                 *  $values = ['2'];
                  * 
-                 *  In this case "1" represents the unique project identifier of the shared short code.
-                 *  The "2" represents the first response by the user to that project. 
+                 *  In this case "2" represents the first response by the user to that project. 
                  */
                 $values = array_values(array_filter($values, function ($value) {
                     return $value !== '';
                 }));
 
-                /** If we still have some values, then we can get the first value from the array. This value 
-                 *  represents the unique project identifier e.g If the first value we retrieve is "1", then 
-                 *  we will resolve to searching for a project that matches "*321*1#" as the service code.
-                 *  If the first value was "2", then we would resolve to searching for a project that 
-                 *  matches "*321*2#" as its unique service code. 
-                 * 
-                 *  If we don't have any values left, then this means that we don't have the identifier
-                 *  that we require to locate the project. This means that we cannot set the proper
-                 *  service code.
-                 */
-                if( count($values) ){
+                //  Use the Dedicated Code as the Ussd Service Code e.g *321*45#
+                $this->service_code = $dedicated_code.'#';
 
-                    //  Remove the first value and assign it to the "$project_identifier" of the shared short code
-                    $project_identifier = array_shift($values);
+                //  Indicate that this is a Dedicated Service Code
+                $this->ussd_service_code_type = 'dedicated';
 
-                    //  Use the Shared Service Code and the Project Identifier as the Ussd Service Code e.g *321*45#
-                    $this->service_code = $shared_service_code.'*'.$project_identifier.'#';
+                //  Get the project id
+                $this->project_id = $dedicated_short_code_record->project_id;
+
+                //  Break out of the loop
+                break 1;
+
+            }
+        }
+
+        /********************************
+         *   HANDLE SHARED CODES        *
+         *******************************/
+
+        //  If the current Ussd Service Code is not a Shared Service Code (i.e This is a dedicated Service Code)
+        if (!$this->ussd_service_code_type) {
+
+            // Foreach Shared Service Code e.g *321#, *432#, *543#
+            foreach($shared_short_code_records as $key => $shared_short_code_record){
+
+                //  Remove the "*" and "#" symbol from the Shared Service Code of the Main Ussd Service Code e.g from "*321#" to "*321"
+                $shared_short_code = str_replace('#', '', $shared_short_code_record->shared_code);
+
+                //  If the shared shortcode is the same at the begining with the dialed shortcode
+                if(preg_match('/^'.preg_quote($shared_short_code).'/', $this->msg)){
+
+                    /** Get the remaining message after removing the portion of the Shared Short Code
+                     *  from the code dialed by the user
+                     * 
+                     *  User Dialed         *321*1*2#
+                     *  Shared Short Code   *321*1
+                     *  -----------------------------
+                     *  Remainder                 *2#
+                     *  -----------------------------
+                     */
+                    $remaining_message = preg_replace('/^'.preg_quote($shared_short_code).'/', '', $this->msg);
+
+                    //  Replace "#" to "*"
+                    $remaining_message = str_replace('#', '*', $remaining_message);
+
+                    /** Explode into an array using the "*" symbol. If the remaining message is "*1*2#",
+                     *  then our values will resolve to the following result:
+                     *  
+                     *  $values = ['', '2', ''];
+                     */
+                    $values = explode('*', $remaining_message);
+
+                    /** Remove empty values and reset the numerical array keys. This will resolve the above
+                     *  array to the following result
+                     * 
+                     *  $values = ['2'];
+                     * 
+                     *  In this case "2" represents the first response by the user to that project. 
+                     */
+                    $values = array_values(array_filter($values, function ($value) {
+                        return $value !== '';
+                    }));
+
+                    //  Use the Shared Service Code as the Ussd Service Code e.g *321*45#
+                    $this->service_code = $shared_short_code.'#';
 
                     //  Indicate that this is a Shared Service Code
                     $this->ussd_service_code_type = 'shared';
+
+                    //  Get the project id
+                    $this->project_id = $shared_short_code_record->project_id;
 
                     //  Break out of the loop
                     break 1;
 
                 }
             }
-        }
-
-        //  If the current Ussd Service Code is not a Shared Service Code (i.e This is a dedicated Service Code)
-        if (!$this->ussd_service_code_type) {
-
-            //  Use the first value as the service code e.g *150#
-            $this->service_code = '*'.$first_number.'#';
-
-            //  Indicate that this is a Dedicated Service Code
-            $this->ussd_service_code_type = 'dedicated';
         
         }
 
@@ -556,71 +617,68 @@ class UssdServiceController extends Controller
     {
         //  If we don't have the builder
         if (empty($this->builder)) {
-            $ussd_service_code = null;
 
-            //  If this is a Shared Ussd Service Code
-            if ($this->ussd_service_code_type == 'shared') {
-                //  Get the Ussd Service Code Record from the database
-                $ussd_service_code = DB::table('short_codes')->where('shared_code', $this->service_code)->first();
+            //  If we have the project id
+            if ($this->project_id) {
 
-            //  If this is a Dedicated Ussd Service Code
-            } elseif ($this->ussd_service_code_type == 'dedicated') {
-                //  Get the Ussd Service Code Record from the database
-                $ussd_service_code = DB::table('short_codes')->where('dedicated_code', $this->service_code)->first();
-            }
-
-            //  If we have a matching Ussd Service Code
-            if ($ussd_service_code) {
-                /* Get the project linked to this USSD Service Code.
-                 *
-                 *  Note that if the above code was as follows:
-                 *
-                 *  $ussd_service_code = \App\ShortCode::where('shared_code', $this->service_code)->first();
-                 *
-                 *  or
-                 *
-                 *  $ussd_service_code = \App\ShortCode::where('dedicated_code', $this->service_code)->first();
-                 *
-                 *  then we could have easily accessed the linked project as follows:
-                 *
-                 *  $ussd_service_code->project;
-                 *
-                 *  However this way of getting the project is very much slower and will eventually cost us more
-                 *  on performance as requests increase. Therefore it is better to use Query Builder as often
-                 *  as possible to have better performance benifits.
-                 */
-                $this->project = DB::table('projects')->find($ussd_service_code->project_id);
-
+                //  Get the project linked to this project id
+                $this->project = DB::table('projects')->find($this->project_id);
+             
                 //  If the project exists
                 if ($this->project) {
+
                     //  If the project has an active version assigned
                     if ($this->project->active_version_id) {
+
                         //  If we are on Test Mode and the Version Id is provided
                         if ($this->test_mode && $this->version_id) {
+
                             //  Get the specified version to simulate
                             $this->version = DB::table('versions')->find($this->version_id);
+
                         } else {
+
                             //  Get the project's currently active version
                             $this->version = DB::table('versions')->find($this->project->active_version_id);
+
                         }
 
                         //  If the version exists
                         if ($this->version) {
+
                             /* Get the version builder.
                              *
                              *  Note that the builder property is a literal string which we must convert into an array.
                              *  We use the json_decode() method to convert it into an associative array.
                              */
                             $this->builder = json_decode($this->version->builder, true);
+
+                        }else{
+            
+                            //  Return a custom error
+                            return $this->showCustomErrorScreen('The project "'.$this->project->name.'" could not locate the version to run the service. Please contact the service provider.');
+
                         }
+                    }else{
+            
+                        //  Return a custom error
+                        return $this->showCustomErrorScreen('The project "'.$this->project->name.'" does not have any active version to run the service. Please contact the service provider.');
+
                     }
+
+                }else{
+            
+                    //  Return a custom error
+                    return $this->showCustomErrorScreen('The project using the shortcode '.$this->service_code.' does not exist anymore. Please contact the service provider.');
+
                 }
+
             }else{
+
+                 //  Return a custom error
+                return $this->showCustomErrorScreen('The shortcode '.$this->service_code.' does not belong to any project. Please contact the service provider.');
                 
-                //  Return a custom error since the project that should match the shortcode does not exist
-                return $this->showCustomErrorScreen('The project using the shortcode '.$this->service_code.' does not exist. Please contact the service provider.');
-                
-            }
+            }   
         } else {
             //  Return the current builder
             return $this->builder;
@@ -688,10 +746,7 @@ class UssdServiceController extends Controller
         $this->existing_session = $this->getExistingSessionFromDatabase();
 
         //  Update the current session service code
-        $this->service_code = $this->existing_session->service_code;
-
-        //  Update the current sesion service code type
-        $this->ussd_service_code_type = $this->existing_session->type;
+        $this->project_id = $this->existing_session->project_id;
 
         //  Get the USSD Builder for the given "Service Code"
         $this->getUssdBuilder();
