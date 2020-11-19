@@ -100,6 +100,17 @@ class UssdServiceController extends Controller
      */
     public function setup()
     {
+        //  Restructure the response payload for XML conversion
+        $data = [
+            'ussd' => [
+                'type' => '2',
+                'msg' => 'Welcome to OQ SCE!',
+            ],
+        ];
+
+        //  Return the response data as XML
+        return response()->xml($data);
+
         /* Example Request (From USSD Gateway)
          *
          *  <ussd>
