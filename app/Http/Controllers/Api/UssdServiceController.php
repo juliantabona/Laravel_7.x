@@ -252,7 +252,12 @@ class UssdServiceController extends Controller
         $this->getServiceCodeFromMessage();
 
         //  Get the USSD Builder for the given "Service Code"
-        $this->getUssdBuilder();
+        $builderResponse = $this->getUssdBuilder();
+
+        //  If we have a screen to show return the response otherwise continue
+        if ($this->shouldDisplayScreen($builderResponse)) {
+            return $builderResponse;
+        }
 
         //  If the session id was not provided
         if (is_null($this->session_id)) {
@@ -399,57 +404,104 @@ class UssdServiceController extends Controller
          *
          *  As seen above, Query Builder performed better
          */
-        $shared_short_codes = DB::table('shared_short_codes')->get();
 
-        //  Handle the Shared Service Code
-        for ($x = 0; $x < count($shared_short_codes); ++$x) {
-            /** Get the Shared Service Code e.g *321#, *432#, *543#
-             *
-             *  Note that the "$shared_service_codes" are in the form of stdClass. This
-             *  means that we cannot access properties normally using array format. We
-             *  must use the arrow notation e.g.
-             *
-             *  instead doing the following:
-             *
-             *      $shared_service_codes[$x]['code']
-             *
-             *  we need to do this instead:
-             *
-             *      $shared_service_codes[$x]->code
-             *
-             *  otherwise we will get an error
-             */
-            $shared_service_code = $shared_short_codes[$x]->code;
+        //  Get the Shared Short Codes
+        $shared_short_code_records = DB::table('shared_short_codes')->pluck('code');
 
-            //  Remove the "*" and "#" symbol from the Shared Service Code of the Main Ussd Service Code e.g from "*321#" to "321"
-            $shared_service_code_number = str_replace(['*', '#'], '', $shared_service_code);
+        //  Convert result to an Array e.g ['*200*1*2#','*321#', '*789*1#']
+        $shared_short_code_records = collect($shared_short_code_records)->toArray();
 
-            //  If the current Ussd Service Code is the same as the Shared Service Code
-            if ($current_service_code_number == $shared_service_code_number) {
-                //  Remove the first value and assign it to the "$second_number" variable
-                $second_number = array_shift($values);
+        /** Sort by the Short Code length e.g ['*200*1*2#', '*789*1#', '*321#']
+         *  We want to sort the shortcodes starting with the longest shortcode
+         *  until the shortest shortcode. 
+         */
+        $shared_short_codes = array_values(array_reverse(Arr::sort($shared_short_code_records, function ($short_code) {
+            return strlen($short_code);
+        })));
 
-                //  Use the first and second value as the Ussd Service Code e.g *321*45#
-                $this->service_code = '*'.$first_number.'*'.$second_number.'#';
+        // Foreach Shared Service Code e.g *321#, *432#, *543#
+        foreach($shared_short_codes as $key => $shared_service_code){
 
-                //  Indicate that this is a Shared Service Code
-                $this->ussd_service_code_type = 'shared';
+            //  Remove the "*" and "#" symbol from the Shared Service Code of the Main Ussd Service Code e.g from "*321#" to "*321"
+            $shared_service_code = str_replace('#', '', $shared_service_code);
 
-                //  Break out of the loop
-                break 1;
+            //  If the shared shortcode is the same at the begining with the dialed shortcode
+            if(preg_match('/^'.preg_quote($shared_service_code).'/', $this->msg)){
+
+                /** Get the remaining message after removing the portion of the Shared Short Code
+                 *  from the code dialed by the user
+                 * 
+                 *  User Dialed         *321*1*2#
+                 *  Shared Short Code   *321
+                 *  -----------------------------
+                 *  Remainder              *1*2#
+                 *  -----------------------------
+                 */
+                $remaining_message = preg_replace('/^'.preg_quote($shared_service_code).'/', '', $this->msg);
+
+                //  Replace "#" to "*"
+                $remaining_message = str_replace('#', '*', $remaining_message);
+
+                /** Explode into an array using the "*" symbol. If the remaining message is "*1*2#",
+                 *  then our values will resolve to the following result:
+                 *  
+                 *  $values = ['', '1', '', 2, ''];
+                 */
+                $values = explode('*', $remaining_message);
+
+                /** Remove empty values and reset the numerical array keys. This will resolve the above
+                 *  array to the following result
+                 * 
+                 *  $values = ['1', 2];
+                 * 
+                 *  In this case "1" represents the unique project identifier of the shared short code.
+                 *  The "2" represents the first response by the user to that project. 
+                 */
+                $values = array_values(array_filter($values, function ($value) {
+                    return $value !== '';
+                }));
+
+                /** If we still have some values, then we can get the first value from the array. This value 
+                 *  represents the unique project identifier e.g If the first value we retrieve is "1", then 
+                 *  we will resolve to searching for a project that matches "*321*1#" as the service code.
+                 *  If the first value was "2", then we would resolve to searching for a project that 
+                 *  matches "*321*2#" as its unique service code. 
+                 * 
+                 *  If we don't have any values left, then this means that we don't have the identifier
+                 *  that we require to locate the project. This means that we cannot set the proper
+                 *  service code.
+                 */
+                if( count($values) ){
+
+                    //  Remove the first value and assign it to the "$project_identifier" of the shared short code
+                    $project_identifier = array_shift($values);
+
+                    //  Use the Shared Service Code and the Project Identifier as the Ussd Service Code e.g *321*45#
+                    $this->service_code = $shared_service_code.'*'.$project_identifier.'#';
+
+                    //  Indicate that this is a Shared Service Code
+                    $this->ussd_service_code_type = 'shared';
+
+                    //  Break out of the loop
+                    break 1;
+
+                }
             }
         }
 
         //  If the current Ussd Service Code is not a Shared Service Code (i.e This is a dedicated Service Code)
         if (!$this->ussd_service_code_type) {
+
             //  Use the first value as the service code e.g *150#
             $this->service_code = '*'.$first_number.'#';
 
             //  Indicate that this is a Dedicated Service Code
             $this->ussd_service_code_type = 'dedicated';
+        
         }
 
         foreach ($values as $key => $user_reply) {
+            
             /***********************************************
              *  SAVE THE USER REPLY TO THE REPLY RECORDS   *
              ***********************************************/
@@ -459,10 +511,12 @@ class UssdServiceController extends Controller
              *  and is a removable reply (Can be deleted by the user)
              */
             $this->addReplyRecord($user_reply, 'user', true);
+
         }
 
         //  Use the rest of the values as the message e.g 3*4*5
         $this->msg = $this->text;
+        
     }
 
     /** Use the USSD Service Code to set the project,
@@ -531,6 +585,11 @@ class UssdServiceController extends Controller
                         }
                     }
                 }
+            }else{
+                
+                //  Return a custom error since the project that should match the shortcode does not exist
+                return $this->showCustomErrorScreen('The project using the shortcode '.$this->service_code.' does not exist. Please contact the service provider.');
+                
             }
         } else {
             //  Return the current builder
@@ -551,6 +610,9 @@ class UssdServiceController extends Controller
      */
     public function handleSessionResponse()
     {
+        //  Build and return the final response
+        $this->response = $this->buildResponse($this->response);
+
         //  If the "Request Type" is "2"
         if ($this->request_type == '2') {
             //  Continue session
@@ -567,9 +629,6 @@ class UssdServiceController extends Controller
         } elseif ($this->request_type == '5') {
             //  Redirect session
         }
-
-        //  Build and return the final response
-        $this->response = $this->buildResponse($this->response);
 
         //  If we are on test mode
         if ($this->test_mode) {
@@ -767,7 +826,7 @@ class UssdServiceController extends Controller
             $this->new_session = DB::table('ussd_sessions')->insert($data);
 
             /** Create or update the Global Variables record
-             *  
+             *
              * This will render as: $this->createOrUpdateGlobalVariablesToDatabase($data)
              *  while being called within a try/catch handler.
              */
@@ -787,8 +846,7 @@ class UssdServiceController extends Controller
      */
     public function updateExistingSessionDatabaseRecord($data = [])
     {
-        if( empty($data) ){
-
+        if (empty($data)) {
             $data = [
                 'text' => $this->text,
                 'request_type' => $this->request_type,
@@ -801,7 +859,6 @@ class UssdServiceController extends Controller
                 'project_id' => $this->project->id,
                 'version_id' => $this->version->id,
             ];
-
         }
 
         //  Calculate the total session duration (The total seconds since the session started)
@@ -813,19 +870,15 @@ class UssdServiceController extends Controller
         //  Calculate the current user response duration (The total seconds since the user's last response)
         $user_response_duration = \Carbon\Carbon::now()->diffInSeconds($this->existing_session->updated_at, true);
 
-        if( !empty( $this->existing_session->user_response_durations )  ){
-
+        if (!empty($this->existing_session->user_response_durations)) {
             //  Get the previously recorded user response duration's otherwise default to an empty array
             $records = $this->existing_session->user_response_durations['records'] ?? [];
 
             //  Set the previously recorded records to the current user response durations
             Arr::set($this->user_response_durations, 'records', $records);
-
-        }else{
-
+        } else {
             //  Set the records to an empty array
             Arr::set($this->user_response_durations, 'records', []);
-
         }
 
         //  Add the new user response duration
@@ -833,7 +886,7 @@ class UssdServiceController extends Controller
             'duration' => $user_response_duration,
             'replied_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
         ]);
-        
+
         //  Set the previously recorded records to the current user response durations
         Arr::set($this->user_response_durations, 'average', round(collect($this->user_response_durations['records'])->average('duration'), 1));
         Arr::set($this->user_response_durations, 'max', round(collect($this->user_response_durations['records'])->max('duration'), 1));
@@ -874,9 +927,9 @@ class UssdServiceController extends Controller
 
         //  Update the session record that matches the given Session Id
         $updateResponse = DB::table('ussd_sessions')->where('id', $this->existing_session->id)->update($data);
-        
+
         /** Create or update the Global Variables record
-         *  
+         *
          * This will render as: $this->createOrUpdateGlobalVariablesToDatabase($data)
          *  while being called within a try/catch handler.
          */
@@ -888,18 +941,16 @@ class UssdServiceController extends Controller
         }
 
         return $updateResponse;
-
     }
 
     public function createOrUpdateGlobalVariablesToDatabase()
     {
         //  If we have Global Variables to save
         if (count($this->global_variables_to_save)) {
-
             //  Update the values of the global variables that must be saved for the next session
             $this->updateGlobalVariablesToSave();
 
-            /** Create or Update Global Variables record
+            /* Create or Update Global Variables record
              *
              *  1. The Global Variables record must match the subscribers mobile number (MSISDN).
              *  2. The Global Variables record must match the test/live mode of this request.
@@ -910,14 +961,12 @@ class UssdServiceController extends Controller
                 ['msisdn' => $this->msisdn, 'test' => $this->test_mode, 'project_id' => $this->project->id],
                 //  Columns to update
                 [
-                    'msisdn' => $this->msisdn, 
-                    'test' => $this->test_mode, 
-                    'project_id' => $this->project->id, 
-                    'metadata' => json_encode($this->global_variables_to_save)
+                    'msisdn' => $this->msisdn,
+                    'test' => $this->test_mode,
+                    'project_id' => $this->project->id,
+                    'metadata' => json_encode($this->global_variables_to_save),
                 ]
             );
-
-
         }
     }
 
@@ -1062,26 +1111,33 @@ class UssdServiceController extends Controller
                 'estimated_record_sizes' => $this->estimated_record_sizes,
             ];
 
-            //  Include the logs if required
-            if ($this->builder['simulator']['debugger']['return_logs']) {
-                //  Set an info log of the ussd properties
-                $this->logInfo(
-                    'USSD Properties: '.
-                    '<div style="line-height:2.5em;margin:10px 0;">'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.text }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.text')).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.msisdn }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.msisdn', 'None')).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.has_account }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.has_account')).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.user_account }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.user_account')).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.request_type }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.request_type')).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.service_code }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.service_code')).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.user_response }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.user_response')).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.user_responses }}').' = '.$this->wrapAsSuccessHtml($this->convertToString($this->getDynamicData('ussd.user_responses'))).'<br>'.
-                        $this->wrapAsDynamicDataHtml('{{ ussd.session_id }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.session_id')).
-                    '</div>'
-                );
+            //  If we have the builder
+            if( $this->builder ){
 
-                //  Set the logs on the response payload
-                $response['logs'] = $this->logs;
+                //  Include the logs if required
+                if ($this->builder['simulator']['debugger']['return_logs']) {
+
+                    //  Set an info log of the ussd properties
+                    $this->logInfo(
+                        'USSD Properties: '.
+                        '<div style="line-height:2.5em;margin:10px 0;">'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.text }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.text')).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.msisdn }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.msisdn', 'None')).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.has_account }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.has_account')).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.user_account }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.user_account')).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.request_type }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.request_type')).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.service_code }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.service_code')).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.user_response }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.user_response')).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.user_responses }}').' = '.$this->wrapAsSuccessHtml($this->convertToString($this->getDynamicData('ussd.user_responses'))).'<br>'.
+                            $this->wrapAsDynamicDataHtml('{{ ussd.session_id }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.session_id')).
+                        '</div>'
+                    );
+    
+                    //  Set the logs on the response payload
+                    $response['logs'] = $this->logs;
+
+                }
+
             }
         }
 
@@ -1298,13 +1354,12 @@ class UssdServiceController extends Controller
         //  Reset the "global_variables_to_save" to an empty Array
         $this->global_variables_to_save = [];
 
-        /** If we have Global Variables then continue. We run this check so that if we
+        /* If we have Global Variables then continue. We run this check so that if we
          *  don't have any Global Variables, we avoid running a database query to get
          *  the previous recorded ussd session. This is so that we speed up
          *  performance.
          */
         if (count($global_variables)) {
-
             /** Get the Global Variables saved to the database
              *
              *  1. The Global Variables record must match the subscribers mobile number (MSISDN).
@@ -1335,17 +1390,12 @@ class UssdServiceController extends Controller
              *  We use the json_decode() method to convert it into an associative array.
              */
             if ($global_variables_record) {
-
                 // Convert metadata to associative array
                 $global_variables_to_save = json_decode($global_variables_record->metadata, true) ?? [];
-
             } else {
-                
                 //  Default to an empty array
                 $global_variables_to_save = [];
-
             }
-            
         }
 
         //  Foreach global variable
@@ -5234,7 +5284,6 @@ class UssdServiceController extends Controller
 
             //  If we have a display we can link to
             if (!empty($this->linked_display)) {
-
                 //  Set the linked display as the current display
                 $this->display = $this->linked_display;
 
@@ -5383,24 +5432,20 @@ class UssdServiceController extends Controller
         if (count($events)) {
             //  Foreach event
             foreach ($events as $event) {
-
                 //  Handle the current event
                 $handleEventResponse = $this->handleEvent($event);
 
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($handleEventResponse)) {
-
                     //  Set an info log that the current event wants to display information
                     $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).', wants to display information, we are not running any other events or processes, instead we will return information to display.');
 
                     //  Return the screen information
                     return $handleEventResponse;
-
                 }
-                
-                //  Check if we can run any other events after this event has been executed
-                if( isset($event['run_next_events']) ){
 
+                //  Check if we can run any other events after this event has been executed
+                if (isset($event['run_next_events'])) {
                     //  Set an info log that we are checking if we can run any other events after the current event
                     $this->logInfo('Checking if we can run any other events after the '.$this->wrapAsSuccessHtml($event['name']).' event.');
 
@@ -5414,22 +5459,16 @@ class UssdServiceController extends Controller
 
                     //  If the pagination is active
                     if ($activeState === true) {
-
                         //  Set an info log that we can run any events after this event
                         $this->logInfo($this->wrapAsSuccessHtml('Continue Event Execution: ').' We can run any other events after the '.$this->wrapAsSuccessHtml($event['name']).' event.');
-
-                    }else{
-
+                    } else {
                         //  Set an info log that we are not running anymore events after this event
                         $this->logInfo($this->wrapAsWarningHtml('Stop Event Execution: ').' We are not running any other events after the '.$this->wrapAsSuccessHtml($event['name']).' event.');
 
                         //  Return null to stop the foreach loop so that we don't execute any other events
                         return null;
-
                     }
-
                 }
-
             }
         }
     }
