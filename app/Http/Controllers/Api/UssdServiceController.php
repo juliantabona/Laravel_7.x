@@ -100,17 +100,6 @@ class UssdServiceController extends Controller
      */
     public function setup()
     {
-        //  Restructure the response payload for XML conversion
-        $data = [
-            'ussd' => [
-                'type' => '2',
-                'msg' => 'Welcome to OQ SCE!',
-            ],
-        ];
-
-        //  Return the response data as XML
-        return response()->xml($data);
-
         /* Example Request (From USSD Gateway)
          *
          *  <ussd>
@@ -208,23 +197,53 @@ class UssdServiceController extends Controller
      */
     public function storeUssdGatewayValues()
     {
-        //  Get the "Message"
-        $this->msg = $this->request->get('msg');
-
-        //  Get the "Msisdn"
-        $this->msisdn = $this->request->get('msisdn');
-
-        //  Get the "Session ID"
-        $this->session_id = $this->request->get('sessionId');
-
-        //  Get the "Request Type"
-        $this->request_type = $this->request->get('requestType');
-
         //  Get the "TEST MODE" status
         $this->test_mode = ($this->request->get('testMode') == 'true' || $this->request->get('testMode') == '1') ? true : false;
 
-        //  Get the project "Version ID" to target
-        $this->version_id = $this->request->get('version_id');
+        if( $this->test_mode ){
+
+            //  Get the "Message"
+            $this->msg = $this->request->get('msg');
+    
+            //  Get the "Msisdn"
+            $this->msisdn = $this->request->get('msisdn');
+    
+            //  Get the "Session ID"
+            $this->session_id = $this->request->get('sessionId');
+    
+            //  Get the "Request Type"
+            $this->request_type = $this->request->get('requestType');
+    
+            //  Get the project "Version ID" to target
+            $this->version_id = $this->request->get('version_id');
+
+        }else{
+            
+            //  Get the xml content from the request
+            $xml = $this->request->getContent();
+
+            //  Convert the XML string into an SimpleXMLElement object.
+            $xmlObject = simplexml_load_string($xml);
+
+            //  Encode the SimpleXMLElement object into a JSON string.
+            $jsonString = json_encode($xmlObject);
+
+            //  Convert it back into an Associative Array
+            $jsonArray = json_decode($jsonString, true);
+
+            //  Set the "Message"
+            $this->msg = $jsonArray['msg'];
+    
+            //  Set the "Msisdn"
+            $this->msisdn = $jsonArray['msisdn'];
+    
+            //  Set the "Session ID"
+            $this->session_id = $jsonArray['sessionid'];
+    
+            //  Set the "Request Type"
+            $this->request_type = $jsonArray['type'];
+
+        }
     }
 
     /** Determine if this is a new or existing session, then execute
