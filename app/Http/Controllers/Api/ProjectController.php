@@ -138,6 +138,104 @@ class ProjectController extends Controller
         }
     }
 
+    public function getProjectSessions(Request $request, $project_id)
+    {
+        //  Get the project
+        $project = \App\Project::where('id', $project_id)->first() ?? null;
+
+        //  Get the session type e.g live or test
+        $type = $request->input('type');
+
+        if( $type == 'live'){
+
+            //  Get the project live sessions
+            $sessions = $project->liveSessions()->paginate() ?? null;
+
+        }elseif( $type == 'test'){
+
+            //  Get the project test sessions
+            $sessions = $project->testSessions()->paginate() ?? null;
+
+        }else{
+
+            //  Get the project sessions
+            $sessions = $project->sessions()->paginate() ?? null;
+
+        }
+
+        //  Check if the project sessions exist
+        if ($sessions) {
+
+            //  Check if the current auth user is authourized to view the project sessions resource
+            if ($this->user->can('view', $project)) {
+                
+                //  Return an API Readable Format of the Session Instance
+                return ( new \App\UssdSession() )->convertToApiFormat($sessions);
+
+            } else {
+
+                //  Not Authourized
+                return help_not_authorized();
+
+            }
+            
+        } else {
+
+            //  Not Found
+            return help_resource_not_fonud();
+
+        }
+    }
+
+    public function getProjectAnalytics(Request $request, $project_id)
+    {
+        //  Get the project
+        $project = \App\Project::where('id', $project_id)->first() ?? null;
+
+        //  Check if the project exist
+        if ($project) {
+
+            //  Check if the current auth user is authourized to view the project analytics resource
+            if ($this->user->can('view', $project)) {
+                
+                //  Get the session type e.g live or test
+                $type = $request->input('type');
+
+                if( $type == 'live'){
+
+                    //  Get the project live analytics
+                    $analytics = $project->getLiveAnalytics();
+
+                }elseif( $type == 'test'){
+
+                    //  Get the project test analytics
+                    $analytics = $project->getTestAnalytics();
+
+                }else{
+
+                    //  Get the project analytics
+                    $analytics = $project->getAnalytics();
+
+                }
+
+                //  Return analytics
+                return response()->json(['analytics' => $analytics], 200);
+
+            } else {
+
+                //  Not Authourized
+                return help_not_authorized();
+
+            }
+            
+        } else {
+
+            //  Not Found
+            return help_resource_not_fonud();
+
+        }
+    }
+
     public function getProjectUserAccounts(Request $request, $project_id)
     {
         //  Get the project

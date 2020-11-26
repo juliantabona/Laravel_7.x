@@ -209,6 +209,26 @@
                         comment: 'Set the target value equal to Null'
                     },
                     {
+                        name: 'Set To True',
+                        type: 'set_to_true',
+                        comment: 'Set the target value equal to True'
+                    },
+                    {
+                        name: 'Set To False',
+                        type: 'set_to_false',
+                        comment: 'Set the target value equal to False'
+                    },
+                    {
+                        name: 'Set To Empty String',
+                        type: 'set_to_empty_string',
+                        comment: 'Set the target value equal to Empty String'
+                    },
+                    {
+                        name: 'Set To Empty Array',
+                        type: 'set_to_empty_array',
+                        comment: 'Set the target value equal to Empty Array'
+                    },
+                    {
                         value: '',
                         name: 'Custom Code',
                         type: 'custom_code',

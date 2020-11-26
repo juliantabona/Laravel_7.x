@@ -54,6 +54,16 @@ Route::middleware('auth:api')->namespace('Api')->group(function () {
         //  Single project versions  /projects/{project_id}/versions
         Route::get('/{project_id}/versions', 'ProjectController@getProjectVersions')->name('project-versions')->where('project_id', '[0-9]+');
 
+        //  Single project sessions  /projects/{project_id}/sessions
+        Route::get('/{project_id}/sessions', 'ProjectController@getProjectSessions')->name('project-sessions')->where('project_id', '[0-9]+');
+        Route::get('/{project_id}/sessions?type=live', 'ProjectController@getProjectSessions')->name('project-live-sessions')->where('project_id', '[0-9]+');
+        Route::get('/{project_id}/sessions?type=test', 'ProjectController@getProjectSessions')->name('project-test-sessions')->where('project_id', '[0-9]+');
+
+        //  Single project analytics  /projects/{project_id}/analytics
+        Route::get('/{project_id}/analytics', 'ProjectController@getProjectAnalytics')->name('project-analytics')->where('project_id', '[0-9]+');
+        Route::get('/{project_id}/analytics?type=live', 'ProjectController@getProjectAnalytics')->name('project-live-analytics')->where('project_id', '[0-9]+');
+        Route::get('/{project_id}/analytics?type=test', 'ProjectController@getProjectAnalytics')->name('project-test-analytics')->where('project_id', '[0-9]+');
+
         //  Single project user accounts  /projects/{project_id}/
         Route::prefix('{project_id}/user-accounts')->group(function () {
 

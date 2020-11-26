@@ -729,12 +729,17 @@ class UssdServiceController extends Controller
             $data = [
                 'ussd' => [
                     'type' => $this->response['request_type'],
-                    'msg' => $this->response['msg'],
+                    'msg' => htmlentities($this->response['msg']),
                 ],
             ];
 
-            //  Return the response data as XML
-            return response()->xml($data);
+            //  Set the response status
+            $status = 200;
+
+            //  Set the response headers
+            $headers = ['Accept-Charset' => 'utf-8'];
+            
+            return response()->xml($data, $status, $headers);
         }
     }
 
@@ -3378,7 +3383,11 @@ class UssdServiceController extends Controller
         //  If the display content is not empty
         if (!empty($this->display_content)) {
             //  Set an info log of the final result
-            $this->logInfo('Final result: <br />'.$this->wrapAsSuccessHtml($this->display_content));
+            $this->logInfo(
+                '<p style="white-space: pre-wrap;">
+                    Final result: <br />'.$this->wrapAsSuccessHtml($this->display_content).
+                '<p>'
+            );
         }
 
         //  Return the display content
@@ -6372,7 +6381,11 @@ class UssdServiceController extends Controller
                         $custom_message = $this->convertToString($outputResponse);
 
                         //  Set an info log of the final result
-                        $this->logInfo('Final result: <br />'.$this->wrapAsSuccessHtml($custom_message));
+                        $this->logInfo(
+                            '<p style="white-space: pre-wrap;">
+                                Final result: <br />'.$this->wrapAsSuccessHtml($custom_message).
+                            '<p>'
+                        );
 
                         //  Return the processed custom message display
                         return $this->showCustomScreen($custom_message);
@@ -7395,6 +7408,22 @@ class UssdServiceController extends Controller
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'setToNullFormat'); break;
 
+                        case 'set_to_true':
+
+                            return $this->applyFormattingRule($target_value, $formatting_rule, 'setToTrueFormat'); break;
+
+                        case 'set_to_false':
+
+                            return $this->applyFormattingRule($target_value, $formatting_rule, 'setToFalseFormat'); break;
+
+                        case 'set_to_empty_string':
+
+                            return $this->applyFormattingRule($target_value, $formatting_rule, 'setToEmptyStringFormat'); break;
+
+                        case 'set_to_empty_array':
+
+                            return $this->applyFormattingRule($target_value, $formatting_rule, 'setToEmptyArrayFormat'); break;
+                            
                         case 'custom_code':
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'customCodeFormat'); break;
@@ -7755,6 +7784,34 @@ class UssdServiceController extends Controller
     public function setToNullFormat($target_value, $formatting_rule)
     {
         return null;
+    }
+
+    /** This method will set the target value to True
+     */
+    public function setToTrueFormat($target_value, $formatting_rule)
+    {
+        return true;
+    }
+
+    /** This method will set the target value to False
+     */
+    public function setToFalseFormat($target_value, $formatting_rule)
+    {
+        return false;
+    }
+
+    /** This method will set the target value to Empty String
+     */
+    public function setToEmptyStringFormat($target_value, $formatting_rule)
+    {
+        return '';
+    }
+
+    /** This method will set the target value to Empty Array
+     */
+    public function setToEmptyArrayFormat($target_value, $formatting_rule)
+    {
+        return [];
     }
 
     public function customCodeFormat($target_value, $formatting_rule)

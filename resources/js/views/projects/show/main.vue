@@ -160,13 +160,18 @@
                         icon: 'ios-git-branch'
                     },
                     {
+                        name: 'sessions',
+                        linkName: 'show-project-sessions',
+                        icon: 'ios-flag-outline'
+                    },
+                    {
                         name: 'billing',
                         linkName: '',
                         icon: 'ios-cash-outline'
                     },
                     {
                         name: 'analytics',
-                        linkName: '',
+                        linkName: 'show-project-analytics',
                         icon: 'ios-stats-outline'
                     },
                     {
@@ -196,6 +201,10 @@
                 //  Get the active menu link otherwise default to the overview page
                 if( ['show-project-overview'].includes(this.$route.name) ){
                     return 'overview';
+                }else if( ['show-project-sessions'].includes(this.$route.name) ){
+                    return 'sessions';
+                }else if( ['show-project-analytics'].includes(this.$route.name) ){
+                    return 'analytics';
                 }else if( ['show-project-builder', 'show-project-versions', 'show-project-version'].includes(this.$route.name) ){
                     return 'builder';
                 }

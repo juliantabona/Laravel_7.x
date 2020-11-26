@@ -46,9 +46,9 @@ class UssdSession extends Model
     protected $fillable = [
         /*  Session Details  */
         'session_id', 'service_code', 'type', 'msisdn', 'request_type',
-        'text', 'reply_records', 'logs', 'test', 'status', 'fatal_error',
-        'fatal_error_msg', 'allow_timeout', 'timeout_at', 'estimated_record_sizes',
-        'total_session_duration', 'user_response_durations', 'session_execution_times',
+        'text', 'reply_records', 'logs', 'test', 'fatal_error', 'fatal_error_msg', 
+        'allow_timeout', 'timeout_at', 'estimated_record_sizes', 'total_session_duration', 
+        'user_response_durations', 'session_execution_times',
 
         /*  Meta Data  */
         'metadata',
@@ -104,30 +104,46 @@ class UssdSession extends Model
         return false;
     }
 
-    public function getStatusAttribute($status)
+    public function getStatusAttribute()
     {
-        switch ($status) {
-            case '0':
-                $status_name = 'Incomplete';
-                $status_description = 'The session was not completed';
-                break;
-            case '1':
-                $status_name = 'Completed';
-                $status_description = 'The session was completed successfully';
-                break;
-            case '2':
-                $status_name = 'Failed';
-                $status_description = 'The session failed. A problem was encountered';
-                break;
-            default:
-                $status_name = 'Unknown';
-                $status_description = 'Status is unknown';
+        //  If the test session failed
+        if( $this->fatal_error ){
+
+            $name = 'Fail';
+            $desc = 'The session failed due to an error';
+
+        //  If the session allows timeouts and the session has timed-out
+        }elseif( (!$this->test && $this->has_timed_out) ||
+                    ( $this->test && $this->allow_timeout && $this->has_timed_out) ){
+
+            $name = 'Timeout';
+            $desc = 'The session has timed out';
+
+        }elseif( $this->request_type == '3' ){
+
+            $name = 'Closed';
+            $desc = 'The session has been closed';
+
+        }elseif( $this->request_type == '2' || $this->request_type == '1' ){
+
+            $name = 'Active';
+            $desc = 'The session is still active';
+
         }
 
-        return [
-            'name' => $status_name,
-            'description' => $status_description,
+        $response =  [
+            'name' => $name,
+            'description' => $desc,
+
         ];
+
+        if($this->fatal_error){
+
+            $response['error_msg'] = $this->fatal_error_msg;
+
+        }
+
+        return $response;
     }
 
     /*

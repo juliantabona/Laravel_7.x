@@ -72,6 +72,30 @@ class Project extends Model
     }
 
     /*
+     *  Returns sessions of this project
+     */
+    public function sessions()
+    {
+        return $this->hasMany('App\UssdSession', 'project_id');
+    }
+
+    /*
+     *  Returns test sessions of this project
+     */
+    public function testSessions()
+    {
+        return $this->sessions()->where('test', 1);
+    }
+
+    /*
+     *  Returns live sessions of this project
+     */
+    public function liveSessions()
+    {
+        return $this->sessions()->where('test', 0);
+    }
+
+    /*
      *  Returns user accounts that belong to this project
      */
     public function userAccounts()

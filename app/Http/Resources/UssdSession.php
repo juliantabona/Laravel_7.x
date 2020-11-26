@@ -19,13 +19,25 @@ class UssdSession extends JsonResource
             'id' => $this->id,
             'session_id' => $this->session_id,
             'service_code' => $this->service_code,
+            'type' => $this->type,
             'msisdn' => $this->msisdn,
             'request_type' => $this->request_type,
             'text' => $this->text,
+            'reply_records' => $this->reply_records,
+            'logs' => $this->logs,
+            'test' => $this->test,
             'status' => $this->status,
+            'fatal_error' => $this->fatal_error,
+            'fatal_error_msg' => $this->fatal_error_msg,
             'allow_timeout' => $this->allow_timeout,
             'timeout_at' => $this->timeout_at,
-            'metadata' => $this->metadata,
+            'estimated_record_sizes' => $this->estimated_record_sizes,
+            'total_session_duration' => $this->total_session_duration,
+            'user_response_durations' => $this->user_response_durations,
+            'session_execution_times' => $this->session_execution_times,
+    
+            /*  Meta Data  */
+            'metadata',
 
             /*  Timestamp Info  */
             'created_at' => $this->created_at,

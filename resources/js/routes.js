@@ -74,6 +74,16 @@ let routes = [
                 component: require('./views/projects/show/builder/overview/editProject.vue').default
             },
             {
+                path: 'sessions', name: 'show-project-sessions',
+                meta: { layout: 'Dashboard', middlewareAuth: true },
+                component: require('./views/projects/show/builder/sessions/list/main.vue').default
+            },
+            {
+                path: 'analytics', name: 'show-project-analytics',
+                meta: { layout: 'Dashboard', middlewareAuth: true },
+                component: require('./views/projects/show/builder/analytics/list/main.vue').default
+            },
+            {
                 path: 'versions', name: 'show-project-versions',
                 meta: { layout: 'Dashboard', middlewareAuth: true },
                 component: require('./views/projects/show/builder/versions/list/main.vue').default
@@ -82,7 +92,7 @@ let routes = [
                 path: 'versions/:version_url', name: 'show-project-version',
                 meta: { layout: 'Dashboard', middlewareAuth: true },
                 component: require('./views/projects/show/builder/versions/show/main.vue').default
-            }
+            },
         ]
     }
 ];
