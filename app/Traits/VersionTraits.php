@@ -44,10 +44,11 @@ trait VersionTraits
                     'return_log_types' => [
                         'info', 'warning', 'error',
                     ],
+                    'return_summarized_logs' => true,
                 ],
                 'subscriber' => [
-                        'phone_number' => '2677747908',
-                    ],
+                    'phone_number' => '2677747908',
+                ],
                 'settings' => [
                     'allow_timeouts' => true,
                     'timeout_limit_in_seconds' => 120,

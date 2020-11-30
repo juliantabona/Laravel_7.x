@@ -15,7 +15,7 @@
 
                 <Row>
 
-                    <Col :span="12">
+                    <Col :span="10">
                         
                         <!-- Show version editor or simulator -->
                         <Tabs v-model="activeNavTab" name="builder-tabs" class="builder-main-tabs" style="overflow: visible;" :animated="false">
@@ -29,9 +29,21 @@
 
                     </Col>
 
-                    <Col :span="10">
+                    <Col :span="14">
 
-                        <ButtonGroup class="float-right mt-2 mr-3">
+                        <!-- Import/Export Project -->
+                        <ButtonGroup class="mt-2 mr-5">
+                            <Button @click.native="handleImportBuilderModal()">
+                                <Icon type="ios-cloud-upload-outline" :size="20" />
+                                <span>Import</span>
+                            </Button>
+                            <Button @click.native="handleExportBuilderModal()">
+                                <Icon type="ios-cloud-download-outline" :size="20" />
+                                <span>Export</span>
+                            </Button>
+                        </ButtonGroup>
+
+                        <ButtonGroup class="mt-2">
                             <Button>
                                 <Icon type="ios-undo-outline" :size="24"></Icon>
                             </Button>
@@ -78,6 +90,20 @@
 
             </Col>
 
+            <!-- 
+                MODAL TO ADD IMPORT BUILDER
+            -->
+            <template v-if="isOpenImportOrExportBuilderModal">
+
+                <importBuilderModal
+                    :project="project"
+                    :version="version"
+                    :mode="importOrExportMode"
+                    @visibility="isOpenImportOrExportBuilderModal = $event">
+                </importBuilderModal>
+
+            </template>
+
         </template>
 
     </Row>
@@ -88,10 +114,11 @@
 
     import editor from './editor/main.vue';
     import simulator from './simulator/main.vue';
+    import importBuilderModal from './import_export/importBuilderModal.vue';
     import Loader from './../../../../../../components/_common/loaders/default.vue';
 
     export default {
-        components: { editor, simulator, Loader },
+        components: { editor, simulator, importBuilderModal, Loader },
         props: {
             project: {
                 type: Object,
@@ -109,6 +136,8 @@
                 isLoading: false,
                 isSaving: false,
                 activeNavTab: '1',
+                importOrExportMode: null,
+                isOpenImportOrExportBuilderModal: false,
                 savedActivities: [
                     {
                         user: 'Julian Tabona',
@@ -176,6 +205,14 @@
             }
         },
         methods: {
+            handleImportBuilderModal() {
+                this.importOrExportMode = 'import';
+                this.isOpenImportOrExportBuilderModal = true;
+            },
+            handleExportBuilderModal(){
+                this.importOrExportMode = 'export';
+                this.isOpenImportOrExportBuilderModal = true;
+            },
             copyVersionBeforeUpdate(){
                 
                 //  Clone the version

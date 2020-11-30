@@ -96,6 +96,45 @@ class UssdServiceController extends Controller
      *
      ***********************************************************/
 
+    public function updateBuilders(){
+
+        //  Get the versions
+        $versions = collect(\App\Version::all())->toArray();
+
+        //  Foreach version
+        foreach ($versions as $a => $version) {
+            
+            //  Foreach version screen
+            /*
+            foreach ($versions[$a]['builder']['screens'] as $b => $screen) {
+                
+                //  Fix order of events
+                $after_repeat = $versions[$a]['builder']['screens'][$b]['repeat']['events']['after_repeat'];
+                $before_repeat = $versions[$a]['builder']['screens'][$b]['repeat']['events']['before_repeat'];
+
+                $versions[$a]['builder']['screens'][$b]['events']['on_enter'] = $before_repeat;
+                $versions[$a]['builder']['screens'][$b]['events']['on_leave'] = $after_repeat;
+
+                //  Remove repeat events
+                unset($versions[$a]['builder']['screens'][$b]['repeat']['events']);
+
+
+            }
+            */
+
+            //  Set the "return_summarized_logs" property with default of "true"
+            $versions[$a]['builder']['simulator']['debugger']['return_summarized_logs'] = true;
+
+            //  Update the current version
+            \App\Version::where('id', $versions[$a]['id'])->update([
+                'builder' => $versions[$a]['builder']
+            ]);
+
+        }
+
+        return $versions;
+    }
+
     /** Start setting up the USSD configurations,
      *  session and build process.
      */
@@ -751,7 +790,30 @@ class UssdServiceController extends Controller
         $this->existing_session = $this->getExistingSessionFromDatabase();
 
         //  Update the current session service code
+        $this->service_code = $this->existing_session->service_code;
+
+        //  Update the current session project is
         $this->project_id = $this->existing_session->project_id;
+        
+        /** Since its possible to re-run the "handleExistingSession" method by executing
+         *  the Revisit Event, its important that we become mindful to reset the values
+         *  of certain variables to avoid strange behaviour or unwanted outcomes. The
+         *  following are the list of variables we must always reset to their default
+         *  values:
+         * 
+         *  "$this->screen", "$this->linked_screen", "$this->chained_screens"
+         *  "$this->display", "$this->linked_display", "$this->chained_displays"
+         */
+            
+        //  Reset the "screen", "linked screen" and "chained screens"
+        $this->screen = null;
+        $this->linked_screen = null;
+        $this->chained_screens = [];
+
+        //  Reset the "display", "linked display" and "chained displays"
+        $this->display = null;
+        $this->linked_display = null;
+        $this->chained_displays = [];
 
         //  Get the USSD Builder for the given "Service Code"
         $this->getUssdBuilder();
@@ -1222,9 +1284,14 @@ class UssdServiceController extends Controller
                             $this->wrapAsDynamicDataHtml('{{ ussd.session_id }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.session_id')).
                         '</div>'
                     );
-    
-                    //  Set the logs on the response payload
-                    $response['logs'] = $this->logs;
+                    
+                    if( $this->builder['simulator']['debugger']['return_summarized_logs'] ){
+                        //  Set the summarized logs on the response payload
+                        $response['logs'] = $this->summarized_logs;
+                    }else{
+                        //  Set the logs on the response payload
+                        $response['logs'] = $this->logs;
+                    }
 
                 }
 
@@ -2016,11 +2083,13 @@ class UssdServiceController extends Controller
     {
         //  Check if the screens exist
         if ($this->checkIfScreensExist() == false) {
+
             //  Set a warning log that we could not find the builder screens
             $this->logWarning($this->wrapAsPrimaryHtml($this->app_name).' App does not have any screens to show');
+            
+            //  Return a custom error
+            return $this->showCustomErrorScreen('The project "'.$this->project->name.'" does not have any screens to show');
 
-            //  Show the technical difficulties error screen to notify the user of the issue
-            return $this->showTechnicalDifficultiesErrorScreen();
         }
 
         //  Return null if we have screens
@@ -2451,11 +2520,13 @@ class UssdServiceController extends Controller
     {
         //  If the linked screen exists
         if (empty($this->screen)) {
+
             //  Set a warning log that the linked screen could not be found
             $this->logWarning('The linked screen could not be found');
 
             //  Show the technical difficulties error screen to notify the user of the issue
             return $this->showTechnicalDifficultiesErrorScreen();
+
         }
 
         return null;
@@ -2995,11 +3066,12 @@ class UssdServiceController extends Controller
     {
         //  Check if the displays exist
         if ($this->checkIfDisplaysExist() != true) {
+
             //  Set a warning log that we could not find the displays
             $this->logWarning($this->wrapAsPrimaryHtml($this->screen['name']).' does not have any displays to show');
 
-            //  Show the technical difficulties error screen to notify the user of the issue
-            return $this->showTechnicalDifficultiesErrorScreen();
+            //  Return a custom error
+            return $this->showCustomErrorScreen('The project "'.$this->project->name.'" does not have any displays to show');
         }
 
         //  Return null if we have displays
@@ -3384,9 +3456,7 @@ class UssdServiceController extends Controller
         if (!empty($this->display_content)) {
             //  Set an info log of the final result
             $this->logInfo(
-                '<p style="white-space: pre-wrap;">
-                    Final result: <br />'.$this->wrapAsSuccessHtml($this->display_content).
-                '<p>'
+                '<p>Final result: <br /><div style="white-space: pre-wrap;" class="bg-light border p-2">'.$this->wrapAsSuccessHtml($this->display_content).'</div><p>'
             );
         }
 
@@ -5526,16 +5596,19 @@ class UssdServiceController extends Controller
         if (count($events)) {
             //  Foreach event
             foreach ($events as $event) {
+
                 //  Handle the current event
                 $handleEventResponse = $this->handleEvent($event);
 
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($handleEventResponse)) {
+
                     //  Set an info log that the current event wants to display information
                     $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).', wants to display information, we are not running any other events or processes, instead we will return information to display.');
 
                     //  Return the screen information
                     return $handleEventResponse;
+
                 }
 
                 //  Check if we can run any other events after this event has been executed
@@ -6382,9 +6455,7 @@ class UssdServiceController extends Controller
 
                         //  Set an info log of the final result
                         $this->logInfo(
-                            '<p style="white-space: pre-wrap;">
-                                Final result: <br />'.$this->wrapAsSuccessHtml($custom_message).
-                            '<p>'
+                            '<p>Final result: <br /><div style="white-space: pre-wrap;" class="bg-light border p-2">'.$this->wrapAsSuccessHtml($custom_message).'</div><p>'
                         );
 
                         //  Return the processed custom message display
@@ -8699,6 +8770,7 @@ class UssdServiceController extends Controller
 
         foreach ($chained_screens_or_displays as $chained_screen_or_display) {
             if ($chained_screen_or_display['id'] == $screen_or_display['id']) {
+                
                 //  Get the user responses leading on to this screen/display as "text"
                 $text = $chained_screen_or_display['metadata']['text'];
 
@@ -8780,11 +8852,38 @@ class UssdServiceController extends Controller
 
         //  Reset the user reply message
         $this->msg = '';
-
-        /** This will render as: $this->updateExistingSessionDatabaseRecord()
-         *  while being called within a try/catch handler.
+        
+        /** If this is a new session, then it means we don't have the any existing session
+         *  which means that "$this->existing_session" is not set to anything. Since this
+         *  is a new session we must force the creation of a new session record so that 
+         *  we can set that new session as the existing session. This will help us 
+         *  complete our Revisit Event.
          */
-        $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord');
+
+        if( $this->request_type == '1' ){
+
+            /** Create new session
+             * 
+             *  This will render as: $this->createNewSession()
+             *  while being called within a try/catch handler.
+             */
+            $createResponse = $this->tryCatch('createNewSession');
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($createResponse)) {
+                return $createResponse;
+            }
+        
+        }elseif( $this->request_type == '2' ){
+
+            /** Update existing session
+             * 
+             *  This will render as: $this->updateExistingSessionDatabaseRecord()
+             *  while being called within a try/catch handler.
+             */
+            $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord');
+
+        }
 
         //  Empty the existing reply records (Again)
         $this->emptyReplyRecords();
@@ -8792,7 +8891,7 @@ class UssdServiceController extends Controller
         //  Fetch the existing session record from the database by force
         $this->existing_session = $this->getExistingSessionFromDatabase($force = true);
 
-        /* Make a indication that we are revisting. Its important to note that when we are revisiting,
+        /** Make a indication that we are revisting. Its important to note that when we are revisiting,
          *  we are actually re-handling the session again from scratch using the handleExistingSession()
          *  method which will build the App from the ground up. The problem we have is that whenever we
          *  have Events that are fired in order to reset some Global Variables we keep overiding these
@@ -8828,9 +8927,11 @@ class UssdServiceController extends Controller
          *
          */
         $this->is_revisting_session = true;
-
+            
         //  Handle existing session - Re-run the handleExistingSession()
-        return $this->handleExistingSession();
+        $response = $this->handleExistingSession();
+
+        return $response;
     }
 
     /******************************************
@@ -9786,7 +9887,7 @@ class UssdServiceController extends Controller
         $data['level'] = $this->level ?? null;
         $data['screen'] = $this->screen['name'] ?? null;
         $data['display'] = $this->display['name'] ?? null;
-
+        
         //  Push the latest log update
         array_push($this->logs, $data);
 
@@ -9805,8 +9906,10 @@ class UssdServiceController extends Controller
         $excluded_datatypes = ['dynamic_variables'];
 
         if (!in_array($data['data_type'], $excluded_datatypes)) {
+
             //  Push the latest log update
             array_push($this->summarized_logs, $data);
+
         }
     }
 

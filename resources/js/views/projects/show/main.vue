@@ -165,14 +165,14 @@
                         icon: 'ios-flag-outline'
                     },
                     {
-                        name: 'billing',
-                        linkName: '',
-                        icon: 'ios-cash-outline'
-                    },
-                    {
                         name: 'analytics',
                         linkName: 'show-project-analytics',
                         icon: 'ios-stats-outline'
+                    },
+                    {
+                        name: 'billing',
+                        linkName: '',
+                        icon: 'ios-cash-outline'
                     },
                     {
                         name: 'subscriptions',

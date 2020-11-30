@@ -6,7 +6,7 @@
             <span class="text-primary">Debugger</span>
         </Divider>
                     
-        <!-- Show first display checkbox (Marks the display as the first display) -->
+        <!-- Return logs checkbox (Marks if we we should return any logs) -->
         <Checkbox v-model="version.builder.simulator.debugger.return_logs" class="d-flex mb-3">
             <span class="mx-1">Return Logs (Slower performance)</span>
             <Poptip trigger="hover" placement="right-start" word-wrap width="250" 
@@ -14,6 +14,19 @@
                 <Icon type="ios-information-circle-outline" :size="20" /> 
             </Poptip>   
         </Checkbox>
+
+        <template v-if="version.builder.simulator.debugger.return_logs">
+                    
+            <!-- Return summarized logs checkbox (Marks if we we should return any summarized logs) -->
+            <Checkbox v-model="version.builder.simulator.debugger.return_summarized_logs" class="d-flex mb-3">
+                <span class="mx-1">Summarize Logs</span>
+                <Poptip trigger="hover" placement="right-start" word-wrap width="250" 
+                        content="Summarize the logs we return to speed up performance. If you require more detailed logs you may uncheck this checkbox. This may slow down performance">
+                    <Icon type="ios-information-circle-outline" :size="20" /> 
+                </Poptip>   
+            </Checkbox>
+
+        </template>
 
         <template v-if="version.builder.simulator.debugger.return_logs">
 
