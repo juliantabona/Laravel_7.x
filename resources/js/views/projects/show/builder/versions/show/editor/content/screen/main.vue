@@ -90,11 +90,14 @@
                 <!-- Screen displays -->
                 <displayEditor v-show="activeNavTab == 1" :globalMarkers="globalMarkers" :screen="localScreen" :version="version"></displayEditor>
                 
+                <!-- Screen Events -->
+                <screenEventManager v-show="activeNavTab == 2" :globalMarkers="globalMarkers" :screen="localScreen" :version="version"></screenEventManager>
+
                 <!-- Screen requirements -->
-                <screenRequirements v-show="activeNavTab == 2" :screen="localScreen" :version="version"></screenRequirements>
+                <screenRequirements v-show="activeNavTab == 3" :screen="localScreen" :version="version"></screenRequirements>
                 
                 <!-- Screen displays -->
-                <repeatScreenSettings v-show="activeNavTab == 3" :globalMarkers="globalMarkers" :screen="localScreen" :version="version"></repeatScreenSettings>
+                <repeatScreenSettings v-show="activeNavTab == 4" :globalMarkers="globalMarkers" :screen="localScreen" :version="version"></repeatScreenSettings>
                 
             </Col>
 
@@ -122,10 +125,14 @@
     import screenRequirements from './requirements/main.vue';
     import repeatScreenSettings from './repeat-editor/main.vue';
     import displayEditor from './display-editor/main.vue';
+    import screenEventManager from './event-manager/main.vue';
     import VueTagsInput from '@johmun/vue-tags-input';
 
     export default {
-        components: { copyScreenPropertiesModal, screenRequirements, repeatScreenSettings, displayEditor, VueTagsInput },
+        components: { 
+            copyScreenPropertiesModal, screenRequirements, repeatScreenSettings, 
+            displayEditor, screenEventManager, VueTagsInput 
+        },
         props: {
             screen: {
                 type: Object,
@@ -156,6 +163,29 @@
 
                 if( totalDisplays ){
                     tabName += ' ('+totalDisplays+')';
+                }
+
+                return tabName;
+            },
+            screenEventsTabName(){
+                
+                 var tabName = 'Screen Displays';
+                 var totalDisplays = this.localScreen.displays.length;
+
+                if( totalDisplays ){
+                    tabName += ' ('+totalDisplays+')';
+                }
+
+                return tabName;
+            },
+            eventTabName(){
+                
+                 var tabName = 'Events';
+                 var totalEvents = this.localScreen.repeat.events.before_repeat.length + 
+                                   this.localScreen.repeat.events.after_repeat.length;
+
+                if( totalEvents ){
+                    tabName += ' ('+totalEvents+')';
                 }
 
                 return tabName;
@@ -209,8 +239,9 @@
             navTabs(){
                 return [
                     { name: this.screenDisplaysTabName, value: '1' },
-                    { name: this.requiremenentsTabName, value: '2' },
-                    { name: this.repeatTabName, value: '3' }
+                    { name: this.eventTabName, value: '2' },
+                    { name: this.requiremenentsTabName, value: '3' },
+                    { name: this.repeatTabName, value: '4' }
                 ];
             },
             screenMarkers(){

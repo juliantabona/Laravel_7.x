@@ -33,9 +33,6 @@
             
             <!-- Repeat On Number Settings -->
             <repeatOnNumberSettings v-if="screen.repeat.selected_type == 'repeat_on_number'" :screen="screen" :version="version"></repeatOnNumberSettings>
-
-            <!-- Repeat Events -->
-            <repeatEventManager :globalMarkers="globalMarkers" :screen="screen" :version="version"></repeatEventManager>
         
         </Col>
 
@@ -45,13 +42,12 @@
 
 <script>
 
-    import repeatEventManager from './repeat-event-manager/main.vue';
     import repeatOnNumberSettings from './repeat-on-number/main.vue';
     import repeatOnItemsSettings from './repeat-on-items/main.vue';
     import activeStateSelector from './../activeStateSelector.vue';
 
     export default {
-        components: { repeatEventManager, repeatOnNumberSettings, repeatOnItemsSettings, activeStateSelector },
+        components: { repeatOnNumberSettings, repeatOnItemsSettings, activeStateSelector },
         props: {
             screen: {
                 type: Object,
@@ -60,10 +56,6 @@
             version: {
                 type: Object,
                 default: null
-            },
-            globalMarkers: {
-                type: Array,
-                default: () => []
             }
         },
         data(){
