@@ -96,18 +96,17 @@ class UssdServiceController extends Controller
      *
      ***********************************************************/
 
-    public function updateBuilders(){
-
+    public function updateBuilders()
+    {
         //  Get the versions
         $versions = collect(\App\Version::all())->toArray();
 
         //  Foreach version
         foreach ($versions as $a => $version) {
-            
             //  Foreach version screen
             /*
             foreach ($versions[$a]['builder']['screens'] as $b => $screen) {
-                
+
                 //  Fix order of events
                 $after_repeat = $versions[$a]['builder']['screens'][$b]['repeat']['events']['after_repeat'];
                 $before_repeat = $versions[$a]['builder']['screens'][$b]['repeat']['events']['before_repeat'];
@@ -127,9 +126,8 @@ class UssdServiceController extends Controller
 
             //  Update the current version
             \App\Version::where('id', $versions[$a]['id'])->update([
-                'builder' => $versions[$a]['builder']
+                'builder' => $versions[$a]['builder'],
             ]);
-
         }
 
         return $versions;
@@ -240,25 +238,22 @@ class UssdServiceController extends Controller
         //  Get the "TEST MODE" status
         $this->test_mode = ($this->request->get('testMode') == 'true' || $this->request->get('testMode') == '1') ? true : false;
 
-        if( $this->test_mode ){
-
+        if ($this->test_mode) {
             //  Get the "Message"
             $this->msg = $this->request->get('msg');
-    
+
             //  Get the "Msisdn"
             $this->msisdn = $this->request->get('msisdn');
-    
+
             //  Get the "Session ID"
             $this->session_id = $this->request->get('sessionId');
-    
+
             //  Get the "Request Type"
             $this->request_type = $this->request->get('requestType');
-    
+
             //  Get the project "Version ID" to target
             $this->version_id = $this->request->get('version_id');
-
-        }else{
-            
+        } else {
             //  Get the xml content from the request
             $xml = $this->request->getContent();
 
@@ -273,16 +268,15 @@ class UssdServiceController extends Controller
 
             //  Set the "Message"
             $this->msg = $jsonArray['msg'];
-    
+
             //  Set the "Msisdn"
             $this->msisdn = $jsonArray['msisdn'];
-    
+
             //  Set the "Session ID"
             $this->session_id = $jsonArray['sessionid'];
-    
+
             //  Set the "Request Type"
             $this->request_type = $jsonArray['type'];
-
         }
     }
 
@@ -483,7 +477,7 @@ class UssdServiceController extends Controller
 
         /** Sort by the Shared Short Code length e.g ['*200*1*2#', '*789*1#', '*321#']
          *  We want to sort the shortcodes starting with the longest shortcode
-         *  until the shortest shortcode. 
+         *  until the shortest shortcode.
          */
         $shared_short_code_records = array_filter($short_code_records, function ($short_code_record) {
             return ($short_code_record->shared_code != '') && !is_null($short_code_record->shared_code);
@@ -495,12 +489,12 @@ class UssdServiceController extends Controller
 
         /** Sort by the dedicated Short Code length e.g ['*200*1*2#', '*789*1#', '*321#']
          *  We want to sort the shortcodes starting with the longest shortcode
-         *  until the shortest shortcode. 
+         *  until the shortest shortcode.
          */
         $dedicated_short_code_records = array_filter($short_code_records, function ($short_code_record) {
             return ($short_code_record->dedicated_code != '') && !is_null($short_code_record->dedicated_code);
         });
-        
+
         $dedicated_short_code_records = array_values(array_reverse(Arr::sort($dedicated_short_code_records, function ($dedicated_short_code_record) {
             return strlen($dedicated_short_code_record->dedicated_code);
         })));
@@ -510,17 +504,15 @@ class UssdServiceController extends Controller
          *******************************/
 
         // Foreach Dedicated Code e.g *321#, *432#, *543#
-        foreach($dedicated_short_code_records as $key => $dedicated_short_code_record){
-
+        foreach ($dedicated_short_code_records as $key => $dedicated_short_code_record) {
             //  Remove the "*" and "#" symbol from the Dedicated Code of the Main Ussd Service Code e.g from "*321#" to "*321"
             $dedicated_code = str_replace('#', '', $dedicated_short_code_record->dedicated_code);
 
             //  If the dedicated shortcode is the same at the begining with the dialed shortcode
-            if(preg_match('/^'.preg_quote($dedicated_code).'/', $this->msg)){
-
+            if (preg_match('/^'.preg_quote($dedicated_code).'/', $this->msg)) {
                 /** Get the remaining message after removing the portion of the Dedicated Short Code
-                 *  from the code dialed by the user
-                 * 
+                 *  from the code dialed by the user.
+                 *
                  *  User Dialed         *321*1*2#
                  *  Dedicated Short Code   *321*1
                  *  -----------------------------
@@ -533,18 +525,18 @@ class UssdServiceController extends Controller
                 $remaining_message = str_replace('#', '*', $remaining_message);
 
                 /** Explode into an array using the "*" symbol. If the remaining message is "*1*2#",
-                 *  then our values will resolve to the following result:
-                 *  
+                 *  then our values will resolve to the following result:.
+                 *
                  *  $values = ['', '2', ''];
                  */
                 $values = explode('*', $remaining_message);
 
                 /** Remove empty values and reset the numerical array keys. This will resolve the above
-                 *  array to the following result
-                 * 
+                 *  array to the following result.
+                 *
                  *  $values = ['2'];
-                 * 
-                 *  In this case "2" represents the first response by the user to that project. 
+                 *
+                 *  In this case "2" represents the first response by the user to that project.
                  */
                 $values = array_values(array_filter($values, function ($value) {
                     return $value !== '';
@@ -561,7 +553,6 @@ class UssdServiceController extends Controller
 
                 //  Break out of the loop
                 break 1;
-
             }
         }
 
@@ -571,19 +562,16 @@ class UssdServiceController extends Controller
 
         //  If the current Ussd Service Code is not a Shared Service Code (i.e This is a dedicated Service Code)
         if (!$this->ussd_service_code_type) {
-
             // Foreach Shared Service Code e.g *321#, *432#, *543#
-            foreach($shared_short_code_records as $key => $shared_short_code_record){
-
+            foreach ($shared_short_code_records as $key => $shared_short_code_record) {
                 //  Remove the "*" and "#" symbol from the Shared Service Code of the Main Ussd Service Code e.g from "*321#" to "*321"
                 $shared_short_code = str_replace('#', '', $shared_short_code_record->shared_code);
 
                 //  If the shared shortcode is the same at the begining with the dialed shortcode
-                if(preg_match('/^'.preg_quote($shared_short_code).'/', $this->msg)){
-
+                if (preg_match('/^'.preg_quote($shared_short_code).'/', $this->msg)) {
                     /** Get the remaining message after removing the portion of the Shared Short Code
-                     *  from the code dialed by the user
-                     * 
+                     *  from the code dialed by the user.
+                     *
                      *  User Dialed         *321*1*2#
                      *  Shared Short Code   *321*1
                      *  -----------------------------
@@ -596,18 +584,18 @@ class UssdServiceController extends Controller
                     $remaining_message = str_replace('#', '*', $remaining_message);
 
                     /** Explode into an array using the "*" symbol. If the remaining message is "*1*2#",
-                     *  then our values will resolve to the following result:
-                     *  
+                     *  then our values will resolve to the following result:.
+                     *
                      *  $values = ['', '2', ''];
                      */
                     $values = explode('*', $remaining_message);
 
                     /** Remove empty values and reset the numerical array keys. This will resolve the above
-                     *  array to the following result
-                     * 
+                     *  array to the following result.
+                     *
                      *  $values = ['2'];
-                     * 
-                     *  In this case "2" represents the first response by the user to that project. 
+                     *
+                     *  In this case "2" represents the first response by the user to that project.
                      */
                     $values = array_values(array_filter($values, function ($value) {
                         return $value !== '';
@@ -624,14 +612,11 @@ class UssdServiceController extends Controller
 
                     //  Break out of the loop
                     break 1;
-
                 }
             }
-        
         }
 
         foreach ($values as $key => $user_reply) {
-            
             /***********************************************
              *  SAVE THE USER REPLY TO THE REPLY RECORDS   *
              ***********************************************/
@@ -641,12 +626,10 @@ class UssdServiceController extends Controller
              *  and is a removable reply (Can be deleted by the user)
              */
             $this->addReplyRecord($user_reply, 'user', true);
-
         }
 
         //  Use the rest of the values as the message e.g 3*4*5
         $this->msg = $this->text;
-        
     }
 
     /** Use the USSD Service Code to set the project,
@@ -656,68 +639,48 @@ class UssdServiceController extends Controller
     {
         //  If we don't have the builder
         if (empty($this->builder)) {
-
             //  If we have the project id
             if ($this->project_id) {
-
                 //  Get the project linked to this project id
                 $this->project = DB::table('projects')->find($this->project_id);
-             
+
                 //  If the project exists
                 if ($this->project) {
-
                     //  If the project has an active version assigned
                     if ($this->project->active_version_id) {
-
                         //  If we are on Test Mode and the Version Id is provided
                         if ($this->test_mode && $this->version_id) {
-
                             //  Get the specified version to simulate
                             $this->version = DB::table('versions')->find($this->version_id);
-
                         } else {
-
                             //  Get the project's currently active version
                             $this->version = DB::table('versions')->find($this->project->active_version_id);
-
                         }
 
                         //  If the version exists
                         if ($this->version) {
-
                             /* Get the version builder.
                              *
                              *  Note that the builder property is a literal string which we must convert into an array.
                              *  We use the json_decode() method to convert it into an associative array.
                              */
                             $this->builder = json_decode($this->version->builder, true);
-
-                        }else{
-            
+                        } else {
                             //  Return a custom error
                             return $this->showCustomErrorScreen('The project "'.$this->project->name.'" could not locate the version to run the service. Please contact the service provider.');
-
                         }
-                    }else{
-            
+                    } else {
                         //  Return a custom error
                         return $this->showCustomErrorScreen('The project "'.$this->project->name.'" does not have any active version to run the service. Please contact the service provider.');
-
                     }
-
-                }else{
-            
+                } else {
                     //  Return a custom error
                     return $this->showCustomErrorScreen('The project using the shortcode '.$this->service_code.' does not exist anymore. Please contact the service provider.');
-
                 }
-
-            }else{
-
-                 //  Return a custom error
+            } else {
+                //  Return a custom error
                 return $this->showCustomErrorScreen('The shortcode '.$this->service_code.' does not belong to any project. Please contact the service provider.');
-                
-            }   
+            }
         } else {
             //  Return the current builder
             return $this->builder;
@@ -777,7 +740,7 @@ class UssdServiceController extends Controller
 
             //  Set the response headers
             $headers = ['Accept-Charset' => 'utf-8'];
-            
+
             return response()->xml($data, $status, $headers);
         }
     }
@@ -794,17 +757,17 @@ class UssdServiceController extends Controller
 
         //  Update the current session project is
         $this->project_id = $this->existing_session->project_id;
-        
-        /** Since its possible to re-run the "handleExistingSession" method by executing
+
+        /* Since its possible to re-run the "handleExistingSession" method by executing
          *  the Revisit Event, its important that we become mindful to reset the values
          *  of certain variables to avoid strange behaviour or unwanted outcomes. The
          *  following are the list of variables we must always reset to their default
          *  values:
-         * 
+         *
          *  "$this->screen", "$this->linked_screen", "$this->chained_screens"
          *  "$this->display", "$this->linked_display", "$this->chained_displays"
          */
-            
+
         //  Reset the "screen", "linked screen" and "chained screens"
         $this->screen = null;
         $this->linked_screen = null;
@@ -1264,11 +1227,9 @@ class UssdServiceController extends Controller
             ];
 
             //  If we have the builder
-            if( $this->builder ){
-
+            if ($this->builder) {
                 //  Include the logs if required
                 if ($this->builder['simulator']['debugger']['return_logs']) {
-
                     //  Set an info log of the ussd properties
                     $this->logInfo(
                         'USSD Properties: '.
@@ -1284,17 +1245,15 @@ class UssdServiceController extends Controller
                             $this->wrapAsDynamicDataHtml('{{ ussd.session_id }}').' = '.$this->wrapAsSuccessHtml($this->getDynamicData('ussd.session_id')).
                         '</div>'
                     );
-                    
-                    if( $this->builder['simulator']['debugger']['return_summarized_logs'] ){
+
+                    if ($this->builder['simulator']['debugger']['return_summarized_logs']) {
                         //  Set the summarized logs on the response payload
                         $response['logs'] = $this->summarized_logs;
-                    }else{
+                    } else {
                         //  Set the logs on the response payload
                         $response['logs'] = $this->logs;
                     }
-
                 }
-
             }
         }
 
@@ -2083,13 +2042,11 @@ class UssdServiceController extends Controller
     {
         //  Check if the screens exist
         if ($this->checkIfScreensExist() == false) {
-
             //  Set a warning log that we could not find the builder screens
             $this->logWarning($this->wrapAsPrimaryHtml($this->app_name).' App does not have any screens to show');
-            
+
             //  Return a custom error
             return $this->showCustomErrorScreen('The project "'.$this->project->name.'" does not have any screens to show');
-
         }
 
         //  Return null if we have screens
@@ -2520,13 +2477,11 @@ class UssdServiceController extends Controller
     {
         //  If the linked screen exists
         if (empty($this->screen)) {
-
             //  Set a warning log that the linked screen could not be found
             $this->logWarning('The linked screen could not be found');
 
             //  Show the technical difficulties error screen to notify the user of the issue
             return $this->showTechnicalDifficultiesErrorScreen();
-
         }
 
         return null;
@@ -3066,7 +3021,6 @@ class UssdServiceController extends Controller
     {
         //  Check if the displays exist
         if ($this->checkIfDisplaysExist() != true) {
-
             //  Set a warning log that we could not find the displays
             $this->logWarning($this->wrapAsPrimaryHtml($this->screen['name']).' does not have any displays to show');
 
@@ -5596,19 +5550,16 @@ class UssdServiceController extends Controller
         if (count($events)) {
             //  Foreach event
             foreach ($events as $event) {
-
                 //  Handle the current event
                 $handleEventResponse = $this->handleEvent($event);
 
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($handleEventResponse)) {
-
                     //  Set an info log that the current event wants to display information
                     $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).', wants to display information, we are not running any other events or processes, instead we will return information to display.');
 
                     //  Return the screen information
                     return $handleEventResponse;
-
                 }
 
                 //  Check if we can run any other events after this event has been executed
@@ -5807,15 +5758,6 @@ class UssdServiceController extends Controller
 
             //  Set an info log of the CRUD API Method provided
             $this->logInfo('API Method: '.$this->wrapAsSuccessHtml(strtoupper($method)));
-        }
-
-        //  Check if the provided url is correct
-        if (!$this->isValidUrl($url)) {
-            //  Set a warning log that the CRUD API Url provided is incorrect
-            $this->logWarning('API Url provided is incorrect ('.$this->wrapAsSuccessHtml($url).')');
-
-            //  Show the technical difficulties error screen to notify the user of the issue
-            return $this->showTechnicalDifficultiesErrorScreen();
         }
 
         //  If we have the headers
@@ -7494,7 +7436,7 @@ class UssdServiceController extends Controller
                         case 'set_to_empty_array':
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'setToEmptyArrayFormat'); break;
-                            
+
                         case 'custom_code':
 
                             return $this->applyFormattingRule($target_value, $formatting_rule, 'customCodeFormat'); break;
@@ -8770,7 +8712,6 @@ class UssdServiceController extends Controller
 
         foreach ($chained_screens_or_displays as $chained_screen_or_display) {
             if ($chained_screen_or_display['id'] == $screen_or_display['id']) {
-                
                 //  Get the user responses leading on to this screen/display as "text"
                 $text = $chained_screen_or_display['metadata']['text'];
 
@@ -8852,18 +8793,16 @@ class UssdServiceController extends Controller
 
         //  Reset the user reply message
         $this->msg = '';
-        
+
         /** If this is a new session, then it means we don't have the any existing session
          *  which means that "$this->existing_session" is not set to anything. Since this
-         *  is a new session we must force the creation of a new session record so that 
-         *  we can set that new session as the existing session. This will help us 
+         *  is a new session we must force the creation of a new session record so that
+         *  we can set that new session as the existing session. This will help us
          *  complete our Revisit Event.
          */
-
-        if( $this->request_type == '1' ){
-
+        if ($this->request_type == '1') {
             /** Create new session
-             * 
+             *
              *  This will render as: $this->createNewSession()
              *  while being called within a try/catch handler.
              */
@@ -8873,16 +8812,13 @@ class UssdServiceController extends Controller
             if ($this->shouldDisplayScreen($createResponse)) {
                 return $createResponse;
             }
-        
-        }elseif( $this->request_type == '2' ){
-
+        } elseif ($this->request_type == '2') {
             /** Update existing session
-             * 
+             *
              *  This will render as: $this->updateExistingSessionDatabaseRecord()
              *  while being called within a try/catch handler.
              */
             $updateResponse = $this->tryCatch('updateExistingSessionDatabaseRecord');
-
         }
 
         //  Empty the existing reply records (Again)
@@ -8891,7 +8827,7 @@ class UssdServiceController extends Controller
         //  Fetch the existing session record from the database by force
         $this->existing_session = $this->getExistingSessionFromDatabase($force = true);
 
-        /** Make a indication that we are revisting. Its important to note that when we are revisiting,
+        /* Make a indication that we are revisting. Its important to note that when we are revisiting,
          *  we are actually re-handling the session again from scratch using the handleExistingSession()
          *  method which will build the App from the ground up. The problem we have is that whenever we
          *  have Events that are fired in order to reset some Global Variables we keep overiding these
@@ -8927,7 +8863,7 @@ class UssdServiceController extends Controller
          *
          */
         $this->is_revisting_session = true;
-            
+
         //  Handle existing session - Re-run the handleExistingSession()
         $response = $this->handleExistingSession();
 
@@ -9887,7 +9823,7 @@ class UssdServiceController extends Controller
         $data['level'] = $this->level ?? null;
         $data['screen'] = $this->screen['name'] ?? null;
         $data['display'] = $this->display['name'] ?? null;
-        
+
         //  Push the latest log update
         array_push($this->logs, $data);
 
@@ -9906,10 +9842,8 @@ class UssdServiceController extends Controller
         $excluded_datatypes = ['dynamic_variables'];
 
         if (!in_array($data['data_type'], $excluded_datatypes)) {
-
             //  Push the latest log update
             array_push($this->summarized_logs, $data);
-
         }
     }
 
