@@ -2,15 +2,16 @@
 
 namespace App;
 
-use DB;
 use App\Traits\CommonTraits;
 use App\Traits\ProjectTraits;
+use DB;
 use Illuminate\Database\Eloquent\Model;
 
 class Project extends Model
 {
-    use ProjectTraits, CommonTraits;
-    
+    use ProjectTraits;
+    use CommonTraits;
+
     protected $with = ['shortCode', 'activeVersion'];
 
     /**
@@ -28,7 +29,7 @@ class Project extends Model
      * @var array
      */
     protected $fillable = [
-        'name', 'description', 'online', 'offline_message', 'active_version_id', 'user_id'
+        'name', 'description', 'online', 'offline_message', 'active_version_id', 'user_id',
     ];
 
     /*
@@ -60,7 +61,7 @@ class Project extends Model
      */
     public function versions()
     {
-        return $this->hasMany('App\Version', 'project_id');
+        return $this->hasMany('App\Version', 'project_id')->select('id', 'number', 'description');
     }
 
     /*
@@ -112,9 +113,8 @@ class Project extends Model
     }
 
     /** ATTRIBUTES
-     * 
-     *  Note that the "resource_type" is defined within CommonTraits
-     * 
+     *
+     *  Note that the "resource_type" is defined within CommonTraits.
      */
     protected $appends = [
         'resource_type',
@@ -122,7 +122,7 @@ class Project extends Model
 
     public function setOnlineAttribute($value)
     {
-        $this->attributes['online'] = ( ($value == 'true' || $value === '1') ? 1 : 0);
+        $this->attributes['online'] = (($value == 'true' || $value === '1') ? 1 : 0);
     }
 
     //  ON DELETE EVENT
@@ -132,7 +132,6 @@ class Project extends Model
 
         // before delete() method call this
         static::deleting(function ($project) {
-
             //  Delete all versions
             $project->versions()->delete();
 
@@ -145,5 +144,4 @@ class Project extends Model
             // do the rest of the cleanup...
         });
     }
-
 }

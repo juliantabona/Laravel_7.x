@@ -5734,11 +5734,21 @@ class UssdServiceController extends Controller
         $request_options = [];
 
         //  Check if the CRUD Url and Method has been provided
-        if (empty($url) || empty($method)) {
+        if (empty($url) || !is_string($url) || empty($method)) {
+
             //  Check if the CRUD Url has been provided
             if (empty($url)) {
                 //  Set a warning log that the CRUD API Url was not provided
                 $this->logWarning('API Url was not provided');
+
+                //  Show the technical difficulties error screen to notify the user of the issue
+                return $this->showTechnicalDifficultiesErrorScreen();
+            }
+
+            //  Check if the CRUD Url is a String
+            if (!is_string($url)) {
+                //  Set a warning log that the CRUD API Url is not a string
+                $this->logWarning('API Url must be a string e.g http://www.example.com/api');
 
                 //  Show the technical difficulties error screen to notify the user of the issue
                 return $this->showTechnicalDifficultiesErrorScreen();
@@ -5752,12 +5762,22 @@ class UssdServiceController extends Controller
                 //  Show the technical difficulties error screen to notify the user of the issue
                 return $this->showTechnicalDifficultiesErrorScreen();
             }
+
         } else {
             //  Set an info log of the CRUD API Url provided
             $this->logInfo('API Url: '.$this->wrapAsSuccessHtml($url));
 
             //  Set an info log of the CRUD API Method provided
             $this->logInfo('API Method: '.$this->wrapAsSuccessHtml(strtoupper($method)));
+        }
+
+        //  Check if the provided url is correct
+        if (!$this->isValidUrl($url)) {
+            //  Set a warning log that the CRUD API Url provided is incorrect
+            $this->logWarning('API Url provided is incorrect ('.$this->wrapAsSuccessHtml($url).')');
+
+            //  Show the technical difficulties error screen to notify the user of the issue
+            return $this->showTechnicalDifficultiesErrorScreen();
         }
 
         //  If we have the headers
