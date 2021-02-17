@@ -21,10 +21,11 @@ class Project extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
+            'hex_color' => $this->hex_color,
             'online' => $this->online,
             'offline_message' => $this->offline_message,
             'active_version_id' => $this->active_version_id,
-            
+
             /*  Timestamp Info  */
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
@@ -48,19 +49,19 @@ class Project extends JsonResource
                     'title' => 'The versions that belong to this project',
                     'total' => $this->versions()->count()
                 ],
-                
+
                 //  Link to the project sessions
                 'sce:sessions' => [
                     'href' => route('project-sessions', ['project_id' => $this->id]),
                     'title' => 'The sessions that belong to this project'
                 ],
-                
+
                 //  Link to the project live sessions
                 'sce:live_sessions' => [
                     'href' => route('project-live-sessions', ['project_id' => $this->id]),
                     'title' => 'The live sessions that belong to this project'
                 ],
-                
+
                 //  Link to the project test sessions
                 'sce:test_sessions' => [
                     'href' => route('project-test-sessions', ['project_id' => $this->id]),
@@ -72,13 +73,13 @@ class Project extends JsonResource
                     'href' => route('project-analytics', ['project_id' => $this->id]),
                     'title' => 'The analytics that belong to this project'
                 ],
-                
+
                 //  Link to the project live analytics
                 'sce:live_analytics' => [
                     'href' => route('project-live-analytics', ['project_id' => $this->id]),
                     'title' => 'The live analytics that belong to this project'
                 ],
-                
+
                 //  Link to the project test analytics
                 'sce:test_analytics' => [
                     'href' => route('project-test-analytics', ['project_id' => $this->id]),
@@ -101,15 +102,15 @@ class Project extends JsonResource
                     'href' => route('ussd-service-builder'),
                     'title' => 'The ussd service builder',
                 ]
-                
+
             ],
 
             /*  Embedded Resources */
             '_embedded' => [
-                
+
                 //  Short Code Resource
                 'short_code' => $this->shortCode ? (new ShortCodeResource($this->shortCode)) : null,
-                
+
                 //  Active Version Resource
                 'active_version' => $this->activeVersion ? (new VersionResource($this->activeVersion)) : null
 

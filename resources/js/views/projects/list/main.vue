@@ -1,7 +1,7 @@
 <template>
 
     <Row :gutter="12">
-        
+
         <Col :span="20" :offset="2">
 
             <Row :gutter="12">
@@ -20,7 +20,7 @@
                 </Col>
 
                 <template v-else>
-                    
+
                     <Col :span="8">
 
                         <Card class="add-sce-mini-card-button mb-3"
@@ -31,7 +31,7 @@
                             </div>
                         </Card>
 
-                        <singleProjectCard v-for="(project, index) in firstColumnProjects" 
+                        <singleProjectCard v-for="(project, index) in firstColumnProjects"
                             :key="index" :index="index" :project="project" :projects="projects" @deleted="fetchProjects">
                         </singleProjectCard>
 
@@ -39,18 +39,18 @@
 
                     <Col :span="8">
 
-                        <singleProjectCard v-for="(project, index) in secondColumnProjects" 
+                        <singleProjectCard v-for="(project, index) in secondColumnProjects"
                             :key="index" :index="index" :project="project" :projects="projects" @deleted="fetchProjects">
                         </singleProjectCard>
-                        
+
                     </Col>
 
                     <Col :span="8">
 
-                        <singleProjectCard v-for="(project, index) in thirdColumnProjects" 
+                        <singleProjectCard v-for="(project, index) in thirdColumnProjects"
                             :key="index" :index="index" :project="project" :projects="projects" @deleted="fetchProjects">
                         </singleProjectCard>
-                        
+
                     </Col>
 
                 </template>
@@ -64,9 +64,9 @@
 </template>
 
 <script>
-    
+
     import Loader from './../../../components/_common/loaders/default.vue';
-    import singleProjectCard from './components/singleProjectCard.vue'; 
+    import singleProjectCard from './components/singleProjectCard.vue';
 
     export default {
         components: { Loader, singleProjectCard },
@@ -109,10 +109,10 @@
         },
         methods: {
             navigateToCreateProject(){
-                
+
                 //  Navigate to create new project
                 this.$router.push({ name: 'create-project' });
-                
+
             },
             fetchProjects() {
 
@@ -137,8 +137,8 @@
                             //  Stop loader
                             self.isLoading = false;
 
-                        })         
-                        .catch(response => { 
+                        })
+                        .catch(response => {
 
                             //  Log the responce
                             console.error(response);
@@ -154,7 +154,7 @@
 
             //  Fetch the project
             this.fetchProjects();
-            
+
         }
     }
 </script>

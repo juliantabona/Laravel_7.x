@@ -49,7 +49,9 @@ class UserController extends Controller
     public function getUserProjects(Request $request)
     {
         //  Get the user projects
-        $projects = $this->user->projects()->with('activeVersion:id,number,description,project_id')->latest()->paginate() ?? null;
+        $projects = $this->user->projects()->with(['shortCode', 'activeVersion' => function($query){
+                            $query->select('id', 'number', 'description', 'project_id');
+                        }])->latest()->paginate();
 
         //  Check if the user projects exist
         if ($projects) {

@@ -1,6 +1,6 @@
 <template>
     <div>
-        <!-- Modal 
+        <!-- Modal
 
              Note: modalVisible and detectClose() are imported from the modalMixin.
              They are used to allow for opening and closing the modal properly
@@ -18,7 +18,7 @@
             <Alert v-if="isEditing" show-icon>Editing</Alert>
 
             <Alert v-else-if="isCloning" show-icon>Cloning</Alert>
-            
+
             <!-- Form -->
             <Form ref="eventForm" class="mb-2" :model="eventForm" :rules="eventFormRules" @submit.native.prevent="handleSubmit()">
 
@@ -38,17 +38,18 @@
                         <activeStateSelector v-model="eventForm.active" class="mb-2"></activeStateSelector>
 
                     </Col>
-                    
+
                     <!-- Check if the property "run_next_events" exists on the "eventForm" object -->
                     <Col :span="firstRowSpan" v-if="eventForm.hasOwnProperty('run_next_events')">
 
                         <!-- Show active state checkbox to run the next events after this event (Marks if this is active / inactive) -->
-                        <activeStateSelector v-model="eventForm.run_next_events" class="mb-2" 
-                            title="Run events after this event" :titleStyle="{ width: '250px' }">
+                        <activeStateSelector v-model="eventForm.run_next_events" class="mb-2"
+                            title="Run events after this event" :titleStyle="{ width: '250px' }"
+                            :activeStateOptions="['Yes', 'No', 'Conditional', 'If_Active', 'If_Inactive']">
                         </activeStateSelector>
 
                     </Col>
-                    
+
                     <Col :span="24">
 
                         <!-- Enter Name -->
@@ -63,41 +64,41 @@
                 </Row>
 
             </Form>
-            
-            <!-- Edit CRUD API Event --> 
+
+            <!-- Edit CRUD API Event -->
             <editCrudApiEvent v-if="eventForm.type == 'CRUD API'" v-bind="$props" :event="eventForm"></editCrudApiEvent>
-            
-            <!-- Edit BILLING API Event --> 
+
+            <!-- Edit BILLING API Event -->
             <editBillingApiEvent v-if="eventForm.type == 'Billing API'" v-bind="$props" :event="eventForm"></editBillingApiEvent>
-            
-            <!-- Edit Notification Event --> 
+
+            <!-- Edit Notification Event -->
             <editNotificationEvent v-if="eventForm.type == 'Notification'" v-bind="$props" :event="eventForm"></editNotificationEvent>
 
-            <!-- Edit Validation Event --> 
+            <!-- Edit Validation Event -->
             <editValidationEvent v-if="eventForm.type == 'Validation'" v-bind="$props" :event="eventForm"></editValidationEvent>
 
-            <!-- Edit Formatting Event --> 
+            <!-- Edit Formatting Event -->
             <editFormattingEvent v-if="eventForm.type == 'Formatting'" v-bind="$props" :event="eventForm"></editFormattingEvent>
 
-            <!-- Edit Local Storage Event --> 
+            <!-- Edit Local Storage Event -->
             <editLocalStorageEvent v-if="eventForm.type == 'Local Storage'" v-bind="$props" :event="eventForm"></editLocalStorageEvent>
 
-            <!-- Edit Custom Code Event --> 
+            <!-- Edit Custom Code Event -->
             <editCustomCodeEvent v-if="eventForm.type == 'Custom Code'" v-bind="$props" :event="eventForm"></editCustomCodeEvent>
-            
-            <!-- Edit Revisit Event --> 
+
+            <!-- Edit Revisit Event -->
             <editRevisitEvent v-if="eventForm.type == 'Revisit'" v-bind="$props" :event="eventForm"></editRevisitEvent>
 
-            <!-- Edit Auto Link Event --> 
+            <!-- Edit Auto Link Event -->
             <editAutoLinkEvent v-if="eventForm.type == 'Auto Link'" v-bind="$props" :event="eventForm"></editAutoLinkEvent>
 
-            <!-- Edit Auto Reply Event --> 
+            <!-- Edit Auto Reply Event -->
             <editAutoReplyEvent v-if="eventForm.type == 'Auto Reply'" v-bind="$props" :event="eventForm"></editAutoReplyEvent>
 
-            <!-- Edit Redirect Event --> 
+            <!-- Edit Redirect Event -->
             <editRedirectEvent v-if="eventForm.type == 'Redirect'" v-bind="$props" :event="eventForm"></editRedirectEvent>
 
-            <!-- Edit Create/Update Account Event --> 
+            <!-- Edit Create/Update Account Event -->
             <editCreateOrUpdateAccountEvent v-if="eventForm.type == 'Create/Update Account'" v-bind="$props" :event="eventForm"></editCreateOrUpdateAccountEvent>
 
             <div class="border-top pt-3 mt-3">
@@ -107,7 +108,7 @@
 
                 <!-- Highlighter -->
                 <span class="d-inline-block mr-2">
-                    <span class="font-weight-bold">Highlighter</span>: 
+                    <span class="font-weight-bold">Highlighter</span>:
                     <ColorPicker v-model="eventForm.hexColor" recommend></ColorPicker>
                 </span>
 
@@ -143,11 +144,11 @@
     import editAutoLinkEvent from './auto-link/main.vue';
     import editRedirectEvent from './redirect/main.vue';
     import editRevisitEvent from './revisit/main.vue';
-    
+
     export default {
         mixins: [modalMixin],
-        components: { 
-            activeStateSelector, commentInput, editLocalStorageEvent, editBillingApiEvent, editNotificationEvent, editCrudApiEvent, 
+        components: {
+            activeStateSelector, commentInput, editLocalStorageEvent, editBillingApiEvent, editNotificationEvent, editCrudApiEvent,
             editValidationEvent, editFormattingEvent, editRedirectEvent, editRevisitEvent, editAutoLinkEvent,
             editAutoReplyEvent, editCustomCodeEvent, editCreateOrUpdateAccountEvent
         },
@@ -226,7 +227,7 @@
                 }else if( this.isCloning ){
 
                     return 'Clone Event';
-                
+
                 }
 
             },
@@ -239,7 +240,7 @@
                 }else if( this.isCloning ){
 
                     return 'Clone';
-                
+
                 }
 
             },
@@ -248,7 +249,7 @@
             }
         },
         methods: {
-            
+
             getEventForm(){
 
                 //  If this is a global event
@@ -264,14 +265,14 @@
 
                         //  Get the first matched Global Event
                         var globalEvent = globalEvents[0];
-                
+
                         //  Copy and return the global event details
                         return _.cloneDeep(globalEvent);
 
                     }
 
                 }
-                
+
                 //  Copy and return the current event details
                 return _.cloneDeep(this.event);
 
@@ -288,8 +289,8 @@
 
                         //  If the event ids match
                         if( event.id == this.eventForm.id ){
-                            
-                            return this.eventForm; 
+
+                            return this.eventForm;
                         }
 
                         return event;
@@ -301,8 +302,8 @@
 
                         //  If the event ids match
                         if( event.id == this.eventForm.id ){
-                            
-                            return this.eventForm; 
+
+                            return this.eventForm;
                         }
 
                         return event;
@@ -317,8 +318,8 @@
 
                             //  If the event ids match
                             if( event.id == this.eventForm.id ){
-                                
-                                return this.eventForm; 
+
+                                return this.eventForm;
 
                             }
 
@@ -331,8 +332,8 @@
 
                             //  If the event ids match
                             if( event.id == this.eventForm.id ){
-                                
-                                return this.eventForm; 
+
+                                return this.eventForm;
 
                             }
 
@@ -353,7 +354,7 @@
 
                 //  Go through each Global Event and update accordingly
                 var globalEvents = this.version.builder.global_events.map((globalEvent) => {
-                        
+
                     //  If the Global Event matches the current event id
                     if( globalEvent.id == this.eventForm.id ){
 
@@ -361,7 +362,7 @@
 
                         //  Update this Global Event
                         globalEvent = this.eventForm;
-                    
+
                     }
 
                     //  Return the Global Event
@@ -380,24 +381,24 @@
 
                     //  Add the event to the list of Global Events
                     this.version.builder.global_events.push(this.eventForm);
-                    
+
                 }
 
             },
             handleSubmit(){
-                
+
                 //  Validate the event form
-                this.$refs['eventForm'].validate((valid) => 
-                {   
+                this.$refs['eventForm'].validate((valid) =>
+                {
                     //  If the validation passed
                     if (valid) {
 
                         if( this.isEditing ){
-                        
+
                             this.handleEditEvent();
 
                         }else if( this.isCloning ){
-                        
+
                             this.handleCloneEvent();
 
                         }
@@ -410,7 +411,7 @@
                         }
 
                         /** Note the closeModal() method is imported from the
-                         *  modalMixin file. It handles the closing process 
+                         *  modalMixin file. It handles the closing process
                          *  of the modal
                          */
                         this.closeModal();
@@ -431,7 +432,7 @@
 
                     //  Change the event id so that it does not sync with the other global events anymore
                     this.eventForm.id = this.generateEventId();
-                    
+
                 }
 
                 //  If the event is set to global and its color its using a normal grey highlight color
@@ -439,7 +440,7 @@
                     //  Change the color to an orange highlight color
                     this.eventForm.hexColor = '#FF9900';
                 }
-                
+
                 //  If the event is not set to global and its color its using the orange highlight color
                 if( !this.eventForm.global && this.eventForm.hexColor == '#FF9900' ){
                     //  Change the color to an grey highlight color

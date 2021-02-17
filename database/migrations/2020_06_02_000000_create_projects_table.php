@@ -18,6 +18,7 @@ class CreateProjectsTable extends Migration
             /*  Project Details  */
             $table->string('name')->nullable();
             $table->string('description', 500)->nullable();
+            $table->char('hex_color', 6)->default('2D8CF0');
             $table->boolean('online')->nullable()->default(false);
             $table->string('offline_message')->nullable();
             $table->unsignedInteger('active_version_id')->nullable();
@@ -25,7 +26,7 @@ class CreateProjectsTable extends Migration
 
             /*  Timestamps  */
             $table->timestamps();
-            
+
         });
     }
 

@@ -1446,6 +1446,9 @@ class UssdServiceController extends Controller
         //  Set the current session User Account (If Any)
         $this->setUserAccount();
 
+        //  Reset the dynamic data storage
+        $this->resetDynamicDataStorage();
+
         //  Locally store the current session details within a dynamic variable
         $this->storeUssdSessionValues();
 
@@ -1459,6 +1462,20 @@ class UssdServiceController extends Controller
 
         //  Start building and showing the ussd screens
         return $this->startBuildingUssdScreens();
+    }
+
+    /**
+     *  This method resets the dynamic data storage. This resetting is important
+     *  especially when we are using the "Home Revisit" event and want to restart
+     *  without any previously set dynamic data properties e.g If we set a variable
+     *  "Products" and do some additional logic using the "Products" resource, then
+     *  we use the "Home Revisit" event to restart the application, we may want the
+     *  "Products" dynamic property to be removed (Like clearing cache) so that this
+     *  property does not affect the way the application runs.
+     */
+    public function resetDynamicDataStorage()
+    {
+        $this->dynamic_data_storage = [];
     }
 
     public function storeGlobalVariables()
@@ -1794,7 +1811,13 @@ class UssdServiceController extends Controller
          */
         $text = $text ?? $this->extractUserResponsesAsText();
 
+        //  Extract responses to an Array
         $responses = explode('*', $text);
+
+        //  Remove any null or empty responses from Array
+        $responses = collect($responses)->filter(function($response){
+                        return (!is_null($response) && trim($response) !== '');
+                    })->toArray();
 
         return $responses;
     }
@@ -5550,25 +5573,47 @@ class UssdServiceController extends Controller
         if (count($events)) {
             //  Foreach event
             foreach ($events as $event) {
+
                 //  Handle the current event
                 $handleEventResponse = $this->handleEvent($event);
 
                 //  If we have a screen to show return the response otherwise continue
                 if ($this->shouldDisplayScreen($handleEventResponse)) {
+
                     //  Set an info log that the current event wants to display information
                     $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).', wants to display information, we are not running any other events or processes, instead we will return information to display.');
 
                     //  Return the screen information
                     return $handleEventResponse;
+
                 }
 
                 //  Check if we can run any other events after this event has been executed
                 if (isset($event['run_next_events'])) {
+
                     //  Set an info log that we are checking if we can run any other events after the current event
                     $this->logInfo('Checking if we can run any other events after the '.$this->wrapAsSuccessHtml($event['name']).' event.');
 
-                    //  Get the active state value of the "run_next_events"
-                    $activeState = $this->processActiveState($event['run_next_events']);
+                    //  Get the active state value
+                    $activeState = $this->processActiveState($event['active']);
+
+                    //  If we should run the next events if this event is active
+                    if($event['run_next_events']['selected_type'] === 'if_active' && $activeState === true){
+
+                        //  Run the next events if this event is active
+                        $activeState = true;
+
+                    }elseif($event['run_next_events']['selected_type'] === 'if_inactive' && $activeState === false){
+
+                        //  Run the next events if this event is inactive
+                        $activeState = true;
+
+                    }else{
+
+                        //  Get the active state value of the "run_next_events"
+                        $activeState = $this->processActiveState($event['run_next_events']);
+
+                    }
 
                     //  If we have a screen to show return the response otherwise continue
                     if ($this->shouldDisplayScreen($activeState)) {

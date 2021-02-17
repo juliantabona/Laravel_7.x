@@ -29,7 +29,7 @@ class Project extends Model
      * @var array
      */
     protected $fillable = [
-        'name', 'description', 'online', 'offline_message', 'active_version_id', 'user_id',
+        'name', 'description', 'hex_color', 'online', 'offline_message', 'active_version_id', 'user_id',
     ];
 
     /*

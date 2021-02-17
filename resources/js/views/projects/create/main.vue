@@ -7,9 +7,9 @@
                 <Icon type="md-arrow-back" class="mr-1" :size="20" />
                 <span>Projects</span>
             </Button>
-            
+
             <Card class="pt-2">
-                
+
                 <!-- Heading -->
                 <Divider orientation="left" class="font-weight-bold">Create Project</Divider>
 
@@ -28,25 +28,25 @@
                 <Alert v-if="serverGeneralError  && !isLoading" type="warning">{{ serverGeneralError }}</Alert>
 
                 <Form ref="projectForm" :model="projectForm" :rules="projectFormRules" @submit.native.prevent="handleSubmit()">
-                    
+
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">
-                        <Input type="text" v-model="projectForm.name" placeholder="Name" :disabled="isLoading" 
+                        <Input type="text" v-model="projectForm.name" placeholder="Name" :disabled="isLoading"
                                 maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()">
                         </Input>
                     </FormItem>
-                    
+
                     <!-- Enter Description -->
                     <FormItem prop="description" :error="serverDescriptionError">
-                        <Input type="textarea" v-model="projectForm.description" placeholder="Description" :disabled="isLoading" 
+                        <Input type="textarea" v-model="projectForm.description" placeholder="Description" :disabled="isLoading"
                                 maxlength="500" show-word-limit @keyup.enter.native="handleSubmit()">
                         </Input>
                     </FormItem>
-                    
+
                     <!-- Enter Dedicated Short Code -->
                     <FormItem prop="dedicated_short_code" :error="serverDedicatedShortCodeError">
                         <div class="d-flex">
-                            <span :style="{ width: '200px' }" class="font-weight-bold">Dedicated Code: </span>  
+                            <span :style="{ width: '200px' }" class="font-weight-bold">Dedicated Code: </span>
                             <Input type="text" v-model.number="projectForm.dedicated_short_code" placeholder="180"
                                    :disabled="isLoading" @keyup.enter.native="handleSubmit()">
                                 <span slot="prepend">*</span>
@@ -56,9 +56,9 @@
                     </FormItem>
 
                     <!-- Select Shared Short Code -->
-                    <FormItem prop="shared_short_code" :error="serverSharedShortCodeError">  
+                    <FormItem prop="shared_short_code" :error="serverSharedShortCodeError">
                         <div class="d-flex">
-                            <span :style="{ width: '235px' }" class="font-weight-bold">Shared Code: </span>  
+                            <span :style="{ width: '235px' }" class="font-weight-bold">Shared Code: </span>
                             <Select v-model="projectForm.shared_short_code" :disabled="isLoading" class="w-100 mr-2">
                                 <Option v-for="(shared_short_code, index) in shared_short_codes" :value="shared_short_code" :key="index">
                                     {{ shared_short_code }}
@@ -74,6 +74,11 @@
                         </div>
                     </FormItem>
 
+                    <span class="d-inline-block mr-2">
+                        <span class="font-weight-bold">Highlighter</span>:
+                        <ColorPicker v-model="projectForm.hex_color" recommend></ColorPicker>
+                    </span>
+
                     <!-- Create Button -->
                     <FormItem v-if="!isLoading">
                         <Button type="primary" class="float-right" :disabled="isSearching || isLoading" @click="handleSubmit()">Create Project</Button>
@@ -83,14 +88,14 @@
                     <Loader v-show="isLoading" class="mt-2">Creating project...</Loader>
 
                 </Form>
-                
+
             </Card>
         </Col>
     </Row>
 
 </template>
 <script>
-    
+
     import Loader from './../../../components/_common/loaders/default.vue';
 
     export default {
@@ -104,6 +109,7 @@
                 projectForm: {
                     name: '',
                     description: '',
+                    hex_color: '2D8CF0',
                     shared_short_code: '',
                     clone_project_id: null,
                     dedicated_short_code: '',
@@ -157,7 +163,7 @@
 
                 //  Redirect the user to the projects page
                 this.$router.push({ name: 'show-projects' });
-                
+
             },
             handleSubmit(){
 
@@ -165,11 +171,11 @@
                 this.resetErrors();
 
                 //  Validate the form
-                this.$refs['projectForm'].validate((valid) => 
-                {   
+                this.$refs['projectForm'].validate((valid) =>
+                {
                     //  If the validation passed
                     if (valid) {
-                        
+
                         //  Attempt to create the project
                         this.attemptProjectCreation();
 
@@ -196,7 +202,7 @@
                     //  Use the api call() function, refer to api.js
                     api.call('get', this.cloneProjectUrl)
                         .then(({data}) => {
-                            
+
                             //  Console log the data returned
                             console.log(data);
 
@@ -209,8 +215,8 @@
                             //  Stop loader
                             self.isSearching = false;
 
-                        })         
-                        .catch(response => { 
+                        })
+                        .catch(response => {
 
                             //  Log the responce
                             console.error(response);
@@ -233,7 +239,7 @@
                  *   project details required for a new project creation.
                  */
                 let projectData = this.projectForm;
-                
+
                 /**  Note "api_home" is defined within the auth.js file.
                  *   It holds reference to common links for ease of
                  *   access.
@@ -257,9 +263,9 @@
 
                         //  Redirect the user to the projects page
                         this.$router.push({ name: 'show-projects' });
-                        
+
                     }).catch((response) => {
-                
+
                         console.log(response);
 
                         //  Stop loader
@@ -267,7 +273,7 @@
 
                         //  Get the error response data
                         let data = (response || {}).data;
-                            
+
                         //  Get the response errors
                         var errors = (data || {}).errors;
 
@@ -280,7 +286,7 @@
 
                             //  If we have errors
                             if(_.size(errors)){
-                                
+
                                 //  Set the server errors
                                 self.serverErrors = errors;
 
@@ -311,7 +317,7 @@
             }
         },
         created() {
-            this.fetchProjectToClone();   
+            this.fetchProjectToClone();
         }
     }
 </script>

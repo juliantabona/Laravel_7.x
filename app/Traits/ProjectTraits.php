@@ -52,6 +52,7 @@ trait ProjectTraits
             'name' => $request->input('name'),
             'description' => $request->input('description'),
             'offline_message' => $this->default_offline_offline_message,
+            'hex_color' => str_replace('#', '', $request->input('hex_color')),
         ];
 
         try {

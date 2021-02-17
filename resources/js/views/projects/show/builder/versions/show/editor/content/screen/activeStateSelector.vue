@@ -14,9 +14,9 @@
             <div class="w-100">
 
                 <Select v-model="value.selected_type" :disabled="disabled" class="w-100">
-                    <Option v-for="(activeStateOption, index) in activeStateOptions" 
-                            :value="activeStateOption.value" :key="index">
-                        {{ activeStateOption.name }}
+                    <Option v-for="(option, index) in options"
+                            :value="option.value" :key="index">
+                        {{ option.name }}
                     </Option>
                 </Select>
 
@@ -25,9 +25,9 @@
                     <Icon type="ios-information-circle-outline" class="mr-1" :size="20" />
                     <span>{{ disabledMessage }}</span>
                 </span>
-                
+
             </div>
-            
+
         </div>
 
         <template v-if="value.selected_type == 'conditional' && !disabled">
@@ -81,24 +81,27 @@
             sampleCodeTemplate: {
                 type: String,
                 default: null
+            },
+            activeStateOptions: {
+                type: Array,
+                default: function(){
+                    return ['Yes', 'No', 'Conditional']
+                }
             }
         },
         data(){
             return {
-                activeStateOptions: [
-                    {
-                        name: 'Yes',
-                        value: 'yes'
-                    },
-                    {
-                        name: 'No',
-                        value: 'no'
-                    },
-                    {
-                        name: 'Conditional',
-                        value: 'conditional'
+
+            }
+        },
+        computed: {
+            options(){
+                return this.activeStateOptions.map((option) => {
+                    return {
+                        name: option,                   //  Yes
+                        value: option.toLowerCase()     //  yes
                     }
-                ]
+                });
             }
         }
     }

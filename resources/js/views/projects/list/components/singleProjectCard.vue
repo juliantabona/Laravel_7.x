@@ -1,10 +1,10 @@
 <template>
 
-    <Card @mouseover.native="isHovering = true" 
+    <Card @mouseover.native="isHovering = true"
           @mouseout.native="isHovering = false"
           @click.native="navigateToViewProject()"
           class="sce-mini-card cursor-pointer mb-3" >
-        
+
         <Row>
 
             <Col :span="24">
@@ -12,9 +12,9 @@
                 <div class="d-flex pb-2">
 
                     <!-- Project Logo -->
-                    <Avatar shape="square" :style="avatarStyles">
-                        <span class="font-weight-bold">{{ project.name | firstLetter }}</span>
-                    </Avatar>
+                    <div :class="['ivu-avatar', 'ivu-avatar-square', 'ivu-avatar-default']" :style="avatarStyles">
+                        <span class="font-weight-bold">{{ project.name | firstLetter}}</span>
+                    </div>
 
                     <!-- Project Name: Note "firstLetter" filter is registered as a custom mixin -->
                     <span class="cut-text font-weight-bold mt-2 ml-2">{{ project.name }}</span>
@@ -22,7 +22,7 @@
                 </div>
 
                 <div class="sce-mini-card-body mb-3 py-2 pl-2 pr-5">
-                    
+
                     <span class="d-inline-block">
                         <Badge :text="statusText" :status="status"></Badge>
                         <!-- If we are offline and have a reason provided -->
@@ -70,7 +70,7 @@
                     <div v-show="isHovering" class="project-footer clearfix">
 
                         <div class="float-right">
-                            
+
                             <!-- Delete project -->
                             <Button type="dashed" size="small" class="text-danger" @click.native.stop="handleOpenDeleteProjectModal()">Delete</Button>
 
@@ -90,7 +90,7 @@
 
         </Row>
 
-        <!-- 
+        <!--
             MODAL TO DELETE PROJECT
         -->
         <template v-if="isOpenDeleteProjectModal">
@@ -168,25 +168,13 @@
                 return this.activeVersionDetails.description;
             },
             hexColor(){
-                /** Note that vue does not allow us to use filters inside the component props
-                 *  e.g :style="{ background: (myProperty | Filter) }" or directly inside
-                 *  computed properties e.g return (myProperty | Filter). We can only use 
-                 *  filters inside interpolations e.g {{ myProperty | Filter }}, and you 
-                 *  can't use interpolations as attributes e.g 
-                 * 
-                 *  :style="{ background: {{ (myProperty | Filter) }} }"
-                 * 
-                 *  To overcome this challenge we need to access the filter method directly
-                 *  by accessing the current component Vue Instance then pass the data to
-                 *  the filter method.
-                 */
-                return this.$options.filters.firstLetterColor(this.project.name);
+                return this.project.hex_color;
             },
             avatarStyles(){
                 return {
-                    border: '1px solid ' + this.hexColor + ' !important',
-                    background: this.hexColor + '20 !important',
-                    color: this.hexColor + ' !important',
+                    border: '1px solid #' + this.hexColor + ' !important',
+                    background: '#' + this.hexColor + '20 !important',
+                    color: '#'+this.hexColor + ' !important',
                 }
             },
             statusText(){
@@ -198,16 +186,16 @@
         },
         methods: {
             navigateToCloneProject(){
-                
+
                 //  Navigate to clone project
                 this.$router.push({ name: 'create-project', query: { project_url: encodeURIComponent(this.projectUrl) } });
-                
-                
+
+
             },
             navigateToViewProject(){
-                
+
                 if( this.projectUrl ){
-                    
+
                     //  Navigate to show the project
                     this.$router.push({ name: 'show-project-builder', params: { project_url: encodeURIComponent(this.projectUrl) } });
 
