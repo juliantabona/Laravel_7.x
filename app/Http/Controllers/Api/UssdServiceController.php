@@ -1304,11 +1304,12 @@ class UssdServiceController extends Controller
      */
     public function manageGoBackRequests()
     {
-        /*  Lets count how many times the zero (0) value appears
-         *  from the reply records we have.
-         */
+        //  Set count to Zero
         $count = 0;
 
+        /** Lets count how many times the zero (0) value appears
+         *  from the reply records we have.
+         */
         foreach ($this->reply_records as $reply_record) {
             /** Example Structure:
              *
@@ -1325,11 +1326,28 @@ class UssdServiceController extends Controller
              *      'origin' => 'user',
              *      'removable' => true
              *  ];
+             *
+             *  or
+             *
+             *  $reply_record = [
+             *      'value' => '0*0*0',
+             *      'origin' => 'user',
+             *      'removable' => true
+             *  ];
+             *
+             *  Since the reply record can contain multiple instances of zero (0)
+             *  such as "0*0*0". We need to count the total zero's within the value.
+             *
              */
-            if ($reply_record['value'] == '0') {
-                //  Count the number of occurences of the value "0"
-                $count = ++$count;
-            }
+
+            //  Convert "0*0*0" to ["0", "0", "0"]
+            $values = explode('*', $reply_record['value']);
+
+            //  Count the number of occurences of the value "0"
+            $count += collect($values)->filter(function($value) {
+                return ($value == '0');
+            })->count();
+
         }
 
         /*  Since we now know the number of times the value zero (0) appears on the
@@ -1338,7 +1356,7 @@ class UssdServiceController extends Controller
          *
          *  ["1", "2", "3", "4", "0", "0", "0"]
          *
-         *  At this point our application can count the number of times the zero (0)
+         *  At this point our application has a total count of the number of times the zero (0)
          *  value appears which is 3 times in the above example. This means we need
          *  to setup a looping function that will loop three times where for each
          *  loop we will locate the corresponding zero (0) value. Once any zero (0)
@@ -1351,7 +1369,7 @@ class UssdServiceController extends Controller
          *  simulate the idea of going back since we cancel or remove the users
          *  previous response. So for instance in first loop, we will make a loop
          *  go through all the responses and locate a zero (0) and then remove it
-         *  and the value before it, we will have the following result
+         *  and the value before it. Lets assume we have the following:
          *
          *  ["1", "2", "3", "4", "0", "0", "0"]
          *
@@ -1376,48 +1394,189 @@ class UssdServiceController extends Controller
          *
          *  This makes sense because we started with three zero (0) values. Each
          *  zero (0) value was meant to cancel out each previous response thereby
-         *  simulating a go back functionality
+         *  simulating a go back functionality.
+         *
+         *  Auto Links & Auto Reply Scenerios
+         *
+         *  With Auto Links and Auto Replies, we need to remove any chained auto
+         *  replies. Lets assume we have the following
+         *
+         *  ["1", "2", "A_L", "0"]
+         *
+         *  In this simple scenerio we realize that the user responded on their own
+         *  for the values "1", "2", then we had an auto link "A_L", but the user
+         *  decided to undo "0", therefore the final result is as follows:
+         *
+         *  $updated_responses Before = ["1", "2", "A_L", "0"]
+         *  $updated_responses After  = ["1"]
+         *
+         *  This is because the user really intends to undo their "OWN" response which
+         *  in this case is the value "2", however we must also remove the value of the
+         *  auto link "A_L". This results in only one response left being "1".
+         *
+         *  In another sceerio such as the following:
+         *
+         *  ["1", "2", "A_L", "A_L", "A_L", "0"]
+         *
+         *  The user responded on their own for the values "1", "2", then we had several
+         *  auto links "A_L", "A_L", "A_L", but the user decided to undo "0", therefore
+         *  the final result is as follows:
+         *
+         *  $updated_responses Before = ["1", "2", "A_L", "A_L", "A_L", "0"]
+         *  $updated_responses After  = ["1"]
+         *
+         *  This is because the user really intends to undo their "OWN" response which
+         *  in this case is the value "2", however we must also remove the values of
+         *  the auto links "A_L", "A_L", "A_L". This results in only one response
+         *  left being "1".
          *
          */
+
+         // Loop as many times as the total number of Zeros found
         for ($x = 0; $x < $count; ++$x) {
+
+            //  Then loop through each reply record
             for ($y = 0; $y < count($this->reply_records); ++$y) {
-                //  If the reply record value is equal to zero (0)
-                if ($this->reply_records[$y]['value'] == '0') {
-                    //  Remove the reply record that is equal to zero (0)
-                    unset($this->reply_records[$y]);
 
-                    //  If we have a reply record before this current reply record
-                    if (isset($this->reply_records[$y - 1])) {
-                        //  Get the previous reply record
-                        $previous_record = $this->reply_records[$y - 1];
+                //  Convert "0*0*0" to ["0", "0", "0"]
+                $values = explode('*', $this->reply_records[$y]['value']);
 
-                        //  If the previous reply record is removable
-                        if ($previous_record['removable']) {
-                            //  Remove the previous reply record
-                            unset($this->reply_records[$y - 1]);
+                //  Count the number of occurences of the value "0" on this reply record
+                $total_zeros = collect($values)->filter(function($value) {
+                    return ($value == '0');
+                })->count();
 
-                            //  If this is a reply produced by the "Auto Link" or "Auto Reply" events
-                            if ($previous_record['origin'] == 'auto_link' || $previous_record['origin'] == 'auto_reply') {
-                                //  If we have a reply record before this previous reply record
-                                if (isset($this->reply_records[$y - 2])) {
-                                    //  Get the previous reply record
-                                    $second_previous_record = $this->reply_records[$y - 2];
+                //  If the reply record value has one or more values equal to zero (0)
+                if ( $total_zeros ) {
 
-                                    //  If the second previous reply record is removable
-                                    if ($second_previous_record['removable']) {
-                                        //  Remove the second previous reply record as well
-                                        unset($this->reply_records[$y - 2]);
-                                    }
-                                }
-                            }
-                        }
+                    //  If we only have one zero i.e ["0"]
+                    if( $total_zeros === 1 ){
+
+                        //  Remove the reply record completely
+                        unset($this->reply_records[$y]);
+
+                    //  If we only have multiple zeros i.e ["0", "0", "0"]
+                    }else{
+
+                        //  Remove the first value i.e from ["0", "0", "0"] to ["0", "0"]
+                        array_shift($values);
+
+                        //  Join the responses i.e from ["0", "0"] to "0*0"
+                        $values = implode('*', $values);
+
+                        //  Update the reply record (Now it has one less zero) i.e from "0*0*0" to "0*0"
+                        $this->reply_records[$y]['value'] = $values;
+
                     }
 
+                    /**
+                     *  Lets assume that the user responses are as follows:
+                     *
+                     *  $responses = ["1", "2", "A_L", "A_L", "A_L", "0"]
+                     *
+                     *  Now since we located the first Zero (0) at index "5".
+                     *  Ideally we need the final result to look like this:
+                     *
+                     *  $responses = ["1", "2", "0"]
+                     *
+                     *  This is because we actually require the Zero (0) to remove the user
+                     *  response of "2", however it goes without notice that we must first
+                     *  get rid of the "A_L" values before we can proceed.
+                     *
+                     *  To do this we need to use the current index of the Zero position to
+                     *  target the previous value and incrementally work backwards removing
+                     *  any occurences of the "Auto Link" or "Auto Reply" responses as well
+                     *  as the actual response we would like to remove which in our above
+                     *  case is the value "2".
+                     */
+
+                    /** $previous_index = (Current Zero Index - 1) to target the previous
+                     *  value index. e.g Since we have:
+                     *
+                     *  $responses = ["1", "2", "A_L", "A_L", "A_L", "0"]
+                     *
+                     *  If $y = 5 (Current Zero Index)   Then   $previous_value_index = 4
+                     *
+                     *  which in our case above the $previous_value_index targets the
+                     *  "A_L" value at index 4
+                     */
+
+                    $previous_value_index = ($y - 1);
+
+                    /** Now our loop starts from the previous value index i.e index "4",
+                     *  by setting $z = $previous_value_index and we are reducing its
+                     *  value incrementally i.e $z = 4, 3, 2, 1, 0
+                     *
+                     *  Each time we loop we target each previous value and check if
+                     *  its a valid "Auto Link" or "Auto Reply".
+                     */
+                    for ($z = $previous_value_index; $z >= 0; --$z) {
+
+                        //  Capture the current reply record
+                        $reply_record = $this->reply_records[$z];
+
+                        //  If the reply record is removable
+                        if ($reply_record['removable']) {
+
+                            //  If this is a reply produced by the "Auto Link" or "Auto Reply" events
+                            if ($reply_record['origin'] == 'auto_link' || $reply_record['origin'] == 'auto_reply') {
+
+                                //  Remove the reply record
+                                unset($this->reply_records[$z]);
+
+                            }else{
+
+                                //  Convert "1*2*3" to ["1", "2", "3"]
+                                $values = explode('*', $this->reply_records[$z]['value']);
+
+                                //  Count the total number of values found
+                                $total_values = collect($values)->count();
+
+                                //  If we only have one value i.e ["1"]
+                                if( $total_values === 1 ){
+
+                                    //  Remove the reply record completely
+                                    unset($this->reply_records[$z]);
+
+                                //  If we only have multiple values i.e ["1", "2", "3"]
+                                }else{
+
+                                    //  Remove the last value i.e from ["1", "2", "3"] to ["1", "2"]
+                                    array_pop($values);
+
+                                    //  Join the responses i.e from ["1", "2"] to "1*2"
+                                    $values = implode('*', $values);
+
+                                    //  Update the reply record (Now it has one less value) i.e from "1*2*3" to "1*2"
+                                    $this->reply_records[$z]['value'] = $values;
+
+                                }
+
+                                /**
+                                 *  Stop this loop, since we have removed the value that we wanted to remove
+                                 *  i.e in our above example case this is the value of "2" provided by the user.
+                                 */
+                                break 1;
+
+                            }
+
+                        }else{
+
+                            //  Stop this loop, since this is not a removable response
+                            break 1;
+
+                        }
+
+                    }
+
+                    //  Update reply record indexes
                     $this->reply_records = array_values($this->reply_records);
 
                     break;
                 }
+
             }
+
         }
 
         //  Get the text which represents responses from the user
@@ -1432,8 +1591,17 @@ class UssdServiceController extends Controller
         //  Set the application name
         $this->app_name = $this->project->name;
 
+        //  Set the version number
+        $version_number = $this->version->number;
+
+        //  Set the version number
+        $subscriber_mobile_number = $this->builder['simulator']['subscriber']['phone_number'];
+
         //  Set a log that the build process has started
-        $this->logInfo('Building '.$this->wrapAsPrimaryHtml($this->app_name).' App');
+        $this->logInfo('Mobile: '.$this->wrapAsPrimaryHtml($subscriber_mobile_number));
+
+        //  Set a log that the build process has started
+        $this->logInfo('Building '.$this->wrapAsPrimaryHtml($this->app_name).' App (version '.$version_number.')');
 
         //  Check if the Builder exist
         $doesNotExistResponse = $this->handleNonExistentBuilder();
@@ -2122,10 +2290,19 @@ class UssdServiceController extends Controller
             $screen_id = $this->convertToString($outputResponse);
 
             if ($screen_id) {
+
                 $this->logInfo('Searching for screen using the screen id: '.$this->wrapAsSuccessHtml($screen_id));
 
-                //  Get the screen usign the screen id
-                $this->screen = $this->getScreenById($screen_id);
+                //  Get the screen matching the given screen id
+                $outputResponse = $this->getScreenById($screen_id);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
+                }
+
+                $this->screen = $outputResponse;
+
             }
         } else {
             //  Get the first display screen (The one specified by the user)
@@ -2439,11 +2616,19 @@ class UssdServiceController extends Controller
 
                 $link = $requires_account['link'];
 
-                //  Get the screen matching the given link and set it as the current screen
-                $screen = $this->getScreenById($link);
+                //  Get the screen matching the given link
+                $outputResponse = $this->getScreenById($link);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
+                }
+
+                $screen = $outputResponse;
 
                 //  If the screen to link to was found
                 if ($screen) {
+
                     $this->screen = $screen;
 
                     //  Set an info log that we are redirecting
@@ -2451,6 +2636,7 @@ class UssdServiceController extends Controller
 
                     //  Stop here
                     return null;
+
                 }
 
                 //  Set an info log that we are redirecting
@@ -2473,8 +2659,15 @@ class UssdServiceController extends Controller
 
             $link = $requires_subscription['link'];
 
-            //  Get the screen matching the given link and set it as the current screen
-            $screen = $this->getScreenById($link);
+            //  Get the screen matching the given link
+            $outputResponse = $this->getScreenById($link);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) {
+                return $outputResponse;
+            }
+
+            $screen = $outputResponse;
 
             //  If the screen to link to was found
             if ($screen) {
@@ -2859,8 +3052,15 @@ class UssdServiceController extends Controller
                                 //  Get the provided link (The display or screen we must link to after the last loop of this screen)
                                 $link = $repeat_data['after_last_loop']['link'];
 
-                                //  Get the screen matching the given link and set it as the current screen
-                                $screen = $this->getScreenById($link);
+                                //  Get the screen matching the given link
+                                $outputResponse = $this->getScreenById($link);
+
+                                //  If we have a screen to show return the response otherwise continue
+                                if ($this->shouldDisplayScreen($outputResponse)) {
+                                    return $outputResponse;
+                                }
+
+                                $screen = $outputResponse;
 
                                 //  If the screen to link to was found
                                 if ($screen) {
@@ -2988,8 +3188,15 @@ class UssdServiceController extends Controller
                     //  Get the provided link (The display or screen we must link to if we don't have loops for this screen)
                     $link = $repeat_data['on_no_loop']['link'];
 
-                    //  Get the screen matching the given link and set it as the current screen
-                    $screen = $this->getScreenById($link);
+                    //  Get the screen matching the given link
+                    $outputResponse = $this->getScreenById($link);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) {
+                        return $outputResponse;
+                    }
+
+                    $screen = $outputResponse;
 
                     //  If the screen to link to was found
                     if ($screen) {
@@ -3101,10 +3308,19 @@ class UssdServiceController extends Controller
             $display_id = $this->convertToString($outputResponse);
 
             if ($display_id) {
+
                 $this->logInfo('Searching for display using the display id: '.$this->wrapAsSuccessHtml($display_id));
 
-                //  Get the display usign the screen id
-                $this->display = $this->getDisplayById($display_id);
+                //  Get the display matching the given display id
+                $outputResponse = $this->getDisplayById($display_id);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
+                }
+
+                $this->display = $outputResponse;
+
             }
         } else {
             //  Get the first display (The one specified by the user)
@@ -5196,13 +5412,30 @@ class UssdServiceController extends Controller
 
             //  If we should link to a display
             if ($isDisplay) {
-                //  Get the screen matching the given name and set it as the linked screen
-                $this->linked_display = $this->getDisplayById($link);
+
+                //  Get the display matching the given link
+                $outputResponse = $this->getDisplayById($link);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
+                }
+
+                $this->linked_display = $outputResponse;
 
             //  If we should link to a screen
             } elseif ($isScreen) {
-                //  Get the screen matching the given name and set it as the linked screen
-                $this->linked_screen = $this->getScreenById($link);
+
+                //  Get the screen matching the given link
+                $outputResponse = $this->getScreenById($link);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
+                }
+
+                $this->linked_screen = $outputResponse;
+
             }
         }
     }
@@ -5240,6 +5473,7 @@ class UssdServiceController extends Controller
     {
         //  If the link provided is in Array format
         if (is_array($link)) {
+
             //  Convert the "step" into its associated dynamic value
             $outputResponse = $this->convertValueStructureIntoDynamicData($link);
 
@@ -5248,14 +5482,17 @@ class UssdServiceController extends Controller
                 return $outputResponse;
             }
 
-            //  Get the processed link value - Convert to [String] - Default to empty string if anything goes wrong
-            $link = $this->convertToString($outputResponse) ?? '';
+            //  Get the processed link value - Convert to [String] - Default to null if anything goes wrong
+            $link = $this->convertToString($outputResponse) ?? null;
+
         }
 
         //  If the screen name has been provided
         if ($link) {
+
             //  Get the first screen that matches the given link
             return collect($this->screens)->where('id', $link)->first() ?? null;
+
         }
     }
 
@@ -5366,7 +5603,7 @@ class UssdServiceController extends Controller
                              **************************************/
                             $link = $navigation['custom']['link'];
 
-                            //  Process the link and return the matching screen
+                            //  Get the screen matching the given link
                             $outputResponse = $this->getScreenById($link);
 
                             //  If we have a screen to show return the response otherwise continue
@@ -8362,6 +8599,7 @@ class UssdServiceController extends Controller
     public function handle_Auto_Reply_Event()
     {
         if ($this->event) {
+
             //  Get the additional responses
             $automatic_replies = $this->event['event_data']['automatic_replies'];
 
@@ -8397,7 +8635,8 @@ class UssdServiceController extends Controller
 
                 //  Foreach existing session reply record
                 foreach ($automatic_replies as $key => $automatic_reply) {
-                    /* We need to make sure that this event does not keep getting fired everytime we
+
+                    /** We need to make sure that this event does not keep getting fired everytime we
                      *  make a USSD reply. Remember that each time we reply we have to run the before
                      *  and after events of each screen and display. This can be bad in this case since
                      *  we will be running this "Auto Reply" event over and over again. This will make
@@ -8436,7 +8675,7 @@ class UssdServiceController extends Controller
                      *
                      *  reply_records = [ { user_record ... }, { auto_reply_record ... }, { user_record ... }, { auto_reply_record ... }]
                      *
-                     *  Now we have a serious problem, each time we reply, this event is also triggered an then
+                     *  Now we have a serious problem, each time we reply, this event is also triggered and then
                      *  two replies instead of one are recorded and saved to the database. To avoid this messy
                      *  situation, we need to keep checking if the "Auto Reply" reply record already exists
                      *  within the "reply_records". This means that we only ever run it once for each unique
@@ -8463,6 +8702,7 @@ class UssdServiceController extends Controller
 
                         //  Check if we have any "Auto Replies" after the users initial response
                         if ($this->completedLevel($level) == false) {
+
                             /*************************************
                              *  CAPTURE AUTOMATIC REPLY RECORD   *
                              ************************************/
@@ -8473,19 +8713,22 @@ class UssdServiceController extends Controller
                              *  the given event settings
                              */
                             $this->addReplyRecord($automatic_reply, 'auto_reply', true);
+
                         }
                     } else {
+
                         /** Lets think!
                          *
                          *  $this->completedLevel($this->level) - checks if we already have an "Auto Reply"
-                         *  to the current display. We need to take dvantage of the $key value which always
+                         *  to the current display. We need to take advantage of the $key value which always
                          *  starts at "0". We need to use it to target any "Auto Replies" that have been
                          *  executed already.
                          */
                         $level = $this->level + $key;
 
-                        //  Check if we have any "Auto Replies" after the users initial response
+                        //  Check if we have any "Auto Replies" before the users initial response
                         if ($this->completedLevel($level) == false) {
+
                             /*************************************
                              *  CAPTURE AUTOMATIC REPLY RECORD   *
                              ************************************/
@@ -8496,6 +8739,42 @@ class UssdServiceController extends Controller
                              *  the given event settings
                              */
                             $this->addReplyRecord($automatic_reply, 'auto_reply', true);
+
+                        }else{
+
+                            //  If the automatic reply is the same as the response to the current level
+                            if( $automatic_reply === $this->getResponseFromLevel($level) ){
+
+                                /** If the user manually inserted this value, then we must update it to
+                                 *  reflect an automatic reply instead of the user reply. We do this
+                                 *  by changing the record origin value.
+                                 *
+                                 *  Lets assume that the user dials a shortcode e.g *123# to launch the USSD
+                                 *  application then is presented with "Screen 1". The user replies with "1"
+                                 *  and is instantly linked to "Screen 2". On "Screen 2" we find a before
+                                 *  reply event to "Auto Reply" with the value "2" so to that the app will
+                                 *  link to "Screen 3". This means that the result is as follows:
+                                 *
+                                 *  Dial *123#    --> Screen 1
+                                 *  User Reply 1  --> Screen 2
+                                 *  Auto Reply 2  --> Screen 3
+                                 *
+                                 *  However what happens when the user dials "*123*1*2#". In this case the application
+                                 *  will launch as usual, then the value "1" will be used as the first response to link
+                                 *  from "Screen 1" to "Screen 2". This will be recorded as a user response. Then on
+                                 *  "Screen 2" the before user reply "Auto Reply" event will be triggered, where we
+                                 *  will then process the $automatic_reply to give us a value of "2", however since
+                                 *  the user already replied with "2", we need to check if the user reply matches the
+                                 *  $automatic_reply value. If we have a match then we need to make sure that the reply
+                                 *  is recorded to originate from the "Auto Reply" event. This is because it will allow
+                                 *  to easy removal when the user needs to reply "0" to remove the reply. If they do not
+                                 *  match we will use the value provided by the user and leave the origin to indicate that
+                                 *  the value was provided by the user.
+                                 */
+                                $this->reply_records[$level - 1]['origin'] = 'auto_reply';
+
+                            }
+
                         }
                     }
                 }
@@ -8564,23 +8843,49 @@ class UssdServiceController extends Controller
 
             //  If the event has been triggered
             if ($is_triggered) {
+
+                /*************************
+                 * SET SCREEN VIA LINK   *
+                 *************************/
+
                 //  Get the screen matching the given link
-                $screen = $this->getScreenById($link);
+                $outputResponse = $this->getScreenById($link);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
+                }
+
+                $screen = $outputResponse;
+
+                /*************************
+                 * SET DISPLAY VIA LINK  *
+                 *************************/
 
                 //  Get the display matching the given link
-                $display = $this->getDisplayById($link);
+                $outputResponse = $this->getDisplayById($link);
+
+                //  If we have a screen to show return the response otherwise continue
+                if ($this->shouldDisplayScreen($outputResponse)) {
+                    return $outputResponse;
+                }
+
+                $display = $outputResponse;
 
                 //  If the screen to revisit was found
                 if ($screen) {
+
                     $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to link to the following screen: '.$this->wrapAsPrimaryHtml($screen['name']));
 
                     $this->linked_screen = $screen;
 
                 //  If the display to revisit was found
                 } elseif ($display) {
+
                     $this->logInfo($this->wrapAsPrimaryHtml($this->screen['name']).' is attempting to link to the following display: '.$this->wrapAsPrimaryHtml($display['name']));
 
                     $this->linked_display = $display;
+
                 }
 
                 //  If we have the screen or display to link to
@@ -8704,11 +9009,33 @@ class UssdServiceController extends Controller
                     //  Get the provided link
                     $link = $this->event['event_data']['revisit_type']['screen_revisit']['link'];
 
+                    /*************************
+                     * SET SCREEN VIA LINK   *
+                     *************************/
+
                     //  Get the screen matching the given link
-                    $screen = $this->getScreenById($link);
+                    $outputResponse = $this->getScreenById($link);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) {
+                        return $outputResponse;
+                    }
+
+                    $screen = $outputResponse;
+
+                    /*************************
+                     * SET DISPLAY VIA LINK  *
+                     *************************/
 
                     //  Get the display matching the given link
-                    $display = $this->getDisplayById($link);
+                    $outputResponse = $this->getDisplayById($link);
+
+                    //  If we have a screen to show return the response otherwise continue
+                    if ($this->shouldDisplayScreen($outputResponse)) {
+                        return $outputResponse;
+                    }
+
+                    $display = $outputResponse;
 
                     //  If the screen to revisit was found
                     if ($screen) {
