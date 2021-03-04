@@ -1,6 +1,6 @@
 <template>
     <div>
-        <!-- Modal 
+        <!-- Modal
 
              Note: modalVisible and detectClose() are imported from the modalMixin.
              They are used to allow for opening and closing the modal properly
@@ -32,16 +32,16 @@
                         <Row :gutter="20">
 
                             <Col :span="8" v-for="(event, key) in displayEvents" :key="key" class="mb-2">
-                                
+
                                 <Card @click.native="handleSelectedEvent(event)" :padding="0">
-                                    
+
                                     <Badge v-if="(event.children || {}).length" :count="event.children.length" type="info" slot="extra" />
 
                                     <div :style="{ padding: '14px' }">
 
                                         <!-- Event Icon -->
                                         <eventIcon :eventType="event.type" :size="30" class="text-center d-block"></eventIcon>
-                                        
+
                                         <!-- Event Name -->
                                         <p class="text-center" style="padding-top:15px;">{{ event.type }}</p>
 
@@ -70,7 +70,7 @@
     </div>
 </template>
 <script>
-    
+
     import modalMixin from './../../../../../../../../../../../components/_mixins/modal/main.vue';
     import eventIcon from './../eventIcon.vue'
 
@@ -158,7 +158,7 @@
                 displayEvents: []
             }
         },
-        computed: { 
+        computed: {
             totalEvents(){
                 return this.events.length;
             },
@@ -174,7 +174,7 @@
 
                 //  Show the primary events
                 this.displayEvents = this.primaryEvents;
-                
+
                 //  Hide the Go Back Button
                 this.handleHideBackBtn();
 
@@ -213,7 +213,7 @@
                         this.version.builder.global_events.push(newEvent);
 
                     }
-                    
+
                     this.events.push(newEvent);
 
                     this.$Message.success({
@@ -245,27 +245,27 @@
                 }else if( eventType == 'Location API' ){
 
                     event = this.get_Location_API_Event();
-                    
+
                 }else if( eventType == 'Billing API' ){
 
                     event = this.get_Billing_API_Event();
-                    
+
                 }else if( eventType == 'Subcription API' ){
 
                     event = this.get_Subcription_API_Event();
-                    
+
                 }else if( eventType == 'Validation' ){
 
                     event = this.get_Validation_Event();
-                    
+
                 }else if( eventType == 'Formatting' ){
 
                     event = this.get_Formatting_Event();
-                    
+
                 }else if( eventType == 'Local Storage' ){
 
                     event = this.get_Local_Storage_Event();
-                    
+
                 }else if( eventType == 'Custom Code' ){
 
                     event = this.get_Custom_Code_Event();
@@ -281,19 +281,19 @@
                 }else if( eventType == 'Revisit' ){
 
                     event = this.get_Revisit_Event();
-                    
+
                 }else if( eventType == 'Redirect' ){
 
                     event = this.get_Redirect_Event();
-                    
+
                 }else if( eventType == 'Create/Update Account' ){
 
                     event = this.get_Create_Or_Update_Account_Event();
-                    
+
                 }else if( eventType == 'Notification' ){
 
                     event = this.get_Notification_Event();
-                    
+
                 }
 
                 //  Overide the general event structure with the relevant event specific data
@@ -316,7 +316,7 @@
                 }, event);
             },
             get_CRUD_API_Event(){
-                
+
                 return {
                     name: 'Create / Read / Update / Delete',
                     event_data: {
@@ -358,7 +358,7 @@
                                 response_status_handles: [
                                     {
                                         status: '200',
-                                        reference_name: 'response',              //  e.g "response", "api_response", "api_data", 
+                                        reference_name: 'response',              //  e.g "response", "api_response", "api_data",
                                         attributes: [
                                             {
                                                 name: '', //  e.g items_response
@@ -376,12 +376,12 @@
                                     }
                                 ]
                             }
-                        } 
+                        }
                     }
                 }
             },
             get_SMS_API_Event(){
-                
+
                 return {
                     name: 'Send SMS',
                     event_data: {
@@ -391,7 +391,7 @@
 
             },
             get_Email_API_Event(){
-                
+
                 return {
                     name: 'Send Email',
                     event_data: {
@@ -401,7 +401,7 @@
 
             },
             get_Location_API_Event(){
-                
+
                 return {
                     name: 'Get Location',
                     event_data: {
@@ -411,23 +411,23 @@
 
             },
             get_Billing_API_Event(){
-                
+
                 return {
                     name: 'Handle Payment',
                     event_data: {
                         description: {
-                            text: '', 
+                            text: '',
                             code_editor_text: '',
                             code_editor_mode: false
                         },
                         price: {
-                            text: '', 
+                            text: '',
                             code_editor_text: '',
                             code_editor_mode: false
                         },
                         line_items: {
                             group_reference: {
-                                text: '', 
+                                text: '',
                                 code_editor_text: '',
                                 code_editor_mode: false
                             },
@@ -456,19 +456,19 @@
                         payment_methods: [],
                         payment_success: {
                             display_message: {
-                                text: '', 
+                                text: '',
                                 code_editor_text: '',
                                 code_editor_mode: false
                             },
                             sms_message: {
-                                text: '', 
+                                text: '',
                                 code_editor_text: '',
                                 code_editor_mode: false
                             }
                         },
                         payment_fail: {
                             display_message: {
-                                text: '', 
+                                text: '',
                                 code_editor_text: '',
                                 code_editor_mode: false
                             }
@@ -478,7 +478,7 @@
 
             },
             get_Subcription_API_Event(){
-                
+
                 return {
                     name: 'Handle Subcription',
                     event_data: {
@@ -488,7 +488,7 @@
 
             },
             get_Validation_Event(){
-                
+
                 return {
                     name: 'Validation',
                     event_data: {
@@ -503,7 +503,7 @@
 
             },
             get_Formatting_Event(){
-                
+
                 return {
                     name: 'Formatting',
                     event_data: {
@@ -519,7 +519,7 @@
 
             },
             get_Local_Storage_Event(){
-                
+
                 return {
                     name: 'Store Data',
                     event_data: {
@@ -540,7 +540,7 @@
                                 mode: {
                                     selected_type: 'replace',    //  replace, concatenate
                                     concatenate: {
-                                        value: ','               
+                                        value: ','
                                     }
                                 },
                                 dataset: {
@@ -553,7 +553,7 @@
                                 mode: {
                                     selected_type: 'replace',    //  replace, append, prepend, concatenate
                                     concatenate: {
-                                        value: ','               
+                                        value: ','
                                     }
                                 },
                                 dataset: {
@@ -566,7 +566,7 @@
 
             },
             get_Custom_Code_Event(){
-                
+
                 return {
                     name: 'Custom Code',
                     event_data: {
@@ -576,7 +576,7 @@
 
             },
             get_Auto_Link_Event(){
-                
+
                 return {
                     name: 'Auto Link',
                     event_data: {
@@ -600,7 +600,7 @@
 
             },
             get_Auto_Reply_Event(){
-                
+
                 return {
                     name: 'Auto Reply',
                     event_data: {
@@ -614,7 +614,7 @@
 
             },
             get_Revisit_Event(){
-                
+
                 return {
                     name: 'Revisit',
                     event_data: {
@@ -653,7 +653,7 @@
 
             },
             get_Redirect_Event(){
-                
+
                 return {
                     name: 'Redirect',
                     event_data: {
@@ -679,7 +679,7 @@
 
             },
             get_Create_Or_Update_Account_Event(){
-                
+
                 return {
                     name: 'Create/Update Account',
                     event_data: {
@@ -712,42 +712,24 @@
 
             },
             get_Notification_Event(){
-                
+
                 return {
                     name: 'Notification',
                     event_data: {
-                        selected_type: 'instant_notification',    //  instant_notification, cross_session_notification
-                        instant_notification: {
-                            message: {
-                                text: '',
-                                code_editor_text: '',
-                                code_editor_mode: false
-                            },
-                            continue_text: {
-                                text: '1. Continue',
-                                code_editor_text: '',
-                                code_editor_mode: false
-                            }
+                        message: {
+                            text: '',
+                            code_editor_text: '',
+                            code_editor_mode: false
                         },
-                        cross_session_notification: {
-                            selected_type: 'set',    //  set, get
-                            set: {
-                                name: '',
-                                message: {
-                                    text: '',
-                                    code_editor_text: '',
-                                    code_editor_mode: false
-                                },
-                                continue_text: {
-                                    text: '1. Continue',
-                                    code_editor_text: '',
-                                    code_editor_mode: false
-                                }
-                            },
-                            get: {
-                                name: '',
-                                allow_get_on_same_session: false
-                            }
+                        continue_text: {
+                            text: 'Continue',
+                            code_editor_text: '',
+                            code_editor_mode: false
+                        },
+                        msisdn: {
+                            text: '{{ ussd.msisdn }}',
+                            code_editor_text: '',
+                            code_editor_mode: false
                         }
                     }
                 }

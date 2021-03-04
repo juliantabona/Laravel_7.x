@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use DB;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -326,7 +327,7 @@ class UssdServiceController extends Controller
         //  If the session id was not provided
         if (is_null($this->session_id)) {
             //  Generate a unique session id
-            $unique_session_id = uniqid('test_').'_'.(\Carbon\Carbon::now())->getTimestamp();
+            $unique_session_id = uniqid('test_').'_'.(Carbon::now())->getTimestamp();
 
             //  Update the current session id with the generated session id
             $this->session_id = $unique_session_id;
@@ -795,18 +796,52 @@ class UssdServiceController extends Controller
 
         //  If we are on TEST MODE and the existing session has timed out
         if ($this->test_mode && $this->existing_session->has_timed_out) {
+
             //  Prepare for timeout
             $this->request_type = '4';
-        } else {
-            /*************************************
-             *  CAPTURE THE CURRENT USER REPLY   *
-             *************************************/
 
-            /* Get the current user reply record and save it locally.
-             *  This reply will be recorded to originate from the user
-             *  and is a removable reply (Can be deleted by the user)
+        } else {
+
+            /** Check if we have any notification that has been marked as "showing notification"
+             *  This means that we had a notification message that was being displayed to the
+             *  user, and now the user responded to the notification e.g By responding with
+             *  the input "1", "2", "3" or even "0"... It really doesn't matter what the
+             *  exact user reply was, but as long as the user replied. Since the user was
+             *  replying to the notification and not the screen, we need to ignore this reply
+             *  by not recording it as a reply record, but instead we just need to delete this
+             *  notification since it has been seen by the user.
              */
-            $this->addReplyRecord($this->msg, 'user', true);
+            $notification = $this->getShowingNotification();
+
+            //  If we have a notification
+            if( $notification ){
+
+                $this->logInfo(
+                    'Deleting notification with message: <br />'.
+                    '<div style="white-space: pre-wrap;" class="bg-light border p-2">'.
+                        $this->wrapAsSuccessHtml($notification->message).
+                    '</div>'
+                );
+
+                //  Set the notification id
+                $id = $notification->id;
+
+                //  Delete this session notification
+                DB::table('session_notifications')->where('id', $id)->delete();
+
+            }else{
+
+                /*************************************
+                 *  CAPTURE THE CURRENT USER REPLY   *
+                 *************************************/
+
+                /* Get the current user reply record and save it locally.
+                 *  This reply will be recorded to originate from the user
+                 *  and is a removable reply (Can be deleted by the user)
+                 */
+                $this->addReplyRecord($this->msg, 'user', true);
+
+            }
         }
 
         //  Get the timeout limit in seconds e.g "120" to mean "timeout after 120 seconds"
@@ -889,7 +924,7 @@ class UssdServiceController extends Controller
             $this->session_execution_times = [
                 [
                     'time' => $this->session_execution_time,
-                    'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+                    'recorded_at' => (Carbon::now())->format('Y-m-d H:i:s'),
                 ],
             ];
 
@@ -906,9 +941,9 @@ class UssdServiceController extends Controller
                 'fatal_error' => $this->fatal_error,
                 'fatal_error_msg' => $this->fatal_error_msg,
                 'session_execution_times' => json_encode($this->session_execution_times),
-                'created_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
-                'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
-                'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
+                'created_at' => (Carbon::now())->format('Y-m-d H:i:s'),
+                'updated_at' => (Carbon::now())->format('Y-m-d H:i:s'),
+                'timeout_at' => (Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
                 'project_id' => $this->project->id,
                 'version_id' => $this->version->id,
             ];
@@ -930,7 +965,7 @@ class UssdServiceController extends Controller
             $this->estimated_record_sizes = [
                 [
                     'size' => $session_record_estimated_size,
-                    'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+                    'recorded_at' => (Carbon::now())->format('Y-m-d H:i:s'),
                 ],
             ];
 
@@ -969,21 +1004,21 @@ class UssdServiceController extends Controller
                 'fatal_error_msg' => $this->fatal_error_msg,
                 'reply_records' => json_encode($this->reply_records),
                 'metadata' => $this->existing_session->metadata,
-                'updated_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
-                'timeout_at' => (\Carbon\Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
+                'updated_at' => (Carbon::now())->format('Y-m-d H:i:s'),
+                'timeout_at' => (Carbon::now())->addSeconds($this->timeout_limit_in_seconds)->format('Y-m-d H:i:s'),
                 'project_id' => $this->project->id,
                 'version_id' => $this->version->id,
             ];
         }
 
         //  Calculate the total session duration (The total seconds since the session started)
-        $total_session_duration = \Carbon\Carbon::now()->diffInSeconds($this->existing_session->created_at, true);
+        $total_session_duration = Carbon::now()->diffInSeconds($this->existing_session->created_at, true);
 
         //  Set the total session duration
         Arr::set($data, 'total_session_duration', $total_session_duration);
 
         //  Calculate the current user response duration (The total seconds since the user's last response)
-        $user_response_duration = \Carbon\Carbon::now()->diffInSeconds($this->existing_session->updated_at, true);
+        $user_response_duration = Carbon::now()->diffInSeconds($this->existing_session->updated_at, true);
 
         if (!empty($this->existing_session->user_response_durations)) {
             //  Get the previously recorded user response duration's otherwise default to an empty array
@@ -999,7 +1034,7 @@ class UssdServiceController extends Controller
         //  Add the new user response duration
         array_push($this->user_response_durations['records'], [
             'duration' => $user_response_duration,
-            'replied_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+            'replied_at' => (Carbon::now())->format('Y-m-d H:i:s'),
         ]);
 
         //  Set the previously recorded records to the current user response durations
@@ -1019,7 +1054,7 @@ class UssdServiceController extends Controller
         //  Add the new session execution time
         array_push($this->session_execution_times, [
             'time' => $this->session_execution_time,
-            'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+            'recorded_at' => (Carbon::now())->format('Y-m-d H:i:s'),
         ]);
 
         //  Set the user response duration's
@@ -1034,7 +1069,7 @@ class UssdServiceController extends Controller
         //  Add the new session execution time
         array_push($this->estimated_record_sizes, [
             'size' => $session_record_estimated_size,
-            'recorded_at' => (\Carbon\Carbon::now())->format('Y-m-d H:i:s'),
+            'recorded_at' => (Carbon::now())->format('Y-m-d H:i:s'),
         ]);
 
         //  Set the "estimated_record_size" value
@@ -1160,7 +1195,7 @@ class UssdServiceController extends Controller
         }
 
         //  Get the session timeout date and time
-        $timeout_date_time = (\Carbon\Carbon::parse($this->existing_session->timeout_at))->format('Y-m-d H:i:s');
+        $timeout_date_time = (Carbon::parse($this->existing_session->timeout_at))->format('Y-m-d H:i:s');
 
         //  Set a warning that the session timed out
         $this->logWarning('Session timed out after '.$this->timeout_limit_in_seconds.' seconds. The session timed out at exactly '.$timeout_date_time);
@@ -1629,7 +1664,50 @@ class UssdServiceController extends Controller
         }
 
         //  Start building and showing the ussd screens
-        return $this->startBuildingUssdScreens();
+        $outputResponse = $this->startBuildingUssdScreens();
+
+        //  If we have an end screen to show (Usually a fatal error occured) return the response otherwise continue
+        if ($this->isEndScreen($outputResponse)) {
+            return $outputResponse;
+        }
+
+        //  Set the response
+        $response = $outputResponse;
+
+        //  Get the notifications
+        $session_notifications = $this->getNotifications();
+
+        //  If we have notifications
+        if( $session_notifications ){
+
+            //  Foreach notification
+            foreach( $session_notifications as $session_notification ){
+
+                //  Set the notification id
+                $id = $session_notification->id;
+
+                //  Set the notification message
+                $notification = $session_notification->message;
+
+                $this->logInfo(
+                    'Displaying notification message: <br />'.
+                    '<div style="white-space: pre-wrap;" class="bg-light border p-2">'.$this->wrapAsSuccessHtml($notification).'</div> <br />'.
+                    ' instead of creen message: <br />'.
+                    '<div style="white-space: pre-wrap;" class="bg-light border p-2">'.$this->wrapAsSuccessHtml($response).'</div>'
+                );
+
+                //  Update database that we are showing this session notification
+                DB::table('session_notifications')->where('id', $id)->update(['showing_notification' => true]);
+
+                //  Return the notification content
+                return $this->showCustomScreen($notification);
+
+            }
+
+        }
+
+        return $response;
+
     }
 
     /**
@@ -1784,6 +1862,25 @@ class UssdServiceController extends Controller
                 $this->setProperty($name, $value);
             }
         }
+    }
+
+    public function getNotifications()
+    {
+        return DB::table('session_notifications')->where([
+            'msisdn' => $this->msisdn,
+            'test' => $this->test_mode,
+            'project_id' => $this->project->id,
+        ])->latest()->get();
+    }
+
+    public function getShowingNotification()
+    {
+        return DB::table('session_notifications')->where([
+            'msisdn' => $this->msisdn,
+            'test' => $this->test_mode,
+            'project_id' => $this->project->id,
+            'showing_notification' => true
+        ])->latest()->first();
     }
 
     public function updateGlobalVariablesToSave()
@@ -5922,9 +6019,13 @@ class UssdServiceController extends Controller
                 $response = $this->handle_Revisit_Event();
             } elseif ($event['type'] == 'Redirect') {
                 $response = $this->handle_Redirect_Event();
+            } elseif ($event['type'] == 'Notification') {
+                $response = $this->handle_Notification_Event();
             } elseif ($event['type'] == 'Create/Update Account') {
                 $response = $this->handle_Create_Or_Update_Account_Event();
             }
+
+
 
             //  Get the time after processing the request
             $end_event_time = microtime(true);
@@ -8890,7 +8991,9 @@ class UssdServiceController extends Controller
 
                 //  If we have the screen or display to link to
                 if ($screen || $display) {
+
                     if (!$this->completedLevel($this->level)) {
+
                         //  Set an automatic reply for this "Auto Link" event
                         $auto_link_reply = 'A_L';
 
@@ -8906,6 +9009,7 @@ class UssdServiceController extends Controller
                         *  given event settings
                         */
                         $this->addReplyRecord($auto_link_reply, 'auto_link', true);
+
                     }
                 }
             }
@@ -9260,6 +9364,79 @@ class UssdServiceController extends Controller
         $response = $this->handleExistingSession();
 
         return $response;
+    }
+
+    /** This method checks if we need to SET or GET a notification.
+     *  This notification
+     */
+    public function handle_Notification_Event()
+    {
+        if ($this->event) {
+
+            /************************
+             *  MESSAGE             *
+             ***********************/
+
+            //  Get the message
+            $message = $this->event['event_data']['message'];
+
+            //  Convert the "message" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($message);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) {
+                return $outputResponse;
+            }
+
+            //  Get the generated output - Convert to [String]
+            $message = $this->convertToString($outputResponse);
+
+            /************************
+             *  CONTINUE TEXT       *
+             ***********************/
+
+            //  Get the message
+            $continue_text = $this->event['event_data']['continue_text'];
+
+            //  Convert the "continue_text" into its associated dynamic value
+            $outputResponse = $this->convertValueStructureIntoDynamicData($continue_text);
+
+            //  If we have a screen to show return the response otherwise continue
+            if ($this->shouldDisplayScreen($outputResponse)) {
+                return $outputResponse;
+            }
+
+            //  Get the generated output - Convert to [String]
+            $continue_text = $this->convertToString($outputResponse);
+
+            //  Merge the message and continue text
+            $message = $message."\n".'1. '.($continue_text ?? 'Ok');
+
+            $this->logInfo(
+                'Saving notification with message: <br />'.
+                '<div style="white-space: pre-wrap;" class="bg-light border p-2">'.
+                    $this->wrapAsSuccessHtml($message).
+                '</div>'
+            );
+
+            //  Update an existing notification or insert a new notification
+            DB::table('session_notifications')->updateOrInsert(
+                //  Search existing notification using the "session_id"
+                ['session_id' => $this->session_id],
+
+                //  Update/Create using the following information
+                [
+                    'session_id' => $this->session_id,
+                    'message' => $message,
+                    'msisdn' => $this->msisdn,
+                    'test' => $this->test_mode,
+                    'project_id' => $this->project->id,
+                    'created_at' => (Carbon::now())->format('Y-m-d H:i:s'),
+                    'updated_at' => (Carbon::now())->format('Y-m-d H:i:s'),
+                ]
+            );
+
+        }
     }
 
     /******************************************
