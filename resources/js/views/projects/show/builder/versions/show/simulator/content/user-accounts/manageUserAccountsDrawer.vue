@@ -1,6 +1,6 @@
 <template>
     <div>
-        <!-- Modal 
+        <!-- Modal
 
              Note: drawerVisible and detectClose() are imported from the drawerMixin.
              They are used to allow for opening and closing the drawer properly
@@ -11,7 +11,7 @@
         -->
         <Drawer
             width="650"
-            :okText="okText" 
+            :okText="okText"
             cancelText="Cancel"
             :title="drawerTitle"
             :maskClosable="false"
@@ -26,7 +26,7 @@
                 <FormItem label="First Name" prop="first_name" class="mb-3">
                     <Poptip trigger="focus" placement="top" word-wrap class="poptip-w-100"
                             content="Provide the user's first name">
-                        <Input type="text" v-model="userAccountForm.first_name" placeholder="Enter first name" 
+                        <Input type="text" v-model="userAccountForm.first_name" placeholder="Enter first name"
                                 :disabled="isLoadingAnything" class="w-100">
                         </Input>
                     </Poptip>
@@ -36,7 +36,7 @@
                 <FormItem label="Last Name" prop="last_name" class="mb-3">
                     <Poptip trigger="focus" placement="top" word-wrap class="poptip-w-100"
                             content="Provide the user's last name">
-                        <Input type="text" v-model="userAccountForm.last_name" placeholder="Enter last name" 
+                        <Input type="text" v-model="userAccountForm.last_name" placeholder="Enter last name"
                                 :disabled="isLoadingAnything" class="w-100">
                         </Input>
                     </Poptip>
@@ -46,7 +46,7 @@
                 <FormItem label="Mobile Number" prop="mobile_number" class="mb-3">
                     <Poptip trigger="focus" placement="top" word-wrap class="poptip-w-100"
                             content="Provide the user's mobile number">
-                        <Input type="text" v-model="userAccountForm.mobile_number" placeholder="Enter mobile number" 
+                        <Input type="text" v-model="userAccountForm.mobile_number" placeholder="Enter mobile number"
                                 :disabled="isLoadingAnything" class="w-100">
                         </Input>
                     </Poptip>
@@ -72,21 +72,21 @@
                                 <td>
 
                                     <template v-if="(typeof value == 'string') || (typeof value == 'undefined') || (value == null)">
-                                    
+
                                         <!-- If the given value is a String -->
                                         <Input type="text" v-model="userAccountForm.metadata[name]"
                                                 :disabled="isLoadingAnything" class="w-100">
                                         </Input>
-                                        
+
                                     </template>
-                                    
+
                                     <!-- If the given value is a String -->
-                                    <InputNumber v-else-if="(typeof value == 'number')" type="text"  v-model.number="userAccountForm.metadata[name]" 
+                                    <InputNumber v-else-if="(typeof value == 'number')" type="text"  v-model.number="userAccountForm.metadata[name]"
                                             :disabled="isLoadingAnything" class="w-100">
                                     </InputNumber>
 
                                     <template v-else-if="(typeof value == 'object')">
-                                        
+
                                         <div class="clearfix">
 
                                             <!-- Edit Button -->
@@ -95,7 +95,7 @@
                                             </Button>
 
                                         </div>
-                                        
+
                                     </template>
 
                                 </td>
@@ -104,14 +104,14 @@
                     </table>
 
                 </div>
-                
+
                 <template v-if="isEditing">
 
                     <!-- Save Changes Button -->
                     <FormItem v-if="!isSavingChanges">
 
-                        <basicButton :disabled="(!userAccountHasChanged || isSavingChanges)" :loading="isSavingChanges" 
-                                    :ripple="(userAccountHasChanged && !isSavingChanges)" type="success" size="large" 
+                        <basicButton :disabled="(!userAccountHasChanged || isSavingChanges)" :loading="isSavingChanges"
+                                    :ripple="(userAccountHasChanged && !isSavingChanges)" type="success" size="large"
                                     class="float-right mt-3" @click.native="handleSubmit()">
                             <span>{{ isSavingChanges ? 'Saving...' : 'Save Changes' }}</span>
                         </basicButton>
@@ -128,8 +128,8 @@
                     <!-- Create Button -->
                     <FormItem v-if="!isCreating">
 
-                        <basicButton :disabled="(!userAccountHasChanged || isCreating)" :loading="isCreating" 
-                                    :ripple="(userAccountHasChanged && !isCreating)" type="success" size="large" 
+                        <basicButton :disabled="(!userAccountHasChanged || isCreating)" :loading="isCreating"
+                                    :ripple="(userAccountHasChanged && !isCreating)" type="success" size="large"
                                     class="float-right mt-3" @click.native="handleSubmit()">
                             <span>{{ isCreating ? 'Creating...' : 'Create Instant Cart' }}</span>
                         </basicButton>
@@ -144,7 +144,7 @@
             </Form>
 
         </Drawer>
-        
+
     </div>
 </template>
 <script>
@@ -223,7 +223,7 @@
 
                 //  Notify the parent component of the change status
                 this.$emit('unsavedChanges', status);
-                
+
                 return status;
 
             },
@@ -241,19 +241,19 @@
                 return value.toString();
             },
             updateMetadata(name, value, type){
-                
+
                 //  If the given value is a boolean
                 if(type == 'boolean'){
-                    
+
                     value = (value == 'true') ? true : false;
-                    
+
                 }
 
                 this.$set(this.userAccountForm.metadata, name, value);
 
             },
             setForm(){
-                
+
                 this.userAccountForm = _.cloneDeep(Object.assign({},
                     //  Set the default form details
                     {
@@ -261,7 +261,7 @@
                         last_name: '',
                         mobile_number: '',
                         metadata: null,
-                        
+
                         project_id: (this.project || {}).id,
 
                     //  Overide the default form details with the provided user account details
@@ -269,7 +269,7 @@
 
             },
             copyFormBeforeUpdate(){
-                
+
                 //  Clone the product
                 this.userAccountFormBeforeChanges = _.cloneDeep( this.userAccountForm );
 
@@ -280,11 +280,11 @@
                 this.resetErrors();
 
                 //  Validate the user account form
-                this.$refs['userAccountForm'].validate((valid) => 
-                {   
+                this.$refs['userAccountForm'].validate((valid) =>
+                {
                     //  If the validation passed
                     if (valid) {
-                        
+
                         //  If we are editing
                         if( this.isEditing ){
 
@@ -317,16 +317,18 @@
 
                 //  Notify parent that this component is creating
                 this.$emit('isCreating', this.isCreating);
-                
+
                 /** Make an Api call to create the user account. We include the
-                 *  user account details required for a new user account 
+                 *  user account details required for a new user account
                  *  creation.
                  */
-                let userAccountData = this.userAccountForm;
+                let data = {
+                    postData: this.userAccountForm
+                };
 
-                return api.call('post', this.createUserAccountUrl, userAccountData)
+                return api.call('post', this.createUserAccountUrl, data)
                     .then(({data}) => {
-                
+
                         console.log(data);
 
                         //  Stop loader
@@ -334,7 +336,7 @@
 
                         //  Notify parent that this component is not creating
                         self.$emit('isCreating', self.isCreating);
-    
+
                         //  Notify parent of the user account created
                         self.$emit('createdUserAccount', data);
 
@@ -346,11 +348,11 @@
 
                         //  Reset the form
                         self.resetForm();
-                        
+
                         self.closeDrawer();
-                        
+
                     }).catch((response) => {
-                
+
                         console.log(response);
 
                         //  Stop loader
@@ -378,11 +380,13 @@
                 /** Make an Api call to save the user account. We include the
                  *  user account details required for saving this user account
                  */
-                let userAccountData = this.userAccountForm;
+                let data = {
+                    postData: this.userAccountForm
+                };
 
-                return api.call('put', this.userAccountUrl, userAccountData)
+                return api.call('put', this.userAccountUrl, data)
                     .then(({data}) => {
-                
+
                         console.log(data);
 
                         //  Stop loader
@@ -401,13 +405,13 @@
 
                         //  Reset the form
                         self.resetForm();
-                        
+
                         self.copyFormBeforeUpdate();
-                        
+
                         self.closeDrawer();
-                        
+
                     }).catch((response) => {
-                
+
                         console.log(response);
 
                         //  Stop loader

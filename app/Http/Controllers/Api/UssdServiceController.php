@@ -779,6 +779,10 @@ class UssdServiceController extends Controller
         $this->linked_display = null;
         $this->chained_displays = [];
 
+        //  Reset the "chained_screen_metadata" and "chained_display_metadata"
+        $this->chained_screen_metadata = ['text' => ''];
+        $this->chained_display_metadata = ['text' => ''];
+
         //  Get the USSD Builder for the given "Service Code"
         $this->getUssdBuilder();
 
@@ -3558,7 +3562,7 @@ class UssdServiceController extends Controller
              *      'display_1603621400274' => 1,    //  This means we responded once to display id "display_1603621400274"
              *      'display_1603621400275' => 2,    //  This means we responded twice to display id "display_1603621400275"
              *      'display_1603621400276' => 1,    //  This means we responded once to display id "display_1603621400276"
-             *      e.t.c ...                       //  and so on ...
+             *      e.t.c ...                        //  and so on ...
              *  ];
              */
             if (isset($this->display_total_responses[$this->display['id']])) {
@@ -3586,33 +3590,15 @@ class UssdServiceController extends Controller
 
         //  Check if the user has already responded to the current display screen
         if ($this->completedLevel($this->level)) {
-            //  Record the number of times we have responded to the display
-            $this->current_user_response = $this->getResponseFromLevel($this->level) ?? '';   //  John Doe
 
             //  Get the user response (Input provided by the user) for the current display screen
-            $this->getCurrentScreenUserResponse();
+            $this->setCurrentScreenUserResponse();
 
-            /* Update the "text" of the chained screen metadata. This value is used to hold all
-             *  the responses leading to a given chained screen. This allows us to know the exact
-             *  order of user responses that were provided in order to trigger a sequence of events
-             *  leading to the given "chained screen".
-             */
-            if (empty($this->chained_screen_metadata['text'])) {
-                $this->chained_screen_metadata['text'] = $this->current_user_response;
-            } else {
-                $this->chained_screen_metadata['text'] .= '*'.$this->current_user_response;
-            }
+            //  Update the chained screen metadata
+            $this->updateChainedScreenMetadata();
 
-            /* Update the "text" of the chained display metadata. This value is used to hold all
-             *  the responses leading to a given chained display. This allows us to know the exact
-             *  order of user responses that were provided in order to trigger a sequence of events
-             *  leading to the given "chained display".
-             */
-            if (empty($this->chained_display_metadata['text'])) {
-                $this->chained_display_metadata['text'] = $this->current_user_response;
-            } else {
-                $this->chained_display_metadata['text'] .= '*'.$this->current_user_response;
-            }
+            //  Update the chained display metadata
+            $this->updateChainedDisplayMetadata();
 
             //  Store the user response (Input provided by the user) as a named dynamic variable
             $storeInputResponse = $this->storeCurrentDisplayUserResponseAsDynamicVariable();
@@ -3680,6 +3666,34 @@ class UssdServiceController extends Controller
         }
 
         return $builtDisplay;
+    }
+
+    /** Update the "text" of the chained screen metadata. This value is used to hold all
+     *  the responses leading to a given chained screen. This allows us to know the exact
+     *  order of user responses that were provided in order to trigger a sequence of events
+     *  leading to the given "chained screen".
+     */
+    public function updateChainedScreenMetadata()
+    {
+        if (empty($this->chained_screen_metadata['text'])) {
+            $this->chained_screen_metadata['text'] = $this->current_user_response;
+        } else {
+            $this->chained_screen_metadata['text'] .= '*'.$this->current_user_response;
+        }
+    }
+
+    /** Update the "text" of the chained display metadata. This value is used to hold all
+     *  the responses leading to a given chained display. This allows us to know the exact
+     *  order of user responses that were provided in order to trigger a sequence of events
+     *  leading to the given "chained display".
+     */
+    public function updateChainedDisplayMetadata()
+    {
+        if (empty($this->chained_display_metadata['text'])) {
+            $this->chained_display_metadata['text'] = $this->current_user_response;
+        } else {
+            $this->chained_display_metadata['text'] .= '*'.$this->current_user_response;
+        }
     }
 
     /*  Validate the existence of the current display. If the current display does not exist
@@ -5124,8 +5138,9 @@ class UssdServiceController extends Controller
      *  returns an empty string if it does not exist. We also log an info message to
      *  indicate the display name associated with the provided response.
      */
-    public function getCurrentScreenUserResponse()
+    public function setCurrentScreenUserResponse()
     {
+        //  Set the current user response
         $this->current_user_response = $this->getResponseFromLevel($this->level) ?? '';   //  John Doe
 
         //  Update the ussd data
@@ -5136,9 +5151,6 @@ class UssdServiceController extends Controller
 
         //  Set an info log that the user has responded to the current screen and show the input value
         $this->logInfo('User has responded to '.$this->wrapAsPrimaryHtml($this->display['name']).' with '.$this->wrapAsSuccessHtml($this->current_user_response));
-
-        //  Return the current screen user response
-        return $this->current_user_response;
     }
 
     /** This method gets the current display action details to determine the type of action that the
@@ -9003,14 +9015,58 @@ class UssdServiceController extends Controller
                          *  SAVE THE AUTO LINK REPLIES AS REPLY RECORDS   *
                          *************************************************/
 
-                        /* Add the auto link reply as a reply record.
-                        *  This reply will be recorded to originate from the "auto link" event
-                        *  and is a removable reply (Can be deleted by the user) depending on the
-                        *  given event settings
-                        */
+                        /** Add the auto link reply as a reply record. This reply will be recorded to originate
+                         *  from the "Auto Link" event and is a removable reply (Can be deleted by the user)
+                         *  depending on the given event settings
+                         */
                         $this->addReplyRecord($auto_link_reply, 'auto_link', true);
-
                     }
+
+                    /** We need to include the "A_L" reply as the current user response so that we
+                     *  can record this value within the $this->chained_display_metadata['text']
+                     *  and the $this->chained_screen_metadata['text']. This is so that we have
+                     *  a correct order of replies including this "Auto Reply" record. This is
+                     *  especially important when the need arises for us to use the
+                     *  handleScreenRevisit() since it depends on the text value in
+                     *  order for us to Revisit a given screen/display e.g:
+                     *
+                     *  $this->chained_screens['metadata']['text'] or
+                     *  $this->chained_displays['metadata']['text']
+                     *
+                     *  In order to target the correct shortcode path that leads to that screen
+                     *  or display. We must always update the current user response so that it
+                     *  can be used to update the this->chained_display_metadata['text'] and
+                     *  $this->chained_screen_metadata['text']. If we don't update then we
+                     *  will have missing information that will cause issues e.g
+                     *
+                     *  If we are on "Screen 1" and we reply with "1" to link normally to "Screen 1"
+                     *  and then we "Auto Link" to "Screen 2" and we "Auto Link" again to "Screen 3"
+                     *  and finally "Auto Link" again to "Screen 4" then the metadata text will be
+                     *  as follows:
+                     *
+                     *  Screen 1 = ['metadata']['text' => '']
+                     *  Screen 2 = ['metadata']['text' => '1']  (Reply recorded)
+                     *  Screen 3 = ['metadata']['text' => '1']  (Auto link Not recorded!)
+                     *  Screen 4 = ['metadata']['text' => '1']  (Auto link Not recorded!)
+                     *
+                     *  As you can see the autolink is not recorded. We need to fix this so that
+                     *  we have the following results:
+                     *
+                     *  Screen 1 = ['metadata']['text' => '']
+                     *  Screen 2 = ['metadata']['text' => '1']          (Reply recorded)
+                     *  Screen 3 = ['metadata']['text' => '1*A_L']      (Auto link recorded)
+                     *  Screen 4 = ['metadata']['text' => '1*A_L*A_L']  (Auto link recorded)
+                     */
+
+                    //  Get the user response (Input provided by the user) for the current display screen
+                    $this->setCurrentScreenUserResponse();
+
+                    //  Update the chained screen metadata
+                    $this->updateChainedScreenMetadata();
+
+                    //  Update the chained display metadata
+                    $this->updateChainedDisplayMetadata();
+
                 }
             }
         }

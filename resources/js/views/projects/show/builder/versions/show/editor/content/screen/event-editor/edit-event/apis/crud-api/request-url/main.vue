@@ -5,7 +5,7 @@
         <Col :span="24" class="mb-2">
 
             <!-- Test Event API Instructions -->
-            <Alert v-if="!isTestingApiUrl && !testAPIResponse" 
+            <Alert v-if="!isTestingApiUrl && !testAPIResponse"
                     type="info" style="line-height: 1.4em;" class="mb-2" closable>
                 Enter the <span class="font-italic text-success font-weight-bold">API Method</span>
                 and <span class="font-italic text-success font-weight-bold">API URL</span>, then
@@ -69,8 +69,8 @@
                     <TabPane v-for="(currentTabName, key) in navTabs" :key="key" :label="currentTabName" :name="currentTabName"></TabPane>
 
                 </Tabs>
-                
-                <!-- Test API Response Data --> 
+
+                <!-- Test API Response Data -->
                 <div class="bg-grey-light border p-2">
 
                     <span v-if="testAPIResponse.status" class="d-inline-block mr-4">
@@ -87,9 +87,9 @@
 
                 </div>
 
-                <!-- Test API Response Body --> 
+                <!-- Test API Response Body -->
                 <template v-if="activeNavTab == 'Body'">
-                    
+
                     <div class="mt-2">
 
                         <!-- API Response Data -->
@@ -103,26 +103,26 @@
                             </div>
 
                             <!-- Code Editor -->
-                            <codemirror 
+                            <codemirror
                                 v-if="testAPIResponsePrettierFormat"
-                                v-model="testAPIResponsePrettierFormat" 
+                                v-model="testAPIResponsePrettierFormat"
                                 :options="{ mode: 'application/json', readOnly: true }">
                             </codemirror>
-                            
+
                         </div>
-                        
+
                     </div>
 
                 </template>
 
-                <!-- Test API Response Headers --> 
+                <!-- Test API Response Headers -->
                 <template v-if="activeNavTab == 'Headers'">
 
                     <div class="p-2">
 
                         <template v-if="(testAPIResponse || {}).headers">
-                            
-                            <div v-for="(header_value, header_name) in (testAPIResponse || {}).headers" 
+
+                            <div v-for="(header_value, header_name) in (testAPIResponse || {}).headers"
                                 :key="header_name" class="mb-2">
                                 <span class="font-weight-bold text-capitalize text-dark">{{ header_name }}: </span>
                                 <span class="text-success text-break">{{ header_value }}</span>
@@ -133,8 +133,8 @@
                         <Divider class="d-block mt-2 mb-2" />
 
                         <template v-if="((testAPIResponse || {}).config || {}).headers">
-                            
-                            <div v-for="(header_value, header_name) in ((testAPIResponse || {}).config || {}).headers" 
+
+                            <div v-for="(header_value, header_name) in ((testAPIResponse || {}).config || {}).headers"
                                 :key="header_name" class="mb-2">
                                 <span class="font-weight-bold text-capitalize text-dark">{{ header_name }}: </span>
                                 <span class="text-success text-break">{{ header_value }}</span>
@@ -223,7 +223,7 @@
         },
         methods: {
             testApi(){
-                
+
                 //  If we have a method and the url and are not using code editor mode
                 if(this.event.event_data.method && !this.event.event_data.url.code_editor_mode && this.event.event_data.url.text){
 
@@ -244,19 +244,19 @@
 
                             //  Stop loader
                             self.isTestingApiUrl = false;
-                            
+
                             self.testAPIResponse = response;
 
                             self.selectedRequestResponseTab = ((response || {}).status || {}).toString();
 
-                        })         
+                        })
                         .catch(({response}) => {
 
                             console.log(response);
 
                             //  Stop loader
                             self.isTestingApiUrl = false;
-                            
+
                             self.testAPIResponse = response;
 
                             self.selectedRequestResponseTab = ((response || {}).status || {}).toString();
@@ -268,5 +268,5 @@
             }
         }
     };
-  
+
 </script>

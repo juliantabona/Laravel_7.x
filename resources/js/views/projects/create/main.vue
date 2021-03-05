@@ -238,7 +238,9 @@
                 /**  Make an Api call to create the project. We include the
                  *   project details required for a new project creation.
                  */
-                let projectData = this.projectForm;
+                let data = {
+                    postData: this.projectForm
+                };
 
                 /**  Note "api_home" is defined within the auth.js file.
                  *   It holds reference to common links for ease of
@@ -246,7 +248,7 @@
                  */
                 let url = api_home['_links']['sce:projects'].href
 
-                return api.call('post', url, projectData)
+                return api.call('post', url, data)
                     .then(({data}) => {
 
                         //  Stop loader

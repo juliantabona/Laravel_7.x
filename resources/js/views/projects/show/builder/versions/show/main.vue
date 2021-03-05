@@ -8,7 +8,7 @@
             <Loader class="mt-3"></Loader>
 
         </Col>
-        
+
         <template v-else>
 
             <Col :span="24" class="bg-white mb-3">
@@ -16,12 +16,12 @@
                 <Row>
 
                     <Col :span="10">
-                        
+
                         <!-- Show version editor or simulator -->
                         <Tabs v-model="activeNavTab" name="builder-tabs" class="builder-main-tabs" style="overflow: visible;" :animated="false">
 
                             <!-- Screen Settings Navigation Tabs -->
-                            <TabPane v-for="(currentTabName, key) in navTabs" :key="key" 
+                            <TabPane v-for="(currentTabName, key) in navTabs" :key="key"
                                     :label="currentTabName.name" :name="currentTabName.value" :icon="currentTabName.icon">
                             </TabPane>
 
@@ -48,17 +48,17 @@
                                 <Icon type="ios-undo-outline" :size="24"></Icon>
                             </Button>
                             <Button class="p-0" :style="{ position: 'relative', zIndex: 5 }">
-                    
+
                                 <Poptip trigger="click" placement="bottom-end" word-wrap width="500">
-                                    
+
                                     <Icon type="ios-time-outline" class="px-3" :size="24"></Icon>
 
                                     <template slot="content">
-                                        
+
                                         <span :style="{ marginBottom: '-22px' }" class="bg-grey-light d-block font-weight-bold p-2">History</span>
 
                                         <Timeline :style="{ maxHeight: '200px', overflowY: 'auto' }" class="pl-2 pr-5">
-                                                
+
                                             <TimelineItem v-for="(savedActivity, index) in savedActivities" :key="index" :style="{ marginBottom: '-20px !important' }">
                                                 <p class="time text-dark" :style="{ marginBottom: '-15px' }">{{ savedActivity.time }}</p>
                                                 <p v-if="savedActivity.description" class="content text-secondary">{{ savedActivity.description }}</p>
@@ -74,7 +74,7 @@
                             <Button>
                                 <Icon type="ios-redo-outline" :size="24"></Icon>
                             </Button>
-                        </ButtonGroup> 
+                        </ButtonGroup>
 
                     </Col>
 
@@ -90,7 +90,7 @@
 
             </Col>
 
-            <!-- 
+            <!--
                 MODAL TO ADD IMPORT BUILDER
             -->
             <template v-if="isOpenImportOrExportBuilderModal">
@@ -214,7 +214,7 @@
                 this.isOpenImportOrExportBuilderModal = true;
             },
             copyVersionBeforeUpdate(){
-                
+
                 //  Clone the version
                 this.versionBeforeChanges = _.cloneDeep( this.version );
 
@@ -245,13 +245,13 @@
                     //  Use the api call() function, refer to api.js
                     api.call('get', this.versionUrl)
                         .then(({data}) => {
-                            
+
                             //  Console log the data returned
                             console.log(data);
 
                             //  Get the version
                             self.version = data || null;
-                
+
                             //  Copy the version before any chages are made
                             self.copyVersionBeforeUpdate();
 
@@ -260,8 +260,8 @@
 
                             self.$emit('loadedVersion', self.version)
 
-                        })         
-                        .catch(response => { 
+                        })
+                        .catch(response => {
 
                             //  Log the responce
                             console.error(response);
@@ -285,15 +285,17 @@
 
                     this.$emit('isSaving', self.isSaving);
 
-                    var versionPayload = this.version;
+                    let data = {
+                        postData: this.version
+                    };
 
                     //  Use the api call() function, refer to api.js
-                    api.call('put', this.versionUrl, versionPayload)
+                    api.call('put', this.versionUrl, data)
                         .then(({data}) => {
-                            
+
                             //  Console log the data returned
                             console.log(data);
-                            
+
                             self.copyVersionBeforeUpdate();
 
                             self.notifyUnsavedChangesStatus();
@@ -308,8 +310,8 @@
 
                             self.$emit('isSaving', self.isSaving);
 
-                        })         
-                        .catch(response => { 
+                        })
+                        .catch(response => {
 
                             //  Log the responce
                             console.error(response);
@@ -327,7 +329,7 @@
 
             //  Fetch the project
             this.fetchVersion();
-            
+
         }
     }
 </script>

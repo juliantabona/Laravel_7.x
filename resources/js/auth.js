@@ -6,7 +6,7 @@ class Auth {
 
         /** The constructor method is called each time the class object is initialized.
          *  When this class object is initialized we need to instantiate properties
-         *  for use in the object methods.  
+         *  for use in the object methods.
          */
 
         //  Initialize the user to nothing
@@ -41,7 +41,7 @@ class Auth {
         /** Make an API Call to the API Home endpoint. This endpoint will provide us with the
          *  essential routes to execute Login, Registation and Logout calls. We only need to
          *  check for authorization on routes that only allow authenticated users.
-         * 
+         *
          *  Note the use of "async" and "await". This helps us to perform the api call and wait
          *  for the response before we continue any futher
          */
@@ -102,7 +102,7 @@ class Auth {
 
                 console.log('We don\'t have a locally stored token');
 
-                /** Logout to return to the login screen. We need to use the "async" and "await" to 
+                /** Logout to return to the login screen. We need to use the "async" and "await" to
                  *  perform the api call and wait for a response.
                  */
                 await this.logout();
@@ -110,7 +110,7 @@ class Auth {
             }
 
         }else{
-            
+
             console.log('This route does not require an authenticated user');
         }
 
@@ -147,17 +147,19 @@ class Auth {
             });
     }
 
-    login (email, password)
-    {   
-        /**  Make an Api call to get the API Login endpoint. We include the user's 
+    login (email, password, vueInstance)
+    {
+        /**  Make an Api call to get the API Login endpoint. We include the user's
          *   email and password required for validation and authentication.
          */
-        let loginData = {
-            email: email,
-            password: password
+        let data = {
+            postData: {
+                email: email,
+                password: password
+            }
         };
 
-        return api.call('post', this.loginUrl, loginData)
+        return api.call('post', this.loginUrl, data, vueInstance)
             .then(({data}) => {
 
                 //  Get the access token
@@ -175,19 +177,21 @@ class Auth {
             });
     }
 
-    register (name, email, password, password_confirmation)
-    {   
-        /**  Make an Api call to get the API Register endpoint. We include the user's 
+    register (name, email, password, password_confirmation, vueInstance)
+    {
+        /**  Make an Api call to get the API Register endpoint. We include the user's
          *   registration details required for account creation.
          */
-        let registrationData = {
-            name: name,
-            email: email,
-            password: password,
-            password_confirmation: password_confirmation
+        let data = {
+            postData: {
+                name: name,
+                email: email,
+                password: password,
+                password_confirmation: password_confirmation
+            }
         };
 
-        return api.call('post', this.registerUrl, registrationData)
+        return api.call('post', this.registerUrl, data, vueInstance)
             .then(({data}) => {
 
                 //  Get the access token
@@ -205,46 +209,50 @@ class Auth {
             });
     }
 
-    sendPasswordResetLink (email)
-    {   
+    sendPasswordResetLink (email, vueInstance)
+    {
         /**  Make an Api call to send the password reset link. We include the
          *    user's details required to send the password reset link.
          */
-        let userData = {
-            email: email,
+        let data = {
+            postData: {
+                email: email,
 
-            /** We need to include the "password_reset_url" which is our endpoint
-             *  where the user will be redirected to after they receive and click
-             *  on the password reset button from their email. The password reset
-             *  token and user email will also be attached to this provided url
-             *  as query parameters e.g:
-             * 
-             *  "https://{password_reset_url}?token=...&email=..."
-             *  
-             * This is the link that we want the endpoint to attach the token 
-             * 
-             */
+                /** We need to include the "password_reset_url" which is our endpoint
+                 *  where the user will be redirected to after they receive and click
+                 *  on the password reset button from their email. The password reset
+                 *  token and user email will also be attached to this provided url
+                 *  as query parameters e.g:
+                 *
+                 *  "https://{password_reset_url}?token=...&email=..."
+                 *
+                 * This is the link that we want the endpoint to attach the token
+                 *
+                 */
 
-             // This will generate "https://www.app-domain.com/#/reset-password"
-            password_reset_url: window.location.origin + "/" + VueInstance.$router.resolve({name: 'reset-password'}).href
+                 // This will generate "https://www.app-domain.com/#/reset-password"
+                password_reset_url: window.location.origin + "/" + VueInstance.$router.resolve({name: 'reset-password'}).href
+            }
         };
 
-        return api.call('post', this.sendPasswordResetLinkUrl, userData);
+        return api.call('post', this.sendPasswordResetLinkUrl, data, vueInstance);
     }
 
-    resetPassword (email, token, password, password_confirmation )
-    {   
+    resetPassword (email, token, password, password_confirmation, vueInstance )
+    {
         /**  Make an Api call to reset the user's password. We include the
          *   user's details required to reset the password
          */
-        let userData = {
-            email: email,
-            token: token,
-            password: password,
-            password_confirmation: password_confirmation
+        let data = {
+            postData: {
+                email: email,
+                token: token,
+                password: password,
+                password_confirmation: password_confirmation
+            }
         };
 
-        return api.call('post', this.resetPasswordUrl, userData)
+        return api.call('post', this.resetPasswordUrl, data, vueInstance)
             .then(({data}) => {
 
                 //  Get the access token
@@ -263,7 +271,7 @@ class Auth {
     }
 
     logout(logoutEveryone = false)
-    {  
+    {
         console.log('Start logging out process');
 
         //  Determine the type of logout to use
@@ -274,7 +282,7 @@ class Auth {
          *  logout from the client side
          */
         return this.logoutServerSide(url).then(() => {
-    
+
             //  Logout the client side
             this.logoutClientSide();
 
@@ -293,18 +301,18 @@ class Auth {
 
         //  Use the api call() function located in resources/js/api.js
         return api.call('post', url).then(() => {
-            
+
             //  Stop the signing out loader
             setTimeout(signoutLoader, 0);
 
             //  After one second
             setTimeout(function(){
-                
+
                 //  Sho the signed out success message
                 VueInstance.$Message.success('You are signed out!');
 
             }, 1000);
-            
+
 
         });
     }

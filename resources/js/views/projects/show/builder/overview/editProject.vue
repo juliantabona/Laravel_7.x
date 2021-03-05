@@ -2,7 +2,7 @@
 
     <Row>
         <Col :span="12" :offset="6">
-            
+
             <div class="clearfix">
                 <Button type="primary" size="large" class="float-right mt-3" @click.native="navigateToProjectVersions()">
                     <Icon type="ios-git-branch" class="mr-1" :size="20" />
@@ -11,7 +11,7 @@
             </div>
 
             <Card class="mt-3 pt-2">
-                
+
                 <!-- Heading -->
                 <Divider orientation="left" class="font-weight-bold">Project Details</Divider>
 
@@ -22,34 +22,34 @@
 
                     <!-- Enter Name -->
                     <FormItem prop="name" :error="serverNameError">
-                        <Input type="text" v-model="projectForm.name" placeholder="Name" :disabled="isSavingChanges" 
+                        <Input type="text" v-model="projectForm.name" placeholder="Name" :disabled="isSavingChanges"
                                 maxlength="50" show-word-limit @keyup.enter.native="handleSubmit()">
                         </Input>
                     </FormItem>
-                    
+
                     <!-- Enter Description -->
                     <FormItem prop="description" :error="serverDescriptionError">
-                        <Input type="textarea" v-model="projectForm.description" placeholder="Description" :disabled="isSavingChanges" 
+                        <Input type="textarea" v-model="projectForm.description" placeholder="Description" :disabled="isSavingChanges"
                                 maxlength="500" show-word-limit @keyup.enter.native="handleSubmit()">
                         </Input>
                     </FormItem>
-                    
+
                     <!-- Enter Online Status -->
                     <FormItem prop="online" :error="serverOnlineError">
                         <div>
                             <span :style="{ width: '200px' }" class="font-weight-bold">{{ statusText }}: </span>
-                            <Poptip trigger="hover" title="Turn On/Off" word-wrap width="300" 
+                            <Poptip trigger="hover" title="Turn On/Off" word-wrap width="300"
                                     content="Turn on to allow subscribers to dial your service code and access your service">
                                 <i-Switch v-model="projectForm.online" />
                             </Poptip>
                         </div>
                     </FormItem>
-                    
+
                     <!-- Enter Offline Message -->
                     <FormItem v-if="!projectForm.online" prop="offline_message" :error="serverDedicatedShortCodeError">
                         <div class="d-flex">
                             <span :style="{ width: '200px' }" class="font-weight-bold">Offline Message: </span>
-                            <Input type="textarea" v-model="projectForm.offline_message" placeholder="offline_message" :disabled="isSavingChanges" 
+                            <Input type="textarea" v-model="projectForm.offline_message" placeholder="offline_message" :disabled="isSavingChanges"
                                     maxlength="160" show-word-limit @keyup.enter.native="handleSubmit()">
                             </Input>
                         </div>
@@ -58,7 +58,7 @@
                     <!-- Enter Dedicated Short Code -->
                     <FormItem prop="dedicated_short_code" :error="serverDedicatedShortCodeError">
                         <div class="d-flex">
-                            <span :style="{ width: '200px' }" class="font-weight-bold">Dedicated Code: </span>  
+                            <span :style="{ width: '200px' }" class="font-weight-bold">Dedicated Code: </span>
                             <Input type="text" v-model.number="projectForm.dedicated_short_code" placeholder="180" :disabled="isSavingChanges"
                                     @keyup.enter.native="handleSubmit()">
                                 <span slot="prepend">*</span>
@@ -70,7 +70,7 @@
                     <!-- Enter Shared Short Code -->
                     <FormItem prop="shared_short_code" :error="serverSharedShortCodeError">
                         <div class="d-flex">
-                            <span :style="{ width: '200px' }" class="font-weight-bold">Shared Code: </span>  
+                            <span :style="{ width: '200px' }" class="font-weight-bold">Shared Code: </span>
                             <Input type="text" v-model.number="projectForm.shared_short_code" placeholder="180" :disabled="true"
                                     @keyup.enter.native="handleSubmit()">
                                 <span slot="prepend">*</span>
@@ -80,9 +80,9 @@
                     </FormItem>
 
                     <!-- Select Active Version -->
-                    <FormItem prop="active_version" :error="serverActiveVersionError">  
+                    <FormItem prop="active_version" :error="serverActiveVersionError">
                         <div class="d-flex">
-                            <span :style="{ width: '235px' }" class="font-weight-bold">Active Version: </span>  
+                            <span :style="{ width: '235px' }" class="font-weight-bold">Active Version: </span>
                             <Select v-model="projectForm.active_version_id" class="w-100 mr-2">
                                 <Option v-for="(active_version, index) in versions" :value="active_version.id" :key="index">
                                     {{ active_version.name }}
@@ -97,12 +97,12 @@
                             </Poptip>
                         </div>
                     </FormItem>
-                    
+
                     <!-- Save Changes Button -->
                     <FormItem v-if="!isSavingChanges">
 
-                        <basicButton :disabled="(!projectHasChanged || isSavingChanges)" :loading="isSavingChanges" 
-                                     :ripple="(projectHasChanged && !isSavingChanges)" type="success" size="large" 
+                        <basicButton :disabled="(!projectHasChanged || isSavingChanges)" :loading="isSavingChanges"
+                                     :ripple="(projectHasChanged && !isSavingChanges)" type="success" size="large"
                                      class="float-right" @click.native="handleSubmit()">
                             <span>{{ isSavingChanges ? 'Saving...' : 'Save Changes' }}</span>
                         </basicButton>
@@ -119,7 +119,7 @@
 
 </template>
 <script>
-    
+
     import basicButton from './../../../../../components/_common/buttons/basicButton.vue';
     import Loader from './../../../../../components/_common/loaders/default.vue';
 
@@ -250,11 +250,11 @@
             },
             navigateToProjectVersions(){
                 /** Note that using router.push() or router.replace() does not allow us to make a
-                 *  page refresh when visiting routes. This is undesirable at this moment since our 
-                 *  parent component contains the <router-view />. When the page does not refresh, 
-                 *  the <router-view /> is not able to receive the nested components defined in the 
-                 *  routes.js file. This means that we are then not able to render the nested 
-                 *  components and present them. To counter this issue we must construct the 
+                 *  page refresh when visiting routes. This is undesirable at this moment since our
+                 *  parent component contains the <router-view />. When the page does not refresh,
+                 *  the <router-view /> is not able to receive the nested components defined in the
+                 *  routes.js file. This means that we are then not able to render the nested
+                 *  components and present them. To counter this issue we must construct the
                  *  href and use "window.location.href" to make a hard page refresh.
                  */
                 var projectUrl = this.project['_links']['self'].href;
@@ -284,7 +284,7 @@
             copyProjectBeforeUpdate(){
 
                 console.log('copyProjectBeforeUpdate');
-                
+
                 //  Clone the project
                 this.projectBeforeChanges = _.cloneDeep( this.projectForm );
 
@@ -316,12 +316,12 @@
                 this.resetErrors();
 
                 //  Validate the project form
-                this.$refs['projectForm'].validate((valid) => 
-                {   
+                this.$refs['projectForm'].validate((valid) =>
+                {
                     //  If the validation passed
                     if (valid) {
                         console.log('valid');
-                        
+
                         //  Attempt to create project
                         this.attemptProjectUpdate();
 
@@ -347,11 +347,13 @@
                 /**  Make an Api call to create the project. We include the
                  *   project details required for a new project creation.
                  */
-                let projectData = this.projectForm;
+                let data = {
+                    postData: this.projectForm
+                };
 
                 console.log('Saving Project');
 
-                return api.call('put', this.project['_links']['self'].href, projectData)
+                return api.call('put', this.project['_links']['self'].href, data)
                     .then(({data}) => {
 
                         //  Stop loader
@@ -368,13 +370,13 @@
                             content: 'Your project has been updated!',
                             duration: 6
                         });
-                            
+
                         self.copyProjectBeforeUpdate();
 
                         self.notifyUnsavedChangesStatus();
-                        
+
                     }).catch((response) => {
-                
+
                         console.log(response);
 
                         //  Stop loader
@@ -383,7 +385,7 @@
 
                         //  Get the error response data
                         let data = (response || {}).data;
-                            
+
                         //  Get the response errors
                         var errors = (data || {}).errors;
 
@@ -396,7 +398,7 @@
 
                             //  If we have errors
                             if(_.size(errors)){
-                                
+
                                 //  Set the server errors
                                 self.serverErrors = errors;
 
