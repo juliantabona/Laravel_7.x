@@ -3521,7 +3521,7 @@ class UssdServiceController extends Controller
          */
 
         //  Check if the user has already responded to the current display screen
-        if ($this->completedLevel($this->level)) {
+        if ($this->hasResponded()) {
             /** Record the number of times we have responded to the screen.
              *
              *  First check if we have a record matching the given screen id.
@@ -3589,7 +3589,7 @@ class UssdServiceController extends Controller
         $builtDisplay = $this->buildCurrentDisplay();
 
         //  Check if the user has already responded to the current display screen
-        if ($this->completedLevel($this->level)) {
+        if ($this->hasResponded()) {
 
             //  Get the user response (Input provided by the user) for the current display screen
             $this->setCurrentScreenUserResponse();
@@ -4920,7 +4920,7 @@ class UssdServiceController extends Controller
             //  If we have the input
             if (!empty($scroll_down_input) || !empty($scroll_up_input)) {
                 //  Start slicing the content
-                while ($this->completedLevel($this->level)) {
+                while ($this->hasResponded()) {
                     $userResponse = $this->getResponseFromLevel($this->level) ?? '';   //  99
 
                     //  If the user response matches the pagination scroll up or scroll down input
@@ -5917,6 +5917,7 @@ class UssdServiceController extends Controller
     {
         //  If we have events to handle
         if (count($events)) {
+
             //  Foreach event
             foreach ($events as $event) {
 
@@ -5992,8 +5993,9 @@ class UssdServiceController extends Controller
             return $activeState;
         }
 
-        //  If the pagination is active
+        //  If we can run this event
         if ($activeState === true) {
+
             //  Get the time before processing the request
             $start_event_time = microtime(true);
 
@@ -6033,11 +6035,11 @@ class UssdServiceController extends Controller
                 $response = $this->handle_Redirect_Event();
             } elseif ($event['type'] == 'Notification') {
                 $response = $this->handle_Notification_Event();
+            } elseif ($event['type'] == 'Event Collection') {
+                $response = $this->handle_Event_Collection_Event();
             } elseif ($event['type'] == 'Create/Update Account') {
                 $response = $this->handle_Create_Or_Update_Account_Event();
             }
-
-
 
             //  Get the time after processing the request
             $end_event_time = microtime(true);
@@ -6048,9 +6050,12 @@ class UssdServiceController extends Controller
             $this->logInfo('Execution time for '.$this->wrapAsSuccessHtml($event['name']).' event: '.$this->wrapAsSuccessHtml($event_time_in_seconds.($event_time_in_seconds == 1 ? ' second' : ' seconds')));
 
             return $response;
+
         } else {
+
             //  Set an info log that the current event is not activated
             $this->logInfo('Event: '.$this->wrapAsSuccessHtml($event['name']).' is '.$this->wrapAsWarningHtml('not activated').', therefore will not be executed.');
+
         }
     }
 
@@ -8805,7 +8810,7 @@ class UssdServiceController extends Controller
                     if ($this->event_type == 'after_reply') {
                         /** Lets think!
                          *
-                         *  $this->completedLevel($this->level) - checks if the user responded to the current display.
+                         *  $this->hasResponded() - checks if the user responded to the current display.
                          *
                          *  We need to check for "Auto Replies" after this user response. THis means we can take
                          *  advantage of the $key value which always starts at "0". We need to first increment
@@ -8814,7 +8819,7 @@ class UssdServiceController extends Controller
                         $level = $this->level + ($key + 1);
 
                         //  Check if we have any "Auto Replies" after the users initial response
-                        if ($this->completedLevel($level) == false) {
+                        if ($this->hasResponded() == false) {
 
                             /*************************************
                              *  CAPTURE AUTOMATIC REPLY RECORD   *
@@ -8832,7 +8837,7 @@ class UssdServiceController extends Controller
 
                         /** Lets think!
                          *
-                         *  $this->completedLevel($this->level) - checks if we already have an "Auto Reply"
+                         *  $this->hasResponded() - checks if we already have an "Auto Reply"
                          *  to the current display. We need to take advantage of the $key value which always
                          *  starts at "0". We need to use it to target any "Auto Replies" that have been
                          *  executed already.
@@ -8840,7 +8845,7 @@ class UssdServiceController extends Controller
                         $level = $this->level + $key;
 
                         //  Check if we have any "Auto Replies" before the users initial response
-                        if ($this->completedLevel($level) == false) {
+                        if ($this->hasResponded() == false) {
 
                             /*************************************
                              *  CAPTURE AUTOMATIC REPLY RECORD   *
@@ -9004,7 +9009,7 @@ class UssdServiceController extends Controller
                 //  If we have the screen or display to link to
                 if ($screen || $display) {
 
-                    if (!$this->completedLevel($this->level)) {
+                    if (!$this->hasResponded()) {
 
                         //  Set an automatic reply for this "Auto Link" event
                         $auto_link_reply = 'A_L';
@@ -9491,6 +9496,26 @@ class UssdServiceController extends Controller
                     'updated_at' => (Carbon::now())->format('Y-m-d H:i:s'),
                 ]
             );
+
+        }
+    }
+
+    /** This method  gets the collection of events then
+     *  runs through each event
+     */
+    public function handle_Event_Collection_Event()
+    {
+        if ($this->event) {
+
+            /************************
+             *  MESSAGE             *
+             ***********************/
+
+            //  Get the events from the event collection
+            $events = $this->event['event_data']['events'];
+
+            //  Start handling the given events
+            return $this->handleEvents($events);
 
         }
     }
@@ -10656,6 +10681,13 @@ class UssdServiceController extends Controller
         return 0;
     }
 
+    /** Determine is the user has responded to a specific screen
+     */
+    public function hasRespondedToScreen($screen_id = null)
+    {
+        return $this->getTotalScreenResponses($screen_id) ? true : false;
+    }
+
     /** Count the number of times that the user responded to
      *  a given display based on the provided display id.
      */
@@ -10675,4 +10707,20 @@ class UssdServiceController extends Controller
 
         return 0;
     }
+
+    /** Determine is the user has responded to a specific display
+     */
+    public function hasRespondedToDisplay($display_id = null)
+    {
+        return $this->getTotalDisplayResponses($display_id) ? true : false;
+    }
+
+    /** Determine is the user has responded to the current level screen or display
+     */
+    public function hasResponded()
+    {
+        //  Check if the user has already responded to the current display screen
+        return $this->completedLevel($this->level);
+    }
+
 }

@@ -152,6 +152,9 @@
                         type: "Notification"
                     },
                     {
+                        type: "Event Collection"
+                    },
+                    {
                         type: "Create/Update Account"
                     }
                 ],
@@ -294,7 +297,14 @@
 
                     event = this.get_Notification_Event();
 
+                }else if( eventType == 'Event Collection' ){
+
+                    event = this.get_Event_Collection_Event();
+
                 }
+
+                //  Set the Hex Color according to the event color scheme otherwise set default color
+                var hexColor = this.version.builder.color_scheme.event_colors[eventType] || '#CECECE';
 
                 //  Overide the general event structure with the relevant event specific data
                 return Object.assign({
@@ -311,7 +321,7 @@
                         code: ''
                     },
                     event_data: {},
-                    hexColor: '#CECECE'
+                    hexColor: hexColor
 
                 }, event);
             },
@@ -731,6 +741,16 @@
                             code_editor_text: '',
                             code_editor_mode: false
                         }
+                    }
+                }
+
+            },
+            get_Event_Collection_Event(){
+
+                return {
+                    name: 'Event Collection',
+                    event_data: {
+                        events: []
                     }
                 }
 

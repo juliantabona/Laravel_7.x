@@ -73,7 +73,13 @@
                     {
                         name: '$this->getTotalDisplayResponses(\'display_1603621405919\')',
                         desc: 'Count the number of responses to the givent display. The input is the display id'
+                    },
+                    {
+                        name: '$this->hasResponded()',
+                        desc: 'Check if the user has responded to the current level (screen or display)'
                     }
+
+
                 ],
                 columns: [
                     {

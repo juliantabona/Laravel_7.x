@@ -71,6 +71,9 @@
             <!-- Edit BILLING API Event -->
             <editBillingApiEvent v-if="eventForm.type == 'Billing API'" v-bind="$props" :event="eventForm"></editBillingApiEvent>
 
+            <!-- Edit Event Collection Event -->
+            <editEventCollectionEvent v-if="eventForm.type == 'Event Collection'" v-bind="$props" :event="eventForm"></editEventCollectionEvent>
+
             <!-- Edit Notification Event -->
             <editNotificationEvent v-if="eventForm.type == 'Notification'" v-bind="$props" :event="eventForm"></editNotificationEvent>
 
@@ -132,7 +135,9 @@
     import commentInput from './../../commentInput.vue';
 
     //  Get the Event components used to edit
+
     import editCreateOrUpdateAccountEvent from './create-or-update-account/main.vue';
+    import editEventCollectionEvent from './event-collection/main.vue';
     import editLocalStorageEvent from './local-storage/main.vue';
     import editBillingApiEvent from './apis/billing-api/main.vue';
     import editNotificationEvent from './notification/main.vue';
@@ -150,7 +155,7 @@
         components: {
             activeStateSelector, commentInput, editLocalStorageEvent, editBillingApiEvent, editNotificationEvent, editCrudApiEvent,
             editValidationEvent, editFormattingEvent, editRedirectEvent, editRevisitEvent, editAutoLinkEvent,
-            editAutoReplyEvent, editCustomCodeEvent, editCreateOrUpdateAccountEvent
+            editAutoReplyEvent, editCustomCodeEvent, editCreateOrUpdateAccountEvent, editEventCollectionEvent
         },
         props: {
             index: {

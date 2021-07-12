@@ -4,7 +4,7 @@
 
         <Card :bordered="false" class="mb-1">
 
-            <!-- Version -->    
+            <!-- Version -->
             <div class="d-flex">
 
                 <span class="d-block mt-2 font-weight-bold text-dark mr-2">Select: </span>
@@ -23,14 +23,14 @@
                 </basicButton>
 
             </div>
-            
+
         </Card>
 
         <Card :bordered="false">
 
             <div slot="title">
-                
-                <!-- Screen Menu Heading -->    
+
+                <!-- Screen Menu Heading -->
                 <div class="clearfix pb-2">
 
                     <span class="d-block mt-2 font-weight-bold text-dark float-left">Screens</span>
@@ -42,9 +42,9 @@
                     </basicButton>
 
                 </div>
-                
-                <Input 
-                    type="text" v-model="searchTerm"  
+
+                <Input
+                    type="text" v-model="searchTerm"
                     prefix="ios-search" class="mb-2"
                     placeholder="Search by screen name or id">
                 </Input>
@@ -54,26 +54,26 @@
 
                     <!-- If we have screens -->
                     <template v-if="screensExist">
-                        
-                        <draggable 
+
+                        <draggable
                             class="ussd-builder-screen-menus"
                             :list="filteredScreens"
-                            @start="drag=true" 
-                            @end="drag=false" 
+                            @start="drag=true"
+                            @end="drag=false"
                             :options="{
-                                group:'screen-menus', 
+                                group:'screen-menus',
                                 handle:'.dragger-handle',
                                 draggable:'.screen-menu-item-wrapper'
                             }">
 
                             <div v-for="(currentScreen, index) in version.builder.screens" :key="index"
                                  class="screen-menu-item-wrapper">
-                                
+
                                 <!-- Only show filtere screens -->
                                 <template v-if="filteredScreenIds.includes(currentScreen.id)">
 
                                     <!-- Single Screen Menu  -->
-                                    <singleScreenMenu   
+                                    <singleScreenMenu
                                         :index="index"
                                         :version="version"
                                         :activeScreen="screen"
@@ -87,7 +87,7 @@
                             </div>
 
                         </draggable>
-                        
+
                     </template>
 
                     <!-- No Screens Alert -->
@@ -112,11 +112,12 @@
                 <Cell title="Global Events" @click.native="$emit('showGlobalEvents')">
                     <Badge :count="totalGlobalEvents" type="info" slot="extra" />
                 </Cell>
+                <Cell title="Color Scheme" @click.native="$emit('showColorScheme')"/>
             </CellGroup>
-            
+
         </Card>
 
-        <!-- 
+        <!--
             MODAL TO ADD NEW SCREEN
         -->
         <template v-if="isOpenAddScreenModal">
@@ -185,9 +186,9 @@
                 if( this.searchTerm ){
                     //  Return filtered screens
                     return this.version.builder.screens.filter((screen, index) => {
-                        
+
                         var searchTerm = this.searchTerm.trim().toLowerCase();
-                        
+
                         var screenName = screen.name.trim().toLowerCase();
 
                         //  Define the search pattern
@@ -197,7 +198,7 @@
                         if( (regex_pattern.test(screenName) || searchTerm == screen.id) ){
                             return true;
                         }
-                        
+
                         return false;
                     })
                 }else{

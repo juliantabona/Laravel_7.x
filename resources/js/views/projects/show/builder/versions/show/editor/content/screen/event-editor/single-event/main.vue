@@ -1,17 +1,17 @@
 <template>
 
     <Card :class="cardClasses" :style="cardStyles">
-        
+
         <!-- Event Title -->
         <div slot="title" class="cursor-pointer" @click="toggleExpansion()">
-            
-            <Row>  
+
+            <Row>
 
                 <Col :span="12" class="d-flex">
 
                     <!-- Expand / Collapse Icon  -->
-                    <Icon :type="arrowDirection" 
-                          class="text-primary cursor-pointer mr-2" :size="20" 
+                    <Icon :type="arrowDirection"
+                          class="text-primary cursor-pointer mr-2" :size="20"
                           :style="{ marginTop: '-3px' }" @click.stop="toggleExpansion()" />
 
                     <span class="single-draggable-item-title d-block font-weight-bold cut-text">{{ event.name }}</span>
@@ -19,7 +19,7 @@
                 </Col>
 
                 <Col class="d-flex" :span="12">
-                
+
                     <!-- Failed Link Warning -->
                     <Poptip trigger="hover" width="350" placement="top" word-wrap>
 
@@ -31,7 +31,7 @@
                             <revisitInfo v-else-if="event.type == 'Revisit'" v-bind="$props" @updateIsValidEvent="isValidEvent = $event"></revisitInfo>
                             <redirectInfo v-else-if="event.type == 'Redirect'" v-bind="$props" @updateIsValidEvent="isValidEvent = $event"></redirectInfo>
                         </template>
-                        
+
 
                         <Icon v-if="isValidEvent" type="ios-information-circle-outline" class="text-primary mr-1" :style="{ marginTop: '-5px' }" size="30" />
                         <Icon v-else type="ios-alert-outline" class="text-danger mr-1" :style="{ marginTop: '-5px' }" size="30" />
@@ -41,10 +41,10 @@
                     <!-- Active Status -->
                     <div :style="{ marginTop: '-4px' }">
 
-                        <!-- Poptip with active state written in code  --> 
+                        <!-- Poptip with active state written in code  -->
                         <Poptip v-if="event.active.selected_type == 'conditional'" trigger="hover" width="600" placement="top" word-wrap>
 
-                            <!-- Code sample of display  --> 
+                            <!-- Code sample of display  -->
                             <pre slot="content" v-highlightjs="event.active.code"><code class="javascript"></code></pre>
 
                             <Tag v-if="event.active.selected_type == 'conditional'" type="border" color="cyan">Active Conditionally</Tag>
@@ -58,7 +58,7 @@
                     </div>
 
                     <div :style="{ marginTop: '-2px' }">
-                        
+
                         <!-- Event Type -->
                         <Tag type="border" color="cyan" class="m-0">
 
@@ -69,11 +69,11 @@
                             <span>{{ event.type }}</span>
 
                             <template v-if="hasValidationRules">
-                                | <span class="font-weight-bold">{{ numberOfValidationRules }} {{ numberOfValidationRules == '1' ? 'Rule' : 'Rules' }}</span> 
+                                | <span class="font-weight-bold">{{ numberOfValidationRules }} {{ numberOfValidationRules == '1' ? 'Rule' : 'Rules' }}</span>
                             </template>
 
                         </Tag>
-                        
+
                         <!-- Global Event Tag -->
                         <Tag v-if="event.global && !usingImportEventManager" type="border" color="orange" class="m-0">
 
@@ -89,21 +89,30 @@
 
                 </Col>
             </Row>
-            
+
         </div>
 
         <!-- Event Toolbar (Edit, Move, Delete Buttons) -->
         <div slot="extra">
 
             <div v-if="usingImportEventManager" :style="{ marginTop: '-2px' }">
-                
+
                 <Button type="primary" @click.native="handleImport()" size="small">Import</Button>
 
             </div>
 
             <div v-else class="single-draggable-item-toolbox">
 
-                
+                <Dropdown trigger="click" placement="bottom-start" class="mt-1">
+
+                    <!-- Show More Icon -->
+                    <Icon type="md-more" :size="20"/>
+
+                    <DropdownMenu slot="list">
+                        <DropdownItem @click.native="copyEvent()">Copy</DropdownItem>
+                    </DropdownMenu>
+                </Dropdown>
+
                 <!-- Remove Event Button  -->
                 <Icon type="ios-trash-outline" class="single-draggable-item-icon mr-2" size="20" @click="handleConfirmRemoveEvent()" />
 
@@ -115,10 +124,10 @@
 
                 <!-- Move Event Button  -->
                 <Icon type="ios-move" class="single-draggable-item-icon dragger-handle mr-2" size="20" />
-            
-            </div> 
 
-        </div>  
+            </div>
+
+        </div>
 
         <div v-show="isExpanded">
 
@@ -134,7 +143,7 @@
 
         </div>
 
-        <!-- 
+        <!--
             MODAL TO ADD / CLONE / EDIT EVENT
         -->
         <template v-if="isOpenManageEventModal">
@@ -171,8 +180,8 @@
     import eventIcon from './../eventIcon.vue';
 
     export default {
-        components: { 
-            manageEventModal, localStorageInfo, validationInfo, formattingInfo, crudApiInfo, revisitInfo, 
+        components: {
+            manageEventModal, localStorageInfo, validationInfo, formattingInfo, crudApiInfo, revisitInfo,
             redirectInfo, eventIcon },
         props: {
             index: {
@@ -230,7 +239,7 @@
             },
             cardClasses(){
                 return [
-                    'single-draggable-item', 
+                    'single-draggable-item',
                     (this.isExpanded ? 'active' : ''), 'mb-2'
                 ]
             },
@@ -304,7 +313,7 @@
 
                             //  If the event ids match
                             if( event.id == eventId ){
-                                event.global = false; 
+                                event.global = false;
                             }
 
                             return event;
@@ -316,7 +325,7 @@
 
                             //  If the event ids match
                             if( event.id == eventId ){
-                                event.global = false; 
+                                event.global = false;
                             }
 
                             return event;
@@ -331,7 +340,7 @@
 
                                 //  If the event ids match
                                 if( event.id == eventId ){
-                                    event.global = false; 
+                                    event.global = false;
                                 }
 
                                 return event;
@@ -343,7 +352,7 @@
 
                                 //  If the event ids match
                                 if( event.id == eventId ){
-                                    event.global = false; 
+                                    event.global = false;
                                 }
 
                                 return event;
@@ -374,7 +383,18 @@
             },
             handleOpenManageEventModal(){
                 this.isOpenManageEventModal = true;
-            }
+            },
+            copyEvent(){
+
+                //  Store the event in the local storage
+                window.localStorage.setItem('event', JSON.stringify(this.event));
+
+                this.$Message.success({
+                    content: 'Event copied!',
+                    duration: 6
+                });
+
+            },
         }
     }
 
